@@ -1,0 +1,4 @@
+# Normalización de fin de línea para equipos con Windows, macOS y Linux.
+* text=auto
+*.jpg binary
+*.png binary

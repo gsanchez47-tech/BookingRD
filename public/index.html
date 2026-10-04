@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookingRD | Hoteles y actividades en República Dominicana</title>
+    <meta name="description" content="BookingRD: alojamiento, tours y aventura en República Dominicana.">
+
+    <!-- Tipografías institucionales: Fraunces (títulos) y Nunito (texto). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,800;1,600;1,700&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+
+    <!-- Hoja de estilos propia de esta página. -->
+    <link rel="stylesheet" href="css/index.css">
+
+    <!-- Habilita las animaciones que dependen de JavaScript (ver [data-revelar] en index.css). -->
+    <script>document.documentElement.classList.add('js');</script>
+
+    <!-- Aviso de diagnóstico: si la hoja de estilos no se pudo cargar (por
+         ejemplo, al abrir el HTML desde dentro del archivo .zip sin
+         extraerlo), se muestra un mensaje con la solución. -->
+    <script>
+        window.addEventListener('load', function () {
+            var estilosCargados = getComputedStyle(document.documentElement).getPropertyValue('--dom-blue').trim() !== '';
+            if (estilosCargados) return;
+            var aviso = document.createElement('div');
+            aviso.setAttribute('role', 'alert');
+            aviso.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:#05132B;color:#fff;font:16px/1.6 Segoe UI,Arial,sans-serif;';
+            aviso.innerHTML = '<div style="max-width:620px;padding:32px;border-radius:20px;background:#0A1F44;border-top:8px solid #CE1126;">'
+                + '<h1 style="margin:0 0 12px;font-size:26px;">No se pudieron cargar los estilos de BookingRD</h1>'
+                + '<p style="margin:0 0 12px;">Esto ocurre cuando la página se abre <strong>desde dentro del archivo .zip</strong>: el navegador solo recibe el HTML, sin la carpeta <code>css/</code>.</p>'
+                + '<ol style="margin:0 0 12px;padding-left:20px;"><li>Cierra esta pestaña.</li><li>Clic derecho sobre <strong>BookingRD.zip</strong> &gt; <strong>Extraer todo</strong> &gt; <strong>Extraer</strong>.</li><li>Abre <strong>public/index.html</strong> desde la carpeta extraída.</li></ol>'
+                + '<p style="margin:0;color:#00B4D8;">Ruta actual: ' + decodeURIComponent(location.pathname).replace(/</g, '&lt;') + '</p></div>';
+            document.body.appendChild(aviso);
+        });
+    </script>
+</head>
+<body>
+
+    <!-- ======================================================================
+         HEADER
+         Navegación principal con menú desplegable de servicios por categoría.
+         Los elementos con data-sesion se muestran según el estado de la
+         sesión (js/comun.js).
+         ====================================================================== -->
+    <header class="header-principal">
+        <div class="header-contenido">
+            <a href="#inicio" class="logo-marca" aria-label="BookingRD, inicio">Booking<span class="logo-rd">RD</span></a>
+
+            <nav class="nav-principal" aria-label="Menú principal">
+                <a href="#inicio" class="nav-enlace activo">Inicio</a>
+                <div class="nav-desplegable">
+                    <button type="button" class="nav-enlace" aria-expanded="false" aria-controls="menu-servicios">
+                        Servicios <span class="flecha" aria-hidden="true"></span>
+                    </button>
+                    <div class="menu-servicios" id="menu-servicios">
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Alojamiento</span>
+                            <a href="#servicio-hoteles">Hoteles y resorts</a>
+                            <a href="#servicio-villas">Villas y cabañas</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Tours</span>
+                            <a href="#servicio-tour-playa">Tours de playa</a>
+                            <a href="#servicio-tour-montana">Tours de montaña</a>
+                            <a href="#servicio-tour-gastronomico">Tours gastronómicos</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Aventura</span>
+                            <a href="#servicio-zip-line">Zip line</a>
+                            <a href="#servicio-motocross">Motocross y buggies</a>
+                            <a href="#servicio-acuaticas">Actividades acuáticas</a>
+                        </div>
+                        <a href="#destacados" class="menu-servicios-pie">Ver publicaciones disponibles</a>
+                    </div>
+                </div>
+                <a href="#nosotros" class="nav-enlace">Sobre nosotros</a>
+                <a href="#contacto" class="nav-enlace">Contacto</a>
+            </nav>
+
+            <div class="acciones-header">
+                <div class="acciones-escritorio" data-sesion="invitado">
+                    <a href="login.html" class="enlace-header">Iniciar sesión</a>
+                    <a href="registro.html" class="btn-primario btn-chico btn-header">Crear cuenta</a>
+                </div>
+                <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <span class="usuario-sesion">
+                        <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                        <span class="usuario-nombre" data-nombre-usuario></span>
+                    </span>
+                    <button type="button" class="boton-texto-claro" data-accion="cerrar-sesion">Cerrar sesión</button>
+                </div>
+                <button id="boton-menu-movil" class="boton-menu-movil" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-movil">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+
+        <nav id="menu-movil" class="menu-movil" aria-label="Menú móvil">
+            <div class="menu-movil-contenido">
+                <a href="#inicio">Inicio</a>
+                <details>
+                    <summary>Servicios <span class="flecha" aria-hidden="true"></span></summary>
+                    <span class="menu-movil-categoria">Alojamiento</span>
+                    <a href="#servicio-hoteles">Hoteles y resorts</a>
+                    <a href="#servicio-villas">Villas y cabañas</a>
+                    <span class="menu-movil-categoria">Tours</span>
+                    <a href="#servicio-tour-playa">Tours de playa</a>
+                    <a href="#servicio-tour-montana">Tours de montaña</a>
+                    <a href="#servicio-tour-gastronomico">Tours gastronómicos</a>
+                    <span class="menu-movil-categoria">Aventura</span>
+                    <a href="#servicio-zip-line">Zip line</a>
+                    <a href="#servicio-motocross">Motocross y buggies</a>
+                    <a href="#servicio-acuaticas">Actividades acuáticas</a>
+                </details>
+                <a href="#nosotros">Sobre nosotros</a>
+                <a href="#contacto">Contacto</a>
+                <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- ======================================================================
+         HERO Y BUSCADOR
+         El buscador filtra la sección "Destacados" (js/index.js).
+         ====================================================================== -->
+    <section class="hero" id="inicio">
+        <div class="contenedor hero-contenido">
+            <span class="pildora pildora-clara"><span class="pildora-punto" aria-hidden="true"></span>Vive el Caribe dominicano</span>
+            <h1 class="hero-titulo">Tu próxima aventura<br><span class="italica-caribe">empieza en la isla</span></h1>
+            <p class="hero-subtitulo">Hoteles y actividades en las mejores ciudades de República Dominicana, con cupo real y confirmación inmediata.</p>
+
+            <form id="form-busqueda" class="tarjeta-busqueda" aria-label="Buscar hoteles o actividades">
+                <div class="campo-busqueda">
+                    <label for="busqueda-tipo">Qué buscas</label>
+                    <select id="busqueda-tipo">
+                        <option value="hoteles">Hoteles</option>
+                        <option value="actividades">Actividades</option>
+                    </select>
+                </div>
+                <div class="campo-busqueda">
+                    <label for="busqueda-ciudad">Ciudad</label>
+                    <select id="busqueda-ciudad">
+                        <option value="">Todas las ciudades</option>
+                    </select>
+                </div>
+                <div class="campo-busqueda">
+                    <label for="busqueda-personas">Personas</label>
+                    <input type="number" id="busqueda-personas" min="1" max="50" value="2">
+                </div>
+                <div class="campo-busqueda campo-busqueda-accion">
+                    <button type="submit" class="btn-primario btn-bloque">Buscar</button>
+                </div>
+            </form>
+        </div>
+        <div class="franja-decorativa franja-inferior" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    </section>
+
+    <main>
+        <!-- ==================================================================
+             DESTINOS
+             Chips generados con las ciudades que tienen publicaciones
+             (GET /api/estadisticas). Al elegir uno se filtra "Destacados".
+             ================================================================== -->
+        <section class="seccion-destinos" id="destinos">
+            <div class="contenedor">
+                <h2 class="titulo-franja">Destinos populares</h2>
+                <div id="chips-destinos" class="chips-destinos">
+                    <span class="chip chip-informativo"><span class="spinner" aria-hidden="true"></span>Cargando destinos</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             INDICADORES (GET /api/estadisticas)
+             ================================================================== -->
+        <section class="franja-estadisticas" aria-label="Indicadores de BookingRD">
+            <div class="contenedor grid-estadisticas">
+                <div data-revelar>
+                    <div class="estadistica-numero" id="stat-hoteles">0</div>
+                    <div class="estadistica-etiqueta">Hoteles publicados</div>
+                </div>
+                <div data-revelar>
+                    <div class="estadistica-numero" id="stat-actividades">0</div>
+                    <div class="estadistica-etiqueta">Actividades publicadas</div>
+                </div>
+                <div data-revelar>
+                    <div class="estadistica-numero" id="stat-ciudades">0</div>
+                    <div class="estadistica-etiqueta">Ciudades</div>
+                </div>
+                <div data-revelar>
+                    <div class="estadistica-numero" id="stat-empresas">0</div>
+                    <div class="estadistica-etiqueta">Empresas registradas</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             SERVICIOS
+             Vitrina de las categorías de servicio que ofrecerán las empresas.
+             Contenido informativo: las fotografías de public/img/servicios/
+             pueden reemplazarse conservando el nombre de archivo.
+             Los id (servicio-*) son los destinos del menú "Servicios".
+             ================================================================== -->
+        <section class="seccion seccion-servicios" id="servicios">
+            <div class="contenedor">
+                <div class="seccion-encabezado" data-revelar>
+                    <span class="pildora">Servicios</span>
+                    <h2>Todo lo que puedes vivir en la isla</h2>
+                    <p>Dónde quedarte, qué recorrer y cuánta adrenalina quieres: hoteles, tours y aventura de empresas dominicanas.</p>
+                </div>
+
+                <!-- Alojamiento -->
+                <div class="grupo-servicios" id="categoria-alojamiento">
+                    <div class="grupo-encabezado" data-revelar>
+                        <span class="grupo-numero">01</span>
+                        <div>
+                            <h3>Alojamiento</h3>
+                            <p>Desde resorts todo incluido frente al mar hasta cabañas entre montañas.</p>
+                        </div>
+                    </div>
+                    <div class="grid-servicios grid-servicios-2">
+                        <article class="servicio" id="servicio-hoteles" data-revelar>
+                            <img src="img/servicios/hoteles-resorts.jpg" alt="Hotel entre palmeras frente a una playa de arena blanca" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Alojamiento</span>
+                                <h4>Hoteles y resorts</h4>
+                                <p>Todo incluido, hoteles boutique y hoteles de ciudad.</p>
+                            </div>
+                        </article>
+                        <article class="servicio" id="servicio-villas" data-revelar>
+                            <img src="img/servicios/villas-cabanas.jpg" alt="Playa con palmeras y arena blanca en Samaná" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Alojamiento</span>
+                                <h4>Villas y cabañas</h4>
+                                <p>Espacios privados en la playa o en la montaña.</p>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+
+                <!-- Tours -->
+                <div class="grupo-servicios" id="categoria-tours">
+                    <div class="grupo-encabezado" data-revelar>
+                        <span class="grupo-numero">02</span>
+                        <div>
+                            <h3>Tours</h3>
+                            <p>Recorridos guiados por las costas, las montañas y la cocina dominicana.</p>
+                        </div>
+                    </div>
+                    <div class="grid-servicios grid-servicios-3">
+                        <article class="servicio" id="servicio-tour-playa" data-revelar>
+                            <img src="img/servicios/tour-playa.jpg" alt="Playa de aguas turquesa con palmeras" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Tours</span>
+                                <h4>Tours de playa</h4>
+                                <p>Cayos, bahías y playas vírgenes.</p>
+                            </div>
+                        </article>
+                        <article class="servicio" id="servicio-tour-montana" data-revelar>
+                            <img src="img/servicios/tour-montana.jpg" alt="Lomas verdes y caminos de montaña" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Tours</span>
+                                <h4>Tours de montaña</h4>
+                                <p>Senderos, ríos y cascadas del Cibao.</p>
+                            </div>
+                        </article>
+                        <article class="servicio" id="servicio-tour-gastronomico" data-revelar>
+                            <img src="img/servicios/tour-gastronomico.jpg" alt="Casas de campo dominicanas" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Tours</span>
+                                <h4>Tours gastronómicos</h4>
+                                <p>Cocina criolla, cacao, café y mercados locales.</p>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+
+                <!-- Aventura -->
+                <div class="grupo-servicios" id="categoria-aventura">
+                    <div class="grupo-encabezado" data-revelar>
+                        <span class="grupo-numero">03</span>
+                        <div>
+                            <h3>Aventura</h3>
+                            <p>Para quienes buscan velocidad, altura y mar abierto.</p>
+                        </div>
+                    </div>
+                    <div class="grid-servicios grid-servicios-3">
+                        <article class="servicio" id="servicio-zip-line" data-revelar>
+                            <img src="img/servicios/zip-line.jpg" alt="Bosque tropical visto desde lo alto" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Aventura</span>
+                                <h4>Zip line</h4>
+                                <p>Tirolesas sobre el bosque tropical.</p>
+                            </div>
+                        </article>
+                        <article class="servicio" id="servicio-motocross" data-revelar>
+                            <img src="img/servicios/motocross.jpg" alt="Carretera de montaña entre colinas verdes" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Aventura</span>
+                                <h4>Motocross y buggies</h4>
+                                <p>Rutas por caminos rurales y playas.</p>
+                            </div>
+                        </article>
+                        <article class="servicio" id="servicio-acuaticas" data-revelar>
+                            <img src="img/servicios/acuaticas.jpg" alt="Mar turquesa frente a acantilados" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Aventura</span>
+                                <h4>Actividades acuáticas</h4>
+                                <p>Catamarán, snorkel, kayak y buceo.</p>
+                            </div>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             DESTACADOS
+             GET /api/hoteles o GET /api/actividades según la pestaña activa,
+             con los filtros ciudad y personas del buscador.
+             ================================================================== -->
+        <section class="seccion seccion-destacados" id="destacados">
+            <div class="contenedor">
+                <div class="seccion-encabezado" data-revelar>
+                    <span class="pildora">Publicaciones</span>
+                    <h2>Lo mejor de la isla</h2>
+                    <p>Hoteles y actividades publicados por empresas registradas en BookingRD.</p>
+                </div>
+
+                <div class="tabs-catalogo" role="tablist" aria-label="Tipo de publicación">
+                    <button class="tab-boton activo" data-tab="hoteles" type="button" role="tab" aria-selected="true">Hoteles</button>
+                    <button class="tab-boton" data-tab="actividades" type="button" role="tab" aria-selected="false">Actividades</button>
+                </div>
+
+                <div id="filtro-activo" class="filtro-activo" hidden>
+                    <span id="filtro-activo-texto"></span>
+                    <button type="button" id="boton-quitar-filtro" class="boton-enlace">Quitar filtros</button>
+                </div>
+
+                <div id="grid-destacados" class="grid-tarjetas" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             SOBRE NOSOTROS
+             ================================================================== -->
+        <section class="seccion seccion-nosotros" id="nosotros">
+            <div class="contenedor grid-nosotros">
+                <div class="nosotros-fotos" data-revelar>
+                    <img class="nosotros-foto-principal" src="img/playa-costa-este.jpg" alt="Costa este de República Dominicana" loading="lazy">
+                    <img class="nosotros-foto-secundaria" src="img/foto-palmeras-samana.jpg" alt="Playa con palmeras en Samaná" loading="lazy">
+                    <div class="nosotros-sello">
+                        <strong>100%</strong>
+                        <span>empresas dominicanas</span>
+                    </div>
+                </div>
+
+                <div class="nosotros-texto" data-revelar>
+                    <span class="pildora">Sobre nosotros</span>
+                    <h2>Conectamos a los viajeros con lo mejor de la isla</h2>
+                    <p>BookingRD reúne en un solo lugar el alojamiento, los tours y las experiencias de aventura que ofrecen las empresas turísticas de República Dominicana.</p>
+                    <p>Los viajeros encuentran opciones de empresas identificadas; las empresas, una vitrina para llegar a más clientes sin intermediarios.</p>
+
+                    <ul class="lista-valores">
+                        <li>
+                            <strong>Empresas identificadas</strong>
+                            <span>Cada empresa se registra con su RNC, razón social y datos de contacto.</span>
+                        </li>
+                        <li>
+                            <strong>Cupo en tiempo real</strong>
+                            <span>Cada servicio mostrará su disponibilidad actualizada con cada reserva.</span>
+                        </li>
+                        <li>
+                            <strong>Turismo local</strong>
+                            <span>Impulsamos a hoteles, guías y operadores de todas las provincias.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             LLAMADO A EMPRESAS
+             Abre el registro con el tipo de cuenta "empresa" preseleccionado.
+             ================================================================== -->
+        <section class="franja-empresas" id="empresas">
+            <div class="contenedor" data-revelar>
+                <span class="pildora pildora-clara">Para hoteles y operadores</span>
+                <h2>¿Tienes un hotel o un tour en la isla?</h2>
+                <p>Registra tu empresa en BookingRD y prepárate para publicar tus habitaciones y actividades.</p>
+                <ul class="lista-beneficios">
+                    <li>Registro como alojamiento, actividades o ambos.</li>
+                    <li>Perfil de empresa con RNC y datos de contacto.</li>
+                    <li>Cupo controlado en tiempo real para cada servicio.</li>
+                </ul>
+                <a href="registro.html?tipo=empresa" class="btn-secundario" data-sesion="invitado">Registrar mi empresa</a>
+                <p class="nota-empresa" data-sesion="empresa" hidden>
+                    Tu empresa <span data-nombre-empresa></span> ya está registrada. La publicación de servicios se habilitará en la siguiente fase del proyecto.
+                </p>
+                <p class="nota-empresa" data-sesion="cliente" hidden>
+                    Tienes una cuenta de viajero. Para registrar una empresa, cierra sesión y crea una cuenta de empresa.
+                </p>
+            </div>
+            <div class="franja-decorativa franja-inferior" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        </section>
+
+        <!-- ==================================================================
+             CONTACTO
+             POST /api/contacto. Los mensajes se guardan en dbo.mensajes_contacto.
+             ================================================================== -->
+        <section class="seccion seccion-contacto" id="contacto">
+            <div class="contenedor">
+                <div class="seccion-encabezado" data-revelar>
+                    <span class="pildora">Contacto</span>
+                    <h2>Hablemos</h2>
+                    <p>Escríbenos si eres viajero, si quieres registrar tu empresa o si necesitas ayuda con tu cuenta.</p>
+                </div>
+
+                <div class="grid-contacto">
+                    <aside class="contacto-info" data-revelar>
+                        <h3>Equipo BookingRD</h3>
+                        <p>Respondemos en un plazo de 24 horas hábiles.</p>
+                        <dl class="contacto-datos">
+                            <div>
+                                <dt>Correo</dt>
+                                <dd>contacto@bookingrd.com</dd>
+                            </div>
+                            <div>
+                                <dt>Teléfono</dt>
+                                <dd>+1 (809) 555-0100</dd>
+                            </div>
+                            <div>
+                                <dt>Horario</dt>
+                                <dd>Lunes a viernes, 8:00 a. m. a 6:00 p. m.</dd>
+                            </div>
+                            <div>
+                                <dt>Ubicación</dt>
+                                <dd>Santo Domingo, República Dominicana</dd>
+                            </div>
+                        </dl>
+                        <div class="franja-decorativa" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+                    </aside>
+
+                    <form id="form-contacto" class="contacto-formulario" novalidate data-revelar>
+                        <div id="contacto-mensaje-estado" class="mensaje-estado" role="status"></div>
+                        <div class="fila-campos">
+                            <div class="campo">
+                                <label for="contacto-nombre">Nombre</label>
+                                <input type="text" id="contacto-nombre" maxlength="150" autocomplete="name" placeholder="Tu nombre">
+                            </div>
+                            <div class="campo">
+                                <label for="contacto-correo">Correo electrónico</label>
+                                <input type="email" id="contacto-correo" maxlength="200" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+                            </div>
+                        </div>
+                        <div class="campo">
+                            <label for="contacto-asunto">Asunto</label>
+                            <select id="contacto-asunto">
+                                <option value="">Selecciona un asunto</option>
+                                <option value="viajero">Consulta de viajero</option>
+                                <option value="empresa">Quiero registrar mi empresa</option>
+                                <option value="cuenta">Problemas con mi cuenta</option>
+                                <option value="otro">Otro asunto</option>
+                            </select>
+                        </div>
+                        <div class="campo">
+                            <label for="contacto-mensaje">Mensaje</label>
+                            <textarea id="contacto-mensaje" maxlength="2000" placeholder="Cuéntanos en qué podemos ayudarte."></textarea>
+                        </div>
+                        <button type="submit" id="boton-contacto" class="btn-primario">Enviar mensaje</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ======================================================================
+         FOOTER
+         ====================================================================== -->
+    <footer class="footer-principal">
+        <div class="contenedor footer-grid">
+            <div>
+                <a href="#inicio" class="logo-marca">Booking<span class="logo-rd">RD</span></a>
+                <p class="footer-descripcion">Alojamiento, tours y aventura en República Dominicana.</p>
+            </div>
+            <div>
+                <h4>Servicios</h4>
+                <a href="#categoria-alojamiento">Alojamiento</a>
+                <a href="#categoria-tours">Tours</a>
+                <a href="#categoria-aventura">Aventura</a>
+            </div>
+            <div>
+                <h4>BookingRD</h4>
+                <a href="#nosotros">Sobre nosotros</a>
+                <a href="#contacto">Contacto</a>
+                <a href="#destacados">Publicaciones</a>
+            </div>
+            <div>
+                <h4>Cuenta</h4>
+                <a href="login.html" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <a href="registro.html?tipo=empresa" data-sesion="invitado">Registrar empresa</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </div>
+        </div>
+        <div class="franja-decorativa" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <p class="footer-copyright">&copy; 2026 BookingRD. Proyecto académico.</p>
+    </footer>
+
+    <script src="js/comun.js"></script>
+    <script src="js/index.js"></script>
+</body>
+</html>

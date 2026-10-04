@@ -1,0 +1,29 @@
+{
+  "name": "bookingrd",
+  "version": "1.0.0",
+  "description": "BookingRD - Plataforma de reserva de hoteles y actividades turísticas en República Dominicana",
+  "main": "src/server.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "configurar": "node scripts/configurar-azure.js",
+    "bd:instalar": "node scripts/bd.js instalar",
+    "bd:probar": "node scripts/bd.js probar"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.3",
+    "jsonwebtoken": "^9.0.3",
+    "mssql": "^11.0.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

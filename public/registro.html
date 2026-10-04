@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear cuenta | BookingRD</title>
+    <meta name="description" content="Registro de cuentas de viajero y de empresa en BookingRD.">
+
+    <!-- Tipografías institucionales: Fraunces (títulos) y Nunito (texto). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,800;1,600;1,700&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+
+    <!-- Hoja de estilos propia de esta página. -->
+    <link rel="stylesheet" href="css/registro.css">
+
+    <script>document.documentElement.classList.add('js');</script>
+
+    <!-- Aviso de diagnóstico: si la hoja de estilos no se pudo cargar (por
+         ejemplo, al abrir el HTML desde dentro del archivo .zip sin
+         extraerlo), se muestra un mensaje con la solución. -->
+    <script>
+        window.addEventListener('load', function () {
+            var estilosCargados = getComputedStyle(document.documentElement).getPropertyValue('--dom-blue').trim() !== '';
+            if (estilosCargados) return;
+            var aviso = document.createElement('div');
+            aviso.setAttribute('role', 'alert');
+            aviso.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:#05132B;color:#fff;font:16px/1.6 Segoe UI,Arial,sans-serif;';
+            aviso.innerHTML = '<div style="max-width:620px;padding:32px;border-radius:20px;background:#0A1F44;border-top:8px solid #CE1126;">'
+                + '<h1 style="margin:0 0 12px;font-size:26px;">No se pudieron cargar los estilos de BookingRD</h1>'
+                + '<p style="margin:0 0 12px;">Esto ocurre cuando la página se abre <strong>desde dentro del archivo .zip</strong>: el navegador solo recibe el HTML, sin la carpeta <code>css/</code>.</p>'
+                + '<ol style="margin:0 0 12px;padding-left:20px;"><li>Cierra esta pestaña.</li><li>Clic derecho sobre <strong>BookingRD.zip</strong> &gt; <strong>Extraer todo</strong> &gt; <strong>Extraer</strong>.</li><li>Abre <strong>public/index.html</strong> desde la carpeta extraída.</li></ol>'
+                + '<p style="margin:0;color:#00B4D8;">Ruta actual: ' + decodeURIComponent(location.pathname).replace(/</g, '&lt;') + '</p></div>';
+            document.body.appendChild(aviso);
+        });
+    </script>
+</head>
+<body>
+
+    <!-- ======================================================================
+         HEADER
+         Navegación principal con menú desplegable de servicios por categoría.
+         Los elementos con data-sesion se muestran según el estado de la
+         sesión (js/comun.js).
+         ====================================================================== -->
+    <header class="header-principal">
+        <div class="header-contenido">
+            <a href="index.html#inicio" class="logo-marca" aria-label="BookingRD, inicio">Booking<span class="logo-rd">RD</span></a>
+
+            <nav class="nav-principal" aria-label="Menú principal">
+                <a href="index.html#inicio" class="nav-enlace">Inicio</a>
+                <div class="nav-desplegable">
+                    <button type="button" class="nav-enlace" aria-expanded="false" aria-controls="menu-servicios">
+                        Servicios <span class="flecha" aria-hidden="true"></span>
+                    </button>
+                    <div class="menu-servicios" id="menu-servicios">
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Alojamiento</span>
+                            <a href="index.html#servicio-hoteles">Hoteles y resorts</a>
+                            <a href="index.html#servicio-villas">Villas y cabañas</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Tours</span>
+                            <a href="index.html#servicio-tour-playa">Tours de playa</a>
+                            <a href="index.html#servicio-tour-montana">Tours de montaña</a>
+                            <a href="index.html#servicio-tour-gastronomico">Tours gastronómicos</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Aventura</span>
+                            <a href="index.html#servicio-zip-line">Zip line</a>
+                            <a href="index.html#servicio-motocross">Motocross y buggies</a>
+                            <a href="index.html#servicio-acuaticas">Actividades acuáticas</a>
+                        </div>
+                        <a href="index.html#destacados" class="menu-servicios-pie">Ver publicaciones disponibles</a>
+                    </div>
+                </div>
+                <a href="index.html#nosotros" class="nav-enlace">Sobre nosotros</a>
+                <a href="index.html#contacto" class="nav-enlace">Contacto</a>
+            </nav>
+
+            <div class="acciones-header">
+                <div class="acciones-escritorio" data-sesion="invitado">
+                    <a href="login.html" class="enlace-header">Iniciar sesión</a>
+                    <a href="registro.html" class="btn-primario btn-chico btn-header">Crear cuenta</a>
+                </div>
+                <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <span class="usuario-sesion">
+                        <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                        <span class="usuario-nombre" data-nombre-usuario></span>
+                    </span>
+                    <button type="button" class="boton-texto-claro" data-accion="cerrar-sesion">Cerrar sesión</button>
+                </div>
+                <button id="boton-menu-movil" class="boton-menu-movil" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-movil">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+
+        <nav id="menu-movil" class="menu-movil" aria-label="Menú móvil">
+            <div class="menu-movil-contenido">
+                <a href="index.html#inicio">Inicio</a>
+                <details>
+                    <summary>Servicios <span class="flecha" aria-hidden="true"></span></summary>
+                    <span class="menu-movil-categoria">Alojamiento</span>
+                    <a href="index.html#servicio-hoteles">Hoteles y resorts</a>
+                    <a href="index.html#servicio-villas">Villas y cabañas</a>
+                    <span class="menu-movil-categoria">Tours</span>
+                    <a href="index.html#servicio-tour-playa">Tours de playa</a>
+                    <a href="index.html#servicio-tour-montana">Tours de montaña</a>
+                    <a href="index.html#servicio-tour-gastronomico">Tours gastronómicos</a>
+                    <span class="menu-movil-categoria">Aventura</span>
+                    <a href="index.html#servicio-zip-line">Zip line</a>
+                    <a href="index.html#servicio-motocross">Motocross y buggies</a>
+                    <a href="index.html#servicio-acuaticas">Actividades acuáticas</a>
+                </details>
+                <a href="index.html#nosotros">Sobre nosotros</a>
+                <a href="index.html#contacto">Contacto</a>
+                <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </div>
+        </nav>
+    </header>
+
+    <main class="con-header-fijo">
+        <section class="auth-split">
+
+            <!-- Panel fotográfico. Imagen y textos cambian según el tipo de
+                 cuenta seleccionado (js/registro.js). -->
+            <aside class="auth-foto">
+                <img id="foto-registro" class="auth-foto-imagen" src="img/playa-costa-este.jpg" alt="">
+                <div class="auth-foto-texto">
+                    <span class="pildora pildora-clara">Únete a BookingRD</span>
+                    <h2 id="foto-registro-titulo">El Caribe dominicano, a un clic</h2>
+                    <p id="foto-registro-texto">Crea tu cuenta en menos de un minuto y guarda tus planes de viaje.</p>
+                </div>
+            </aside>
+
+            <div class="auth-formulario">
+                <div class="auth-formulario-contenido">
+
+                    <!-- Formulario de registro: visible sin sesión activa. -->
+                    <div data-sesion="invitado">
+                        <h1>Crea tu cuenta</h1>
+                        <p class="auth-subtitulo">Elige el tipo de cuenta que necesitas.</p>
+
+                        <!-- POST /api/auth/registro. tipoCuenta: "cliente" | "empresa". -->
+                        <form id="form-registro" novalidate>
+                            <fieldset class="selector-cuenta">
+                                <legend class="visualmente-oculto">Tipo de cuenta</legend>
+                                <label class="opcion-cuenta">
+                                    <input type="radio" name="tipoCuenta" value="cliente" checked>
+                                    <span class="opcion-cuenta-foto" style="background-image: url('img/foto-arena-palmera.jpg');"></span>
+                                    <span class="opcion-cuenta-texto">
+                                        <strong>Soy viajero</strong>
+                                        <small>Busco hospedaje y actividades.</small>
+                                    </span>
+                                </label>
+                                <label class="opcion-cuenta">
+                                    <input type="radio" name="tipoCuenta" value="empresa">
+                                    <span class="opcion-cuenta-foto" style="background-image: url('img/foto-resort-samana.jpg');"></span>
+                                    <span class="opcion-cuenta-texto">
+                                        <strong>Soy una empresa</strong>
+                                        <small>Ofrezco alojamiento o actividades.</small>
+                                    </span>
+                                </label>
+                            </fieldset>
+
+                            <!-- Indicador de pasos: solo para cuentas de empresa. -->
+                            <ol class="pasos" id="indicador-pasos" data-solo="empresa" hidden>
+                                <li class="paso activo" data-paso="1"><span class="paso-numero">1</span><span class="paso-nombre">Representante</span></li>
+                                <li class="paso" data-paso="2"><span class="paso-numero">2</span><span class="paso-nombre">Empresa</span></li>
+                                <li class="paso" data-paso="3"><span class="paso-numero">3</span><span class="paso-nombre">Servicios</span></li>
+                            </ol>
+
+                            <div id="mensaje-error" class="mensaje-error" role="alert"></div>
+
+                            <!-- PASO 1: datos de la persona (viajero o representante). -->
+                            <fieldset class="paso-formulario" data-paso="1">
+                                <legend class="titulo-bloque-form" id="titulo-paso-1">Tus datos</legend>
+                                <div class="fila-campos">
+                                    <div class="campo">
+                                        <label for="nombre" id="etiqueta-nombre">Nombre completo</label>
+                                        <input type="text" id="nombre" maxlength="150" autocomplete="name" placeholder="Ej. María Rodríguez">
+                                    </div>
+                                    <div class="campo" data-solo="empresa" hidden>
+                                        <label for="cargo">Cargo en la empresa</label>
+                                        <input type="text" id="cargo" maxlength="100" autocomplete="organization-title" placeholder="Ej. Gerente general">
+                                    </div>
+                                </div>
+                                <div class="fila-campos">
+                                    <div class="campo">
+                                        <label for="correo">Correo electrónico</label>
+                                        <input type="email" id="correo" maxlength="200" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+                                    </div>
+                                    <div class="campo" data-solo="empresa" hidden>
+                                        <label for="telefono">Teléfono del representante</label>
+                                        <input type="tel" id="telefono" maxlength="30" autocomplete="tel" placeholder="809-000-0000">
+                                    </div>
+                                </div>
+                                <div class="fila-campos">
+                                    <div class="campo">
+                                        <label for="password">Contraseña</label>
+                                        <div class="campo-password">
+                                            <input type="password" id="password" autocomplete="new-password" aria-describedby="ayuda-password">
+                                            <button type="button" class="boton-mostrar" data-mostrar="password">Mostrar</button>
+                                        </div>
+                                        <div class="medidor-password" aria-hidden="true"><span id="barra-password"></span></div>
+                                        <span class="ayuda-campo" id="ayuda-password">Mínimo 8 caracteres. Combina letras y números.</span>
+                                    </div>
+                                    <div class="campo">
+                                        <label for="confirmarPassword">Confirmar contraseña</label>
+                                        <div class="campo-password">
+                                            <input type="password" id="confirmarPassword" autocomplete="new-password">
+                                            <button type="button" class="boton-mostrar" data-mostrar="confirmarPassword">Mostrar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <!-- PASO 2: datos legales y de contacto de la empresa. -->
+                            <fieldset class="paso-formulario" data-paso="2" hidden>
+                                <legend class="titulo-bloque-form">Datos de la empresa</legend>
+                                <div class="fila-campos">
+                                    <div class="campo">
+                                        <label for="nombreEmpresa">Nombre comercial</label>
+                                        <input type="text" id="nombreEmpresa" maxlength="150" autocomplete="organization" placeholder="Ej. Brisas de Samaná">
+                                    </div>
+                                    <div class="campo">
+                                        <label for="razonSocial">Razón social</label>
+                                        <input type="text" id="razonSocial" maxlength="150" placeholder="Ej. Brisas de Samaná SRL">
+                                    </div>
+                                </div>
+                                <div class="fila-campos">
+                                    <div class="campo">
+                                        <label for="rnc">RNC</label>
+                                        <input type="text" id="rnc" maxlength="13" inputmode="numeric" placeholder="1-31-45678-9">
+                                        <span class="ayuda-campo">9 dígitos, u 11 si es una cédula.</span>
+                                    </div>
+                                    <div class="campo">
+                                        <label for="telefonoEmpresa">Teléfono de la empresa</label>
+                                        <input type="tel" id="telefonoEmpresa" maxlength="30" placeholder="809-000-0000">
+                                    </div>
+                                </div>
+                                <div class="fila-campos">
+                                    <div class="campo">
+                                        <label for="provincia">Provincia</label>
+                                        <select id="provincia">
+                                            <option value="">Selecciona la provincia</option>
+                                            <option value="Azua">Azua</option>
+                                            <option value="Bahoruco">Bahoruco</option>
+                                            <option value="Barahona">Barahona</option>
+                                            <option value="Dajabón">Dajabón</option>
+                                            <option value="Distrito Nacional">Distrito Nacional</option>
+                                            <option value="Duarte">Duarte</option>
+                                            <option value="El Seibo">El Seibo</option>
+                                            <option value="Elías Piña">Elías Piña</option>
+                                            <option value="Espaillat">Espaillat</option>
+                                            <option value="Hato Mayor">Hato Mayor</option>
+                                            <option value="Hermanas Mirabal">Hermanas Mirabal</option>
+                                            <option value="Independencia">Independencia</option>
+                                            <option value="La Altagracia">La Altagracia</option>
+                                            <option value="La Romana">La Romana</option>
+                                            <option value="La Vega">La Vega</option>
+                                            <option value="María Trinidad Sánchez">María Trinidad Sánchez</option>
+                                            <option value="Monseñor Nouel">Monseñor Nouel</option>
+                                            <option value="Monte Cristi">Monte Cristi</option>
+                                            <option value="Monte Plata">Monte Plata</option>
+                                            <option value="Pedernales">Pedernales</option>
+                                            <option value="Peravia">Peravia</option>
+                                            <option value="Puerto Plata">Puerto Plata</option>
+                                            <option value="Samaná">Samaná</option>
+                                            <option value="San Cristóbal">San Cristóbal</option>
+                                            <option value="San José de Ocoa">San José de Ocoa</option>
+                                            <option value="San Juan">San Juan</option>
+                                            <option value="San Pedro de Macorís">San Pedro de Macorís</option>
+                                            <option value="Sánchez Ramírez">Sánchez Ramírez</option>
+                                            <option value="Santiago">Santiago</option>
+                                            <option value="Santiago Rodríguez">Santiago Rodríguez</option>
+                                            <option value="Santo Domingo">Santo Domingo</option>
+                                            <option value="Valverde">Valverde</option>
+                                        </select>
+                                    </div>
+                                    <div class="campo">
+                                        <label for="ciudadEmpresa">Ciudad o municipio</label>
+                                        <input type="text" id="ciudadEmpresa" maxlength="100" placeholder="Ej. Las Terrenas">
+                                    </div>
+                                </div>
+                                <div class="campo">
+                                    <label for="direccion">Dirección</label>
+                                    <input type="text" id="direccion" maxlength="250" autocomplete="street-address" placeholder="Calle, número, sector">
+                                </div>
+                                <div class="fila-campos">
+                                    <div class="campo">
+                                        <label for="sitioWeb">Sitio web <span class="opcional">(opcional)</span></label>
+                                        <input type="url" id="sitioWeb" maxlength="300" placeholder="https://">
+                                    </div>
+                                    <div class="campo">
+                                        <label for="licenciaMitur">Licencia MITUR <span class="opcional">(opcional)</span></label>
+                                        <input type="text" id="licenciaMitur" maxlength="30" placeholder="Número de licencia turística">
+                                    </div>
+                                </div>
+                            </fieldset>
+
+                            <!-- PASO 3: servicios. Los bloques de alojamiento y de
+                                 actividades se habilitan según tipoServicio. -->
+                            <fieldset class="paso-formulario" data-paso="3" hidden>
+                                <legend class="titulo-bloque-form">Servicios que ofrece</legend>
+                                <div class="campo">
+                                    <label for="tipoServicio">Tipo de empresa</label>
+                                    <select id="tipoServicio">
+                                        <option value="">Selecciona una opción</option>
+                                        <option value="alojamiento">Alojamiento</option>
+                                        <option value="actividades">Actividades</option>
+                                        <option value="mixto">Mixto: alojamiento y actividades</option>
+                                    </select>
+                                </div>
+
+                                <div class="bloque-servicio" id="bloque-alojamiento" hidden>
+                                    <h3 class="bloque-servicio-titulo">Alojamiento</h3>
+                                    <div class="fila-campos">
+                                        <div class="campo">
+                                            <label for="tipoAlojamiento">Tipo de alojamiento</label>
+                                            <select id="tipoAlojamiento">
+                                                <option value="">Selecciona el tipo</option>
+                                                <option value="hotel">Hotel</option>
+                                                <option value="resort">Resort todo incluido</option>
+                                                <option value="boutique">Hotel boutique</option>
+                                                <option value="villa">Villa</option>
+                                                <option value="cabana">Cabañas</option>
+                                                <option value="apartamento">Apartamentos turísticos</option>
+                                                <option value="hostal">Hostal o posada</option>
+                                            </select>
+                                        </div>
+                                        <div class="campo">
+                                            <label for="numeroHabitaciones">Habitaciones o unidades</label>
+                                            <input type="number" id="numeroHabitaciones" min="1" max="5000" placeholder="Ej. 24">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bloque-servicio" id="bloque-actividades" hidden>
+                                    <h3 class="bloque-servicio-titulo">Actividades</h3>
+                                    <div class="campo" id="categoriasActividad" tabindex="-1">
+                                        <span class="etiqueta-grupo">Categorías que ofrece</span>
+                                        <div class="opciones-chip">
+                                            <label class="opcion-chip"><input type="checkbox" name="categoriaActividad" value="tour-playa"><span>Tours de playa</span></label>
+                                            <label class="opcion-chip"><input type="checkbox" name="categoriaActividad" value="tour-montana"><span>Tours de montaña</span></label>
+                                            <label class="opcion-chip"><input type="checkbox" name="categoriaActividad" value="tour-gastronomico"><span>Tours gastronómicos</span></label>
+                                            <label class="opcion-chip"><input type="checkbox" name="categoriaActividad" value="zip-line"><span>Zip line</span></label>
+                                            <label class="opcion-chip"><input type="checkbox" name="categoriaActividad" value="motocross"><span>Motocross y buggies</span></label>
+                                            <label class="opcion-chip"><input type="checkbox" name="categoriaActividad" value="acuaticas"><span>Actividades acuáticas</span></label>
+                                            <label class="opcion-chip"><input type="checkbox" name="categoriaActividad" value="cultural"><span>Culturales e históricos</span></label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="campo">
+                                    <label for="descripcionEmpresa">Descripción <span class="opcional">(opcional)</span></label>
+                                    <textarea id="descripcionEmpresa" maxlength="1000" placeholder="Qué ofrece la empresa, ubicación y lo que la distingue."></textarea>
+                                </div>
+                                <label class="casilla">
+                                    <input type="checkbox" id="confirmaDatos">
+                                    <span>Confirmo que los datos de la empresa son verídicos y que represento a esta empresa.</span>
+                                </label>
+                            </fieldset>
+
+                            <div class="acciones-formulario">
+                                <button type="button" id="boton-anterior" class="btn-outline" hidden>Atrás</button>
+                                <button type="submit" id="boton-registro" class="btn-primario">Crear cuenta</button>
+                            </div>
+                        </form>
+
+                        <p class="pie-formulario">¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
+                    </div>
+
+                    <!-- Aviso con sesión activa: el registro requiere cerrar la sesión actual. -->
+                    <div class="sesion-existente" data-sesion="usuario" hidden>
+                        <h1>Ya iniciaste sesión</h1>
+                        <p>Estás conectado como <strong data-nombre-usuario></strong>. Para crear otra cuenta, cierra la sesión actual.</p>
+                        <div class="sesion-existente-acciones">
+                            <a href="index.html" class="btn-primario">Ir al inicio</a>
+                            <button type="button" class="btn-outline" data-accion="cerrar-sesion" data-destino="registro.html">Cerrar sesión</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/comun.js"></script>
+    <script src="js/registro.js"></script>
+</body>
+</html>

@@ -1,0 +1,1103 @@
+/* ============================================================================
+   BookingRD | login.css
+   Hoja de estilos de: inicio de sesión (login.html)
+
+   Archivo autónomo: contiene todas las reglas que la página necesita.
+   Secciones: base, header, botones, aviso flotante, aparición al desplazar, formularios, inicio de sesión.
+   Las secciones BASE, HEADER, BOTONES, AVISO FLOTANTE, APARICIÓN AL
+   DESPLAZAR y FORMULARIOS son idénticas en todas las hojas de public/css/;
+   un cambio en ellas debe replicarse en los tres archivos.
+   Enfoque mobile-first: estilos base para 375 px y ampliaciones con
+   @media (min-width: 768px | 1024px | 1280px).
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   BASE: variables de diseño, reinicio y utilidades de maquetación
+   ---------------------------------------------------------------------------- */
+
+/* Paleta institucional definida en la especificación del sistema y tokens
+   derivados de uso general. */
+:root {
+    --dom-blue: #003087;
+    --dom-red: #CE1126;
+    --dom-white: #F8F5EF;
+    --caribe: #00B4D8;
+    --caribe-deep: #0077A8;
+    --jungle: #2D6A4F;
+    --jungle-light: #52B788;
+    --sand: #F4A261;
+    --sand-light: #FDEBD0;
+    --night: #05132B;
+    --night-mid: #0A1F44;
+
+    --texto-principal: var(--night);
+    --texto-secundario: rgba(5, 19, 43, 0.68);
+    --texto-claro: #FFFFFF;
+    --fondo-pagina: var(--dom-white);
+    --borde-suave: rgba(5, 19, 43, 0.12);
+    --sombra-card: 0 10px 30px rgba(5, 19, 43, 0.10);
+    --sombra-card-hover: 0 18px 42px rgba(5, 19, 43, 0.18);
+
+    --alto-header: 68px;
+    --radio-card: 20px;
+    --radio-control: 12px;
+    --radio-chip: 999px;
+    --fuente-titulos: 'Fraunces', Georgia, serif;
+    --fuente-texto: 'Nunito', 'Segoe UI', Arial, sans-serif;
+    --transicion: 0.2s ease;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    margin: 0;
+    font-family: var(--fuente-texto);
+    color: var(--texto-principal);
+    background-color: var(--fondo-pagina);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+img {
+    max-width: 100%;
+    display: block;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+h1, h2, h3, h4 {
+    margin: 0 0 0.5em;
+    font-family: var(--fuente-titulos);
+    line-height: 1.15;
+    color: var(--night);
+}
+
+p { margin: 0 0 1em; }
+
+button { font-family: inherit; }
+
+:focus-visible {
+    outline: 3px solid var(--caribe);
+    outline-offset: 2px;
+}
+
+/* El atributo hidden prevalece sobre cualquier regla display de clase
+   (comun.js lo usa para mostrar u ocultar elementos según la sesión). */
+[hidden] { display: none !important; }
+
+.contenedor {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Oculta el elemento visualmente y lo conserva para lectores de pantalla. */
+.visualmente-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.italica-caribe {
+    font-style: italic;
+    color: var(--caribe);
+}
+
+/* Franja de cuatro bloques alternados azul/rojo (colores de la bandera). */
+.franja-decorativa {
+    display: flex;
+    width: 100%;
+    height: 8px;
+}
+.franja-decorativa span { flex: 1; }
+.franja-decorativa span:nth-child(odd) { background-color: var(--dom-blue); }
+.franja-decorativa span:nth-child(even) { background-color: var(--dom-red); }
+/* Variante anclada al borde inferior de un contenedor con position: relative. */
+.franja-inferior {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Etiqueta tipo píldora. La variante clara se usa sobre fotografías. */
+.pildora {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radio-chip);
+    background-color: rgba(0, 180, 216, 0.14);
+    color: var(--caribe-deep);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.pildora-clara {
+    background-color: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #FFFFFF;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+/* Punto indicador dentro de la píldora (sustituye a un icono). */
+.pildora-punto {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--sand);
+    box-shadow: 0 0 0 4px rgba(244, 162, 97, 0.28);
+}
+
+/* ----------------------------------------------------------------------------
+   HEADER: barra fija, navegación, menú de servicios, sesión y menú móvil
+   ---------------------------------------------------------------------------- */
+
+.header-principal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background-color: rgba(10, 31, 68, 0.86);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+/* Variante sobre fotografía a pantalla completa (login): transparente
+   hasta que la página se desplaza. */
+.header-principal.header-transparente {
+    background-color: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+/* Estado aplicado por comun.js al desplazar la página. */
+.header-principal.con-sombra {
+    background-color: rgba(10, 31, 68, 0.97);
+    box-shadow: 0 8px 24px rgba(5, 19, 43, 0.28);
+}
+
+.header-contenido {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    max-width: 1200px;
+    height: var(--alto-header);
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Logotipo tipográfico: "Booking" en blanco y "RD" en turquesa. */
+.logo-marca {
+    font-family: var(--fuente-titulos);
+    font-size: 1.45rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--texto-claro);
+    white-space: nowrap;
+    transition: opacity var(--transicion);
+}
+.logo-marca:hover { opacity: 0.85; }
+.logo-rd { color: var(--caribe); }
+
+.nav-principal {
+    display: none;
+    align-items: center;
+    gap: 30px;
+}
+
+/* Enlaces principales con subrayado animado que crece desde el centro. */
+.nav-enlace {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border: none;
+    background: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color var(--transicion);
+}
+.nav-enlace::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    border-radius: 2px;
+    background-color: var(--caribe);
+    transform: scaleX(0);
+    transition: transform 0.25s ease;
+}
+.nav-enlace:hover,
+.nav-enlace.activo { color: #FFFFFF; }
+.nav-enlace:hover::after,
+.nav-enlace.activo::after { transform: scaleX(1); }
+
+/* Flecha del desplegable dibujada con bordes (sin librería de iconos). */
+.flecha {
+    width: 7px;
+    height: 7px;
+    margin-top: -3px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.25s ease, margin 0.25s ease;
+}
+
+/* Menú desplegable de servicios por categoría. Se abre al pasar el cursor,
+   con el teclado (:focus-within) o con clic (clase .abierto, comun.js). */
+.nav-desplegable { position: relative; }
+.menu-servicios {
+    position: absolute;
+    top: calc(100% + 18px);
+    left: 50%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(170px, 1fr));
+    gap: 6px 28px;
+    min-width: 600px;
+    padding: 24px 26px 18px;
+    border-radius: 18px;
+    background-color: #FFFFFF;
+    box-shadow: 0 24px 60px rgba(5, 19, 43, 0.28);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, 10px);
+    transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s;
+}
+/* Puente invisible entre el botón y el panel para no perder el hover. */
+.menu-servicios::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -20px;
+    height: 20px;
+}
+.nav-desplegable:hover .menu-servicios,
+.nav-desplegable:focus-within .menu-servicios,
+.nav-desplegable.abierto .menu-servicios {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+.nav-desplegable:hover .flecha,
+.nav-desplegable.abierto .flecha {
+    margin-top: 3px;
+    transform: rotate(-135deg);
+}
+.menu-servicios-columna {
+    display: flex;
+    flex-direction: column;
+}
+.menu-servicios-titulo {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--sand-light);
+    font-family: var(--fuente-titulos);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--dom-blue);
+}
+.menu-servicios-columna a {
+    padding: 7px 10px;
+    margin: 0 -10px;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--texto-principal);
+    transition: background-color var(--transicion), color var(--transicion), padding var(--transicion);
+}
+.menu-servicios-columna a:hover {
+    padding-left: 14px;
+    background-color: rgba(0, 180, 216, 0.1);
+    color: var(--caribe-deep);
+}
+.menu-servicios-pie {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--borde-suave);
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: var(--dom-red);
+}
+.menu-servicios-pie:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.acciones-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+/* Grupos de acciones visibles desde 768 px; en móvil se usa el menú. */
+.acciones-escritorio {
+    display: none;
+    align-items: center;
+    gap: 16px;
+}
+
+.enlace-header {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.9);
+    transition: color var(--transicion);
+}
+.enlace-header:hover { color: var(--caribe); }
+
+/* Identificación del usuario con sesión: inicial en círculo y nombre. */
+.usuario-sesion {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #FFFFFF;
+}
+.usuario-inicial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background-color: var(--caribe-deep);
+    font-family: var(--fuente-titulos);
+    font-weight: 700;
+}
+.usuario-nombre {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.boton-texto-claro {
+    padding: 8px 14px;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    background: none;
+    color: #FFFFFF;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color var(--transicion), background-color var(--transicion);
+}
+.boton-texto-claro:hover {
+    border-color: var(--caribe);
+    background-color: rgba(0, 180, 216, 0.12);
+}
+
+/* Botón de menú móvil: tres barras dibujadas con CSS que se transforman
+   en una X cuando el menú está abierto (aria-expanded="true"). */
+.boton-menu-movil {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    padding: 9px;
+    border: none;
+    border-radius: 10px;
+    background: none;
+    cursor: pointer;
+}
+.boton-menu-movil span {
+    display: block;
+    height: 2px;
+    border-radius: 2px;
+    background-color: #FFFFFF;
+    transition: transform 0.25s ease, opacity 0.2s ease;
+}
+.boton-menu-movil[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.boton-menu-movil[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.boton-menu-movil[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.menu-movil {
+    display: grid;
+    grid-template-rows: 0fr;
+    background-color: var(--night-mid);
+    transition: grid-template-rows 0.3s ease;
+}
+.menu-movil.abierto { grid-template-rows: 1fr; }
+.menu-movil-contenido {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - var(--alto-header));
+    overflow: hidden;
+    padding: 0 20px;
+}
+.menu-movil.abierto .menu-movil-contenido {
+    overflow-y: auto;
+    padding-bottom: 16px;
+}
+.menu-movil a,
+.menu-movil button,
+.menu-movil summary {
+    padding: 12px 4px;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: none;
+    text-align: left;
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+}
+/* Servicios en móvil: acordeón nativo (<details>). */
+.menu-movil summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    list-style: none;
+}
+.menu-movil summary::-webkit-details-marker { display: none; }
+.menu-movil details[open] .flecha {
+    margin-top: 3px;
+    transform: rotate(-135deg);
+}
+.menu-movil details a {
+    display: block;
+    padding-left: 18px;
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+.menu-movil-categoria {
+    display: block;
+    padding: 12px 4px 4px 18px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sand);
+}
+.menu-movil .enlace-destacado,
+.menu-movil button { color: var(--caribe); font-weight: 800; }
+
+/* Compensa la altura del header fijo en páginas sin hero. */
+.con-header-fijo { padding-top: var(--alto-header); }
+
+@media (min-width: 768px) {
+    .acciones-escritorio { display: flex; }
+}
+
+/* La navegación completa se muestra desde 1024 px. */
+@media (min-width: 1024px) {
+    .nav-principal { display: flex; }
+    .boton-menu-movil,
+    .menu-movil { display: none; }
+}
+
+/* ----------------------------------------------------------------------------
+   BOTONES
+   Animación común: elevación al pasar el cursor y compresión al presionar.
+   ---------------------------------------------------------------------------- */
+
+.btn-primario,
+.btn-secundario,
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 13px 24px;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    font-family: var(--fuente-texto);
+    font-size: 0.95rem;
+    font-weight: 800;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+.btn-primario:hover,
+.btn-secundario:hover,
+.btn-outline:hover { transform: translateY(-2px); }
+.btn-primario:active,
+.btn-secundario:active,
+.btn-outline:active { transform: translateY(0) scale(0.98); }
+.btn-primario:disabled,
+.btn-secundario:disabled,
+.btn-outline:disabled {
+    opacity: 0.6;
+    cursor: wait;
+    transform: none;
+}
+
+.btn-primario {
+    background-color: var(--dom-blue);
+    color: var(--texto-claro);
+    box-shadow: 0 8px 20px rgba(0, 48, 135, 0.28);
+}
+.btn-primario:hover {
+    background-color: #0A3D9E;
+    box-shadow: 0 12px 26px rgba(0, 48, 135, 0.38);
+}
+
+.btn-secundario {
+    background-color: var(--dom-red);
+    color: var(--texto-claro);
+    box-shadow: 0 8px 20px rgba(206, 17, 38, 0.28);
+}
+.btn-secundario:hover {
+    background-color: #B50E20;
+    box-shadow: 0 12px 26px rgba(206, 17, 38, 0.38);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border-color: var(--dom-blue);
+    color: var(--dom-blue);
+}
+.btn-outline:hover {
+    background-color: var(--dom-blue);
+    color: #FFFFFF;
+}
+
+.btn-bloque { width: 100%; }
+.btn-chico {
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+}
+/* Botón del header: sin sombra, sobre fondo oscuro. */
+.btn-primario.btn-header {
+    background-color: var(--caribe-deep);
+    box-shadow: none;
+}
+.btn-primario.btn-header:hover { background-color: var(--caribe); }
+
+/* Indicador de carga dibujado con CSS (sin iconos externos). */
+.spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2.5px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: girar 0.7s linear infinite;
+}
+@keyframes girar {
+    to { transform: rotate(360deg); }
+}
+
+/* ----------------------------------------------------------------------------
+   AVISO FLOTANTE (notificación temporal generada por mostrarAviso en comun.js)
+   ---------------------------------------------------------------------------- */
+
+.aviso-flotante {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 20px;
+    z-index: 200;
+    padding: 14px 18px;
+    border-left: 5px solid var(--jungle-light);
+    border-radius: 14px;
+    background-color: var(--night-mid);
+    box-shadow: 0 16px 40px rgba(5, 19, 43, 0.35);
+    color: #FFFFFF;
+    font-size: 0.92rem;
+    font-weight: 700;
+    opacity: 0;
+    transform: translateY(24px);
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.aviso-flotante.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.aviso-flotante.es-error { border-left-color: var(--dom-red); }
+
+@media (min-width: 768px) {
+    .aviso-flotante {
+        left: auto;
+        right: 24px;
+        max-width: 420px;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   APARICIÓN AL DESPLAZAR
+   Los elementos con [data-revelar] entran con un desplazamiento vertical
+   corto cuando ingresan al viewport (IntersectionObserver en comun.js).
+   La regla depende de la clase .js en <html>: sin JavaScript el contenido
+   se muestra sin animación.
+   ---------------------------------------------------------------------------- */
+
+.js [data-revelar] {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.js [data-revelar].revelado {
+    opacity: 1;
+    transform: none;
+}
+
+/* Respeta la preferencia del sistema de reducir animaciones. */
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    .js [data-revelar] {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   FORMULARIOS Y MENSAJES DE VALIDACIÓN
+   ---------------------------------------------------------------------------- */
+
+.campo { margin-bottom: 16px; }
+.campo label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--texto-principal);
+}
+.campo input,
+.campo select,
+.campo textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid var(--borde-suave);
+    border-radius: var(--radio-control);
+    background-color: #FFFFFF;
+    font-family: var(--fuente-texto);
+    font-size: 0.95rem;
+    color: var(--texto-principal);
+    transition: border-color var(--transicion), box-shadow var(--transicion);
+}
+.campo input:hover,
+.campo select:hover,
+.campo textarea:hover { border-color: rgba(0, 119, 168, 0.45); }
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+    outline: none;
+    border-color: var(--caribe);
+    box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.15);
+}
+.campo textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+/* Campo señalado por la validación (clase aplicada desde JavaScript). */
+.campo.invalido input,
+.campo.invalido select,
+.campo.invalido textarea {
+    border-color: var(--dom-red);
+    box-shadow: 0 0 0 4px rgba(206, 17, 38, 0.1);
+}
+.campo.invalido label { color: var(--dom-red); }
+
+.fila-campos {
+    display: grid;
+    gap: 0 14px;
+}
+
+.ayuda-campo {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: rgba(5, 19, 43, 0.55);
+}
+.opcional {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(5, 19, 43, 0.5);
+}
+
+/* Mensajes en línea; se muestran con la clase .visible. */
+.mensaje-error,
+.mensaje-info {
+    display: none;
+    margin-bottom: 18px;
+    padding: 12px 16px;
+    border-radius: var(--radio-control);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+.mensaje-error {
+    border: 1px solid rgba(206, 17, 38, 0.25);
+    background-color: rgba(206, 17, 38, 0.07);
+    color: var(--dom-red);
+}
+.mensaje-info {
+    border: 1px solid rgba(244, 162, 97, 0.5);
+    background-color: var(--sand-light);
+    color: #7A4E17;
+}
+.mensaje-error.visible,
+.mensaje-info.visible {
+    display: block;
+    animation: sacudir 0.35s ease;
+}
+.mensaje-info.visible { animation: none; }
+@keyframes sacudir {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+}
+
+.casilla {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 18px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.casilla input {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin-top: 3px;
+    accent-color: var(--dom-blue);
+}
+.casilla.invalido { color: var(--dom-red); }
+
+@media (min-width: 768px) {
+    .fila-campos { grid-template-columns: repeat(2, 1fr); }
+    /* Si uno de los dos campos está oculto, el otro ocupa toda la fila. */
+    .fila-campos:has(> .campo[hidden]) { grid-template-columns: 1fr; }
+}
+
+/* ----------------------------------------------------------------------------
+   INICIO DE SESIÓN: fotografía a pantalla completa y tarjeta translúcida
+   ---------------------------------------------------------------------------- */
+
+.login {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    min-height: 100vh;
+    padding: calc(var(--alto-header) + 32px) 0 64px;
+    overflow: hidden;
+    background-color: var(--night);
+    color: #FFFFFF;
+}
+
+/* Fondo: diapositivas superpuestas. La activa aparece con transición
+   cruzada y se acerca lentamente (efecto de movimiento continuo). */
+.login-fondo {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+}
+.login-diapositiva {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.12);
+    transition: opacity 1.4s ease, transform 8s ease-out;
+}
+.login-diapositiva.activa {
+    opacity: 1;
+    transform: scale(1);
+}
+/* Capa de contraste: más oscura a la izquierda (texto) y en los bordes. */
+.login::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(90deg, rgba(5, 19, 43, 0.88) 0%, rgba(5, 19, 43, 0.55) 50%, rgba(5, 19, 43, 0.35) 100%),
+        linear-gradient(180deg, rgba(5, 19, 43, 0.55) 0%, rgba(5, 19, 43, 0) 25%, rgba(5, 19, 43, 0) 70%, rgba(5, 19, 43, 0.65) 100%);
+}
+
+.login-contenido {
+    display: grid;
+    gap: 40px;
+    align-items: center;
+}
+
+/* Bienvenida. */
+.login-bienvenida {
+    animation: entrar-izquierda 0.8s ease both;
+}
+.login-bienvenida h1 {
+    margin: 18px 0 14px;
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1.05;
+    color: #FFFFFF;
+}
+.login-bienvenida p {
+    max-width: 440px;
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Selector de destinos: indica la fotografía visible y permite cambiarla. */
+.login-destinos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 26px;
+}
+.login-destino {
+    position: relative;
+    overflow: hidden;
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: var(--radio-chip);
+    background-color: rgba(255, 255, 255, 0.1);
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: background-color var(--transicion), color var(--transicion), border-color var(--transicion), transform 0.15s ease;
+}
+.login-destino:hover {
+    border-color: var(--caribe);
+    transform: translateY(-2px);
+}
+.login-destino.activo {
+    border-color: var(--caribe);
+    background-color: var(--caribe-deep);
+    color: #FFFFFF;
+}
+/* Barra de progreso de la diapositiva activa. */
+.login-destino.activo::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 3px;
+    width: 100%;
+    background-color: var(--sand);
+    transform-origin: left;
+    animation: progreso-diapositiva var(--duracion-diapositiva, 7s) linear both;
+}
+@keyframes progreso-diapositiva {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+/* Tarjeta translúcida con desenfoque del fondo. */
+.login-tarjeta {
+    width: 100%;
+    max-width: 440px;
+    justify-self: center;
+    padding: 34px 30px 30px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 24px;
+    background-color: rgba(10, 31, 68, 0.55);
+    box-shadow: 0 30px 70px rgba(5, 19, 43, 0.45);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    animation: entrar-derecha 0.8s 0.1s ease both;
+}
+.login-tarjeta h2 {
+    margin-bottom: 4px;
+    font-size: 2rem;
+    color: #FFFFFF;
+}
+.login-subtitulo {
+    margin-bottom: 22px;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+/* Formulario sobre fondo oscuro. */
+.login-tarjeta .campo label { color: rgba(255, 255, 255, 0.92); }
+.login-tarjeta .campo input {
+    border-color: rgba(255, 255, 255, 0.35);
+    background-color: rgba(255, 255, 255, 0.96);
+}
+.login-tarjeta .campo.invalido label { color: #FF8A96; }
+
+.campo-password { position: relative; }
+.campo-password input { padding-right: 86px; }
+.boton-mostrar {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--caribe-deep);
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: background-color var(--transicion);
+}
+.boton-mostrar:hover { background-color: rgba(0, 180, 216, 0.12); }
+
+.login-opciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin: -2px 0 18px;
+}
+.login-opciones .casilla {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.9);
+}
+.login-opciones .casilla input { margin-top: 2px; }
+.boton-enlace-claro {
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--caribe);
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--transicion);
+}
+.boton-enlace-claro:hover { text-decoration-color: currentColor; }
+
+.panel-olvido {
+    margin: -6px 0 18px;
+    padding: 12px 14px;
+    border: 1px solid rgba(0, 180, 216, 0.4);
+    border-radius: var(--radio-control);
+    background-color: rgba(0, 180, 216, 0.14);
+    font-size: 0.86rem;
+    color: rgba(255, 255, 255, 0.92);
+    animation: aparecer-arriba 0.3s ease both;
+}
+.panel-olvido a {
+    font-weight: 800;
+    color: #FFFFFF;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* Mensajes sobre fondo oscuro. */
+.login-tarjeta .mensaje-error {
+    border-color: rgba(255, 138, 150, 0.5);
+    background-color: rgba(206, 17, 38, 0.25);
+    color: #FFFFFF;
+}
+.login-tarjeta .mensaje-info {
+    border-color: rgba(244, 162, 97, 0.6);
+    background-color: rgba(244, 162, 97, 0.2);
+    color: #FFFFFF;
+}
+
+.pie-formulario {
+    margin: 20px 0 0;
+    text-align: center;
+    font-size: 0.92rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+.pie-formulario a {
+    font-weight: 800;
+    color: var(--caribe);
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    transition: text-decoration-color var(--transicion);
+}
+.pie-formulario a:hover { text-decoration-color: currentColor; }
+.enlace-secundario {
+    display: block;
+    margin-top: 10px;
+    text-align: center;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+    transition: color var(--transicion);
+}
+.enlace-secundario:hover { color: var(--sand); }
+
+/* Aviso con sesión activa. */
+.sesion-existente p { color: rgba(255, 255, 255, 0.8); }
+.sesion-existente-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+@keyframes entrar-izquierda {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+@keyframes entrar-derecha {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+@keyframes aparecer-arriba {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (min-width: 768px) {
+    .login-bienvenida h1 { font-size: 4rem; }
+    .login-tarjeta { padding: 40px 38px 34px; }
+}
+@media (min-width: 1024px) {
+    .login-contenido {
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 64px;
+    }
+    .login-tarjeta { justify-self: end; }
+    .login-bienvenida h1 { font-size: 4.6rem; }
+}
