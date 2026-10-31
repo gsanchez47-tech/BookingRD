@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración | BookingRD</title>
+    <meta name="description" content="Administración de la plataforma BookingRD.">
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+
+    <!-- Tipografías institucionales: Fraunces (títulos) y Nunito (texto). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,800;1,600;1,700&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+
+    <!-- Hoja de estilos propia de esta página. -->
+    <link rel="stylesheet" href="css/admin.css">
+
+    <script>document.documentElement.classList.add('js');</script>
+    <!-- Aviso de diagnóstico: si la hoja de estilos no se pudo cargar (por
+         ejemplo, al abrir el HTML desde dentro del archivo .zip sin
+         extraerlo), se muestra un mensaje con la solución. -->
+    <script>
+        window.addEventListener('load', function () {
+            var estilosCargados = getComputedStyle(document.documentElement).getPropertyValue('--dom-blue').trim() !== '';
+            if (estilosCargados) return;
+            var aviso = document.createElement('div');
+            aviso.setAttribute('role', 'alert');
+            aviso.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:#05132B;color:#fff;font:16px/1.6 Segoe UI,Arial,sans-serif;';
+            aviso.innerHTML = '<div style="max-width:620px;padding:32px;border-radius:20px;background:#0A1F44;border-top:8px solid #CE1126;">'
+                + '<h1 style="margin:0 0 12px;font-size:26px;">No se pudieron cargar los estilos de BookingRD</h1>'
+                + '<p style="margin:0 0 12px;">Esto ocurre cuando la página se abre <strong>desde dentro del archivo .zip</strong>: el navegador solo recibe el HTML, sin la carpeta <code>css/</code>.</p>'
+                + '<ol style="margin:0 0 12px;padding-left:20px;"><li>Cierra esta pestaña.</li><li>Clic derecho sobre <strong>BookingRD.zip</strong> &gt; <strong>Extraer todo</strong> &gt; <strong>Extraer</strong>.</li><li>En la carpeta extraída ejecuta <strong>npm install</strong> y <strong>npm start</strong>.</li><li>Abre <strong>http://localhost:3000</strong> en el navegador.</li></ol>'
+                + '<p style="margin:0;color:#00B4D8;">Ruta actual: ' + decodeURIComponent(location.pathname).replace(/</g, '&lt;') + '</p></div>';
+            document.body.appendChild(aviso);
+        });
+    </script>
+</head>
+<body>
+
+    <!-- ======================================================================
+         HEADER
+         Navegación principal con menú desplegable de servicios por categoría.
+         Los elementos con data-sesion se muestran según el estado de la
+         sesión (js/comun.js).
+         ====================================================================== -->
+    <header class="header-principal">
+        <div class="header-contenido">
+            <a href="index.html" class="logo-marca" aria-label="BookingRD, inicio">Booking<span class="logo-rd">RD</span></a>
+
+            <nav class="nav-principal" aria-label="Menú principal">
+                <a href="index.html" class="nav-enlace">Inicio</a>
+                <a href="explorar.html" class="nav-enlace">Explorar</a>
+                <a href="autos.html" class="nav-enlace">Autos</a>
+                <div class="nav-desplegable">
+                    <button type="button" class="nav-enlace" aria-expanded="false" aria-controls="menu-servicios">
+                        Servicios <span class="flecha" aria-hidden="true"></span>
+                    </button>
+                    <div class="menu-servicios" id="menu-servicios">
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Alojamiento</span>
+                            <a href="explorar.html?categoria=hoteles-resorts">Hoteles y resorts</a>
+                            <a href="explorar.html?categoria=villas-cabanas">Villas y cabañas</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Tours</span>
+                            <a href="explorar.html?categoria=tour-playa">Tours de playa</a>
+                            <a href="explorar.html?categoria=tour-montana">Tours de montaña</a>
+                            <a href="explorar.html?categoria=tour-gastronomico">Tours gastronómicos</a>
+                            <a href="explorar.html?categoria=cultural">Culturales e históricos</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Aventura</span>
+                            <a href="explorar.html?categoria=zip-line">Zip line y parapente</a>
+                            <a href="explorar.html?categoria=motocross">Motocross y buggies</a>
+                            <a href="explorar.html?categoria=acuaticas">Actividades acuáticas</a>
+                            <a href="explorar.html?categoria=golf">Golf</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Alquiler de autos</span>
+                            <a href="explorar.html?categoria=economico">Económicos</a>
+                            <a href="explorar.html?categoria=suv">SUV y familiares</a>
+                            <a href="explorar.html?categoria=pickup">Pickups 4x4</a>
+                            <a href="explorar.html?categoria=lujo">Lujo</a>
+                            <a href="explorar.html?categoria=convertible">Convertibles</a>
+                        </div>
+                        <a href="explorar.html" class="menu-servicios-pie">Ver todo el catálogo</a>
+                    </div>
+                </div>
+                <a href="index.html#nosotros" class="nav-enlace">Nosotros</a>
+                <a href="index.html#contacto" class="nav-enlace">Contacto</a>
+            </nav>
+
+            <div class="acciones-header">
+                <div class="acciones-escritorio" data-sesion="invitado">
+                    <a href="login.html" class="enlace-header">Iniciar sesión</a>
+                    <a href="registro.html" class="btn-primario btn-chico btn-header">Crear cuenta</a>
+                </div>
+                <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <a href="mis-reservas.html?vista=guardados" class="enlace-header enlace-guardados" data-sesion="cliente" hidden aria-label="Guardados">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 20.6s-7.6-4.6-9.4-9.3C1.4 8 3.4 4.6 6.9 4.6c2 0 3.6 1.1 4.6 2.7h1c1-1.6 2.6-2.7 4.6-2.7 3.5 0 5.5 3.4 4.3 6.7-1.8 4.7-9.4 9.3-9.4 9.3z"/></svg>
+                        <span>Guardados</span>
+                        <span class="contador-favoritos" data-contador-favoritos hidden>0</span>
+                    </a>
+                    <a href="mis-reservas.html" class="enlace-header" data-sesion="cliente" hidden>Mis reservas</a>
+                    <a href="panel-empresa.html" class="enlace-header" data-sesion="empresa" hidden>Mi panel</a>
+                    <a href="admin.html" class="enlace-header activo" data-sesion="admin" hidden>Administración</a>
+                    <span class="usuario-sesion">
+                        <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                        <span class="usuario-nombre" data-nombre-usuario></span>
+                    </span>
+                    <button type="button" class="boton-texto-claro" data-accion="cerrar-sesion">Salir</button>
+                </div>
+                <button id="boton-menu-movil" class="boton-menu-movil" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-movil">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+
+        <nav id="menu-movil" class="menu-movil" aria-label="Menú móvil">
+            <div class="menu-movil-contenido">
+                <a href="index.html">Inicio</a>
+                <a href="explorar.html">Explorar</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <details>
+                    <summary>Servicios <span class="flecha" aria-hidden="true"></span></summary>
+                    <span class="menu-movil-categoria">Alojamiento</span>
+                    <a href="explorar.html?categoria=hoteles-resorts">Hoteles y resorts</a>
+                    <a href="explorar.html?categoria=villas-cabanas">Villas y cabañas</a>
+                    <span class="menu-movil-categoria">Tours</span>
+                    <a href="explorar.html?categoria=tour-playa">Tours de playa</a>
+                    <a href="explorar.html?categoria=tour-montana">Tours de montaña</a>
+                    <a href="explorar.html?categoria=tour-gastronomico">Tours gastronómicos</a>
+                    <a href="explorar.html?categoria=cultural">Culturales e históricos</a>
+                    <span class="menu-movil-categoria">Aventura</span>
+                    <a href="explorar.html?categoria=zip-line">Zip line y parapente</a>
+                    <a href="explorar.html?categoria=motocross">Motocross y buggies</a>
+                    <a href="explorar.html?categoria=acuaticas">Actividades acuáticas</a>
+                    <a href="explorar.html?categoria=golf">Golf</a>
+                    <span class="menu-movil-categoria">Alquiler de autos</span>
+                    <a href="explorar.html?tipo=vehiculo">Todos los autos</a>
+                    <a href="explorar.html?categoria=suv">SUV y familiares</a>
+                    <a href="explorar.html?categoria=pickup">Pickups 4x4</a>
+                    <a href="explorar.html?categoria=lujo">Lujo</a>
+                            <a href="explorar.html?categoria=convertible">Convertibles</a>
+                </details>
+                <a href="index.html#nosotros">Nosotros</a>
+                <a href="index.html#contacto">Contacto</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- ==================================================================
+             ENCABEZADO
+             Solo para cuentas con rol "admin" (equipo de desarrollo).
+             ================================================================== -->
+        <section class="cabecera-cuenta cabecera-admin">
+            <div class="contenedor cabecera-cuenta-contenido">
+                <div>
+                    <span class="pildora pildora-clara"><span class="pildora-punto" aria-hidden="true"></span>Administración de la plataforma</span>
+                    <h1>Centro de control <span class="italica-caribe">BookingRD</span></h1>
+                    <p>Supervisa la actividad, modera publicaciones, gestiona cuentas y atiende los mensajes de contacto.</p>
+                </div>
+                <dl class="cifras-cuenta">
+                    <div><dt>Ingresos</dt><dd id="cifra-ingresos">RD$0</dd></div>
+                    <div><dt>Reservas</dt><dd id="cifra-reservas">0</dd></div>
+                    <div><dt>Cuentas</dt><dd id="cifra-cuentas">0</dd></div>
+                </dl>
+            </div>
+            <div class="franja-decorativa franja-inferior" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        </section>
+
+        <section class="seccion-panel">
+            <div class="contenedor">
+                <div class="pestanas pestanas-admin" role="tablist" aria-label="Secciones de la administración">
+                    <button type="button" class="pestana activo" data-seccion="resumen" role="tab" aria-selected="true">Resumen</button>
+                    <button type="button" class="pestana" data-seccion="empresas" role="tab" aria-selected="false">Empresas</button>
+                    <button type="button" class="pestana" data-seccion="usuarios" role="tab" aria-selected="false">Usuarios</button>
+                    <button type="button" class="pestana" data-seccion="publicaciones" role="tab" aria-selected="false">Publicaciones</button>
+                    <button type="button" class="pestana" data-seccion="reservas" role="tab" aria-selected="false">Reservas</button>
+                    <button type="button" class="pestana" data-seccion="resenas" role="tab" aria-selected="false">Reseñas</button>
+                    <button type="button" class="pestana" data-seccion="mensajes" role="tab" aria-selected="false">Mensajes <span class="pestana-conteo" id="conteo-mensajes">0</span></button>
+                </div>
+
+                <!-- RESUMEN · GET /api/admin/resumen -->
+                <div class="panel-seccion" id="seccion-resumen">
+                    <dl class="indicadores" id="indicadores-admin"></dl>
+                    <div class="tablero">
+                        <section class="tarjeta-tablero">
+                            <h3>Ingresos por mes de servicio</h3>
+                            <p>Reservas confirmadas de toda la plataforma.</p>
+                            <div id="grafico-meses"></div>
+                        </section>
+                        <section class="tarjeta-tablero">
+                            <h3>Reservas por categoría</h3>
+                            <p>Reservas confirmadas.</p>
+                            <div id="grafico-categorias"></div>
+                        </section>
+                        <section class="tarjeta-tablero">
+                            <h3>Empresas con más ingresos</h3>
+                            <p>Las cinco primeras por reservas confirmadas.</p>
+                            <div id="grafico-empresas"></div>
+                        </section>
+                        <section class="tarjeta-tablero">
+                            <h3>Mensajes pendientes</h3>
+                            <p>Formulario de contacto sin atender.</p>
+                            <ul class="lista-breve" id="lista-mensajes-pendientes"></ul>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- EMPRESAS · GET /api/admin/empresas · PATCH /api/admin/usuarios/:id/estado -->
+                <div class="panel-seccion" id="seccion-empresas" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtro-tabla">
+                            <label for="buscar-empresas" class="visualmente-oculto">Buscar empresas</label>
+                            <input type="search" id="buscar-empresas" placeholder="Buscar por nombre, RNC o representante">
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="estado-empresas" class="visualmente-oculto">Estado</label>
+                            <select id="estado-empresas">
+                                <option value="">Todas</option>
+                                <option value="activa">Activas</option>
+                                <option value="suspendida">Suspendidas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tabla-envoltura">
+                        <table class="tabla-datos">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Empresa</th>
+                                    <th scope="col">Representante</th>
+                                    <th scope="col">Servicio</th>
+                                    <th scope="col">Publicaciones</th>
+                                    <th scope="col">Reservas</th>
+                                    <th scope="col">Ingresos</th>
+                                    <th scope="col">Cuenta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-empresas"></tbody>
+                        </table>
+                    </div>
+                    <div id="empresas-vacio"></div>
+                </div>
+
+                <!-- USUARIOS · GET /api/admin/usuarios · PATCH /api/admin/usuarios/:id/estado -->
+                <div class="panel-seccion" id="seccion-usuarios" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtro-tabla">
+                            <label for="buscar-usuarios" class="visualmente-oculto">Buscar usuarios</label>
+                            <input type="search" id="buscar-usuarios" placeholder="Buscar por nombre, correo o empresa">
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="rol-usuarios" class="visualmente-oculto">Tipo de cuenta</label>
+                            <select id="rol-usuarios">
+                                <option value="">Todas las cuentas</option>
+                                <option value="cliente">Viajeros</option>
+                                <option value="empresa">Empresas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tabla-envoltura">
+                        <table class="tabla-datos">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Usuario</th>
+                                    <th scope="col">Tipo</th>
+                                    <th scope="col">Teléfono</th>
+                                    <th scope="col">Reservas</th>
+                                    <th scope="col">Registro</th>
+                                    <th scope="col">Cuenta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-usuarios"></tbody>
+                        </table>
+                    </div>
+                    <div id="usuarios-vacio"></div>
+                </div>
+
+                <!-- PUBLICACIONES · GET /api/admin/publicaciones · PATCH /api/admin/publicaciones/:tipo/:id -->
+                <div class="panel-seccion" id="seccion-publicaciones" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtros-tipo" id="filtros-tipo-admin" role="group" aria-label="Tipo de publicación">
+                            <button type="button" class="tipo-boton activo" data-tipo="hotel">Alojamiento</button>
+                            <button type="button" class="tipo-boton" data-tipo="actividad">Actividades</button>
+                            <button type="button" class="tipo-boton" data-tipo="vehiculo">Autos</button>
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="buscar-publicaciones" class="visualmente-oculto">Buscar publicaciones</label>
+                            <input type="search" id="buscar-publicaciones" placeholder="Buscar por nombre o destino">
+                        </div>
+                    </div>
+                    <div class="lista-panel" id="lista-publicaciones-admin" aria-live="polite"></div>
+                </div>
+
+                <!-- RESERVAS · GET /api/admin/reservas -->
+                <div class="panel-seccion" id="seccion-reservas" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtro-tabla">
+                            <label for="buscar-reservas-admin" class="visualmente-oculto">Buscar reservas</label>
+                            <input type="search" id="buscar-reservas-admin" placeholder="Buscar por código, cliente, empresa o publicación">
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="estado-reservas-admin" class="visualmente-oculto">Estado</label>
+                            <select id="estado-reservas-admin">
+                                <option value="">Todos los estados</option>
+                                <option value="confirmada">Confirmadas</option>
+                                <option value="cancelada">Canceladas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tabla-envoltura">
+                        <table class="tabla-datos">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Código</th>
+                                    <th scope="col">Publicación</th>
+                                    <th scope="col">Cliente</th>
+                                    <th scope="col">Fechas</th>
+                                    <th scope="col">Total</th>
+                                    <th scope="col">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-reservas-admin"></tbody>
+                        </table>
+                    </div>
+                    <div id="reservas-admin-vacio"></div>
+                </div>
+
+                <!-- RESEÑAS · GET /api/admin/resenas?visible= · PATCH /api/admin/resenas/:id -->
+                <div class="panel-seccion" id="seccion-resenas" hidden>
+                    <div class="resenas-panel-cabecera">
+                        <div class="resenas-panel-nota" id="resenas-admin-nota"></div>
+                        <div class="filtros-tipo" role="group" aria-label="Filtrar reseñas">
+                            <button type="button" class="tipo-boton activo" data-filtro-resenas="todas" aria-pressed="true">Todas</button>
+                            <button type="button" class="tipo-boton" data-filtro-resenas="bajas" aria-pressed="false">Puntuación baja</button>
+                            <button type="button" class="tipo-boton" data-filtro-resenas="ocultas" aria-pressed="false">Ocultas</button>
+                        </div>
+                    </div>
+                    <div class="lista-resenas" id="lista-resenas-admin" aria-live="polite"></div>
+                    <div class="resultados-mas-admin">
+                        <button type="button" class="btn-outline" id="boton-mas-resenas-admin" hidden>Mostrar más reseñas</button>
+                    </div>
+                </div>
+
+                <!-- MENSAJES · GET /api/admin/mensajes · PATCH /api/admin/mensajes/:id -->
+                <div class="panel-seccion" id="seccion-mensajes" hidden>
+                    <div class="lista-mensajes" id="lista-mensajes"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Confirmación de suspensión o reactivación de una cuenta -->
+    <dialog class="modal" id="modal-cuenta" aria-labelledby="cuenta-titulo">
+        <div class="modal-encabezado">
+            <h2 id="cuenta-titulo">Suspender cuenta</h2>
+            <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-cuerpo">
+            <p id="cuenta-texto"></p>
+            <div id="cuenta-error" class="mensaje-error" role="alert"></div>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Cancelar</button>
+                <button type="button" class="btn-secundario" id="boton-confirmar-cuenta">Suspender</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- ======================================================================
+         FOOTER
+         ====================================================================== -->
+    <footer class="footer-principal">
+        <div class="contenedor footer-grid">
+            <div>
+                <a href="index.html" class="logo-marca">Booking<span class="logo-rd">RD</span></a>
+                <p class="footer-descripcion">Alojamiento, tours, aventura y autos en República Dominicana, de empresas dominicanas.</p>
+            </div>
+            <div>
+                <h4>Explorar</h4>
+                <a href="explorar.html?tipo=hotel">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <a href="explorar.html?categoria=cultural">Cultura e historia</a>
+            </div>
+            <div>
+                <h4>BookingRD</h4>
+                <a href="index.html#nosotros">Sobre nosotros</a>
+                <a href="index.html#contacto">Contacto</a>
+                <a href="registro.html?tipo=empresa" data-sesion="invitado">Registrar empresa</a>
+            </div>
+            <div>
+                <h4>Cuenta</h4>
+                <a href="login.html" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </div>
+        </div>
+        <div class="franja-decorativa" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <p class="footer-copyright">&copy; 2026 BookingRD. Proyecto académico.</p>
+    </footer>
+
+    <script src="js/comun.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

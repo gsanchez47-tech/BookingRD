@@ -60,4 +60,43 @@ function obtenerPool() {
     return promesaPool;
 }
 
-module.exports = { obtenerPool, sql, configuracionDB };
+/**
+ * Ejecuta una función dentro de una transacción. Confirma si la función
+ * termina correctamente y revierte ante cualquier error, que se propaga.
+ *
+ * @template T
+ * @param {(transaccion: sql.Transaction) => Promise<T>} trabajo
+ * @returns {Promise<T>}
+ */
+async function conTransaccion(trabajo) {
+    const pool = await obtenerPool();
+    const transaccion = new sql.Transaction(pool);
+    await transaccion.begin();
+    try {
+        const resultado = await trabajo(transaccion);
+        await transaccion.commit();
+        return resultado;
+    } catch (error) {
+        try {
+            await transaccion.rollback();
+        } catch (_) {
+            /* la transacción ya fue finalizada por el servidor */
+        }
+        throw error;
+    }
+}
+
+/**
+ * Crea una petición sobre la transacción indicada o, si no hay transacción,
+ * sobre el pool de conexiones.
+ *
+ * @param {sql.Transaction|null} [transaccion]
+ * @returns {Promise<sql.Request>}
+ */
+async function peticion(transaccion) {
+    if (transaccion) return new sql.Request(transaccion);
+    const pool = await obtenerPool();
+    return pool.request();
+}
+
+module.exports = { obtenerPool, conTransaccion, peticion, sql, configuracionDB };

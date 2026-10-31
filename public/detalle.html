@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle | BookingRD</title>
+    <meta name="description" content="Detalle y reserva de una publicación de BookingRD.">
+    <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+
+    <!-- Tipografías institucionales: Fraunces (títulos) y Nunito (texto). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,600;0,700;0,800;1,600;1,700&amp;family=Nunito:wght@400;600;700;800&amp;display=swap">
+
+    <!-- Hoja de estilos propia de esta página. -->
+    <link rel="stylesheet" href="css/detalle.css">
+
+    <script>document.documentElement.classList.add('js');</script>
+    <!-- Aviso de diagnóstico: si la hoja de estilos no se pudo cargar (por
+         ejemplo, al abrir el HTML desde dentro del archivo .zip sin
+         extraerlo), se muestra un mensaje con la solución. -->
+    <script>
+        window.addEventListener('load', function () {
+            var estilosCargados = getComputedStyle(document.documentElement).getPropertyValue('--dom-blue').trim() !== '';
+            if (estilosCargados) return;
+            var aviso = document.createElement('div');
+            aviso.setAttribute('role', 'alert');
+            aviso.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;background:#05132B;color:#fff;font:16px/1.6 Segoe UI,Arial,sans-serif;';
+            aviso.innerHTML = '<div style="max-width:620px;padding:32px;border-radius:20px;background:#0A1F44;border-top:8px solid #CE1126;">'
+                + '<h1 style="margin:0 0 12px;font-size:26px;">No se pudieron cargar los estilos de BookingRD</h1>'
+                + '<p style="margin:0 0 12px;">Esto ocurre cuando la página se abre <strong>desde dentro del archivo .zip</strong>: el navegador solo recibe el HTML, sin la carpeta <code>css/</code>.</p>'
+                + '<ol style="margin:0 0 12px;padding-left:20px;"><li>Cierra esta pestaña.</li><li>Clic derecho sobre <strong>BookingRD.zip</strong> &gt; <strong>Extraer todo</strong> &gt; <strong>Extraer</strong>.</li><li>En la carpeta extraída ejecuta <strong>npm install</strong> y <strong>npm start</strong>.</li><li>Abre <strong>http://localhost:3000</strong> en el navegador.</li></ol>'
+                + '<p style="margin:0;color:#00B4D8;">Ruta actual: ' + decodeURIComponent(location.pathname).replace(/</g, '&lt;') + '</p></div>';
+            document.body.appendChild(aviso);
+        });
+    </script>
+</head>
+<body>
+
+    <!-- ======================================================================
+         HEADER
+         Navegación principal con menú desplegable de servicios por categoría.
+         Los elementos con data-sesion se muestran según el estado de la
+         sesión (js/comun.js).
+         ====================================================================== -->
+    <header class="header-principal">
+        <div class="header-contenido">
+            <a href="index.html" class="logo-marca" aria-label="BookingRD, inicio">Booking<span class="logo-rd">RD</span></a>
+
+            <nav class="nav-principal" aria-label="Menú principal">
+                <a href="index.html" class="nav-enlace">Inicio</a>
+                <a href="explorar.html" class="nav-enlace activo">Explorar</a>
+                <a href="autos.html" class="nav-enlace">Autos</a>
+                <div class="nav-desplegable">
+                    <button type="button" class="nav-enlace" aria-expanded="false" aria-controls="menu-servicios">
+                        Servicios <span class="flecha" aria-hidden="true"></span>
+                    </button>
+                    <div class="menu-servicios" id="menu-servicios">
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Alojamiento</span>
+                            <a href="explorar.html?categoria=hoteles-resorts">Hoteles y resorts</a>
+                            <a href="explorar.html?categoria=villas-cabanas">Villas y cabañas</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Tours</span>
+                            <a href="explorar.html?categoria=tour-playa">Tours de playa</a>
+                            <a href="explorar.html?categoria=tour-montana">Tours de montaña</a>
+                            <a href="explorar.html?categoria=tour-gastronomico">Tours gastronómicos</a>
+                            <a href="explorar.html?categoria=cultural">Culturales e históricos</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Aventura</span>
+                            <a href="explorar.html?categoria=zip-line">Zip line y parapente</a>
+                            <a href="explorar.html?categoria=motocross">Motocross y buggies</a>
+                            <a href="explorar.html?categoria=acuaticas">Actividades acuáticas</a>
+                            <a href="explorar.html?categoria=golf">Golf</a>
+                        </div>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Alquiler de autos</span>
+                            <a href="explorar.html?categoria=economico">Económicos</a>
+                            <a href="explorar.html?categoria=suv">SUV y familiares</a>
+                            <a href="explorar.html?categoria=pickup">Pickups 4x4</a>
+                            <a href="explorar.html?categoria=lujo">Lujo</a>
+                            <a href="explorar.html?categoria=convertible">Convertibles</a>
+                        </div>
+                        <a href="explorar.html" class="menu-servicios-pie">Ver todo el catálogo</a>
+                    </div>
+                </div>
+                <a href="index.html#nosotros" class="nav-enlace">Nosotros</a>
+                <a href="index.html#contacto" class="nav-enlace">Contacto</a>
+            </nav>
+
+            <div class="acciones-header">
+                <div class="acciones-escritorio" data-sesion="invitado">
+                    <a href="login.html" class="enlace-header">Iniciar sesión</a>
+                    <a href="registro.html" class="btn-primario btn-chico btn-header">Crear cuenta</a>
+                </div>
+                <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <a href="mis-reservas.html?vista=guardados" class="enlace-header enlace-guardados" data-sesion="cliente" hidden aria-label="Guardados">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 20.6s-7.6-4.6-9.4-9.3C1.4 8 3.4 4.6 6.9 4.6c2 0 3.6 1.1 4.6 2.7h1c1-1.6 2.6-2.7 4.6-2.7 3.5 0 5.5 3.4 4.3 6.7-1.8 4.7-9.4 9.3-9.4 9.3z"/></svg>
+                        <span>Guardados</span>
+                        <span class="contador-favoritos" data-contador-favoritos hidden>0</span>
+                    </a>
+                    <a href="mis-reservas.html" class="enlace-header" data-sesion="cliente" hidden>Mis reservas</a>
+                    <a href="panel-empresa.html" class="enlace-header" data-sesion="empresa" hidden>Mi panel</a>
+                    <a href="admin.html" class="enlace-header" data-sesion="admin" hidden>Administración</a>
+                    <span class="usuario-sesion">
+                        <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                        <span class="usuario-nombre" data-nombre-usuario></span>
+                    </span>
+                    <button type="button" class="boton-texto-claro" data-accion="cerrar-sesion">Salir</button>
+                </div>
+                <button id="boton-menu-movil" class="boton-menu-movil" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-movil">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+
+        <nav id="menu-movil" class="menu-movil" aria-label="Menú móvil">
+            <div class="menu-movil-contenido">
+                <a href="index.html">Inicio</a>
+                <a href="explorar.html">Explorar</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <details>
+                    <summary>Servicios <span class="flecha" aria-hidden="true"></span></summary>
+                    <span class="menu-movil-categoria">Alojamiento</span>
+                    <a href="explorar.html?categoria=hoteles-resorts">Hoteles y resorts</a>
+                    <a href="explorar.html?categoria=villas-cabanas">Villas y cabañas</a>
+                    <span class="menu-movil-categoria">Tours</span>
+                    <a href="explorar.html?categoria=tour-playa">Tours de playa</a>
+                    <a href="explorar.html?categoria=tour-montana">Tours de montaña</a>
+                    <a href="explorar.html?categoria=tour-gastronomico">Tours gastronómicos</a>
+                    <a href="explorar.html?categoria=cultural">Culturales e históricos</a>
+                    <span class="menu-movil-categoria">Aventura</span>
+                    <a href="explorar.html?categoria=zip-line">Zip line y parapente</a>
+                    <a href="explorar.html?categoria=motocross">Motocross y buggies</a>
+                    <a href="explorar.html?categoria=acuaticas">Actividades acuáticas</a>
+                    <a href="explorar.html?categoria=golf">Golf</a>
+                    <span class="menu-movil-categoria">Alquiler de autos</span>
+                    <a href="explorar.html?tipo=vehiculo">Todos los autos</a>
+                    <a href="explorar.html?categoria=suv">SUV y familiares</a>
+                    <a href="explorar.html?categoria=pickup">Pickups 4x4</a>
+                    <a href="explorar.html?categoria=lujo">Lujo</a>
+                            <a href="explorar.html?categoria=convertible">Convertibles</a>
+                </details>
+                <a href="index.html#nosotros">Nosotros</a>
+                <a href="index.html#contacto">Contacto</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- ==================================================================
+             PORTADA: fotografía, categoría, nombre y ubicación.
+             GET /api/publicaciones/:tipo/:id (js/detalle.js)
+             ================================================================== -->
+        <section class="portada" id="portada">
+            <div class="portada-media" id="portada-media">
+                <img id="portada-foto" alt="">
+                <span class="portada-sin-foto" id="portada-sin-foto" hidden></span>
+            </div>
+            <div class="contenedor portada-contenido">
+                <nav class="migas" aria-label="Ruta de navegación">
+                    <a href="index.html">Inicio</a>
+                    <span aria-hidden="true">/</span>
+                    <a href="explorar.html" id="migas-categoria">Explorar</a>
+                </nav>
+                <span class="pildora pildora-clara" id="portada-categoria">Cargando</span>
+                <h1 id="portada-titulo"><span class="esqueleto-texto"></span></h1>
+                <p class="portada-datos" id="portada-datos"></p>
+                <div class="portada-pie" id="portada-pie" hidden>
+                    <a class="portada-valoracion" id="portada-valoracion" href="#resenas"></a>
+                    <div class="portada-acciones">
+                        <span id="portada-favorito"></span>
+                        <button type="button" class="boton-compartir" id="boton-compartir">
+                            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+                            Compartir
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="franja-decorativa franja-inferior" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        </section>
+
+        <div class="contenedor" id="detalle-error"></div>
+
+        <!-- Navegación por secciones; se fija bajo el header al desplazar. -->
+        <nav class="nav-secciones" id="nav-secciones" aria-label="Secciones de la publicación" hidden>
+            <div class="contenedor nav-secciones-contenido">
+                <a href="#seccion-descripcion" class="activo">Descripción</a>
+                <a href="#seccion-detalles" id="nav-detalles">Detalles</a>
+                <a href="#seccion-ubicacion">Ubicación</a>
+                <a href="#resenas">Reseñas <span class="nav-secciones-conteo" id="nav-conteo-resenas"></span></a>
+                <a href="#seccion-politicas">Lo que debes saber</a>
+            </div>
+        </nav>
+
+        <div class="contenedor detalle-layout" id="detalle-contenido" hidden>
+            <!-- Información de la publicación -->
+            <article class="detalle-info">
+                <ul class="ventajas" id="detalle-ventajas" aria-label="Lo más destacado"></ul>
+
+                <section class="bloque-detalle" id="seccion-descripcion" data-revelar>
+                    <h2>Descripción</h2>
+                    <p id="detalle-descripcion"></p>
+                </section>
+
+                <section class="bloque-detalle" id="seccion-detalles" data-revelar>
+                    <h2 id="titulo-detalles">Detalles</h2>
+                    <ul class="specs-vehiculo" id="detalle-specs" aria-label="Características del vehículo" hidden></ul>
+                    <dl class="datos-clave" id="detalle-datos"></dl>
+                </section>
+
+                <!-- Requisitos del alquiler (solo autos). -->
+                <section class="bloque-detalle" id="bloque-requisitos" data-revelar hidden>
+                    <h2>Requisitos para alquilar</h2>
+                    <ul class="lista-requisitos" id="detalle-requisitos"></ul>
+                </section>
+
+                <section class="bloque-detalle" id="bloque-servicios" data-revelar hidden>
+                    <h2 id="titulo-servicios">Servicios</h2>
+                    <ul class="lista-servicios" id="detalle-servicios"></ul>
+                </section>
+
+                <!-- Ubicación aproximada: centro del destino (js/mapa.js). -->
+                <section class="bloque-detalle" id="seccion-ubicacion" data-revelar>
+                    <h2>Ubicación</h2>
+                    <p class="ubicacion-texto" id="ubicacion-texto"></p>
+                    <div class="mapa-detalle" id="mapa-detalle" role="region" aria-label="Mapa de la ubicación"></div>
+                    <a class="enlace-como-llegar" id="enlace-como-llegar" target="_blank" rel="noopener noreferrer">Cómo llegar en Google Maps</a>
+                </section>
+
+                <!-- Reseñas: GET /api/publicaciones/:tipo/:id/resenas -->
+                <section class="bloque-detalle" id="resenas" data-revelar>
+                    <div class="resenas-encabezado">
+                        <h2>Reseñas de viajeros</h2>
+                        <label class="resenas-orden">
+                            <span>Ordenar</span>
+                            <select id="resenas-orden">
+                                <option value="recientes">Más recientes</option>
+                                <option value="mejor-valoradas">Mejor puntuación</option>
+                                <option value="peor-valoradas">Peor puntuación</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="resenas-resumen" id="resenas-resumen"></div>
+                    <div class="lista-resenas" id="lista-resenas" aria-live="polite"></div>
+                    <button type="button" class="btn-outline" id="boton-mas-resenas" hidden>Ver más reseñas</button>
+                    <p class="resenas-nota">Solo los viajeros con una reserva terminada en BookingRD pueden publicar una reseña, desde <a href="mis-reservas.html">Mis reservas</a>.</p>
+                </section>
+
+                <section class="bloque-detalle" id="seccion-politicas" data-revelar>
+                    <h2>Lo que debes saber</h2>
+                    <dl class="politicas" id="detalle-politicas"></dl>
+                </section>
+
+                <section class="bloque-detalle tarjeta-empresa" data-revelar>
+                    <span class="pildora">Publicado por</span>
+                    <h2 id="empresa-nombre"></h2>
+                    <p id="empresa-descripcion"></p>
+                    <dl class="empresa-datos" id="empresa-datos"></dl>
+                </section>
+            </article>
+
+            <!-- Reserva: disponibilidad en tiempo real y confirmación.
+                 GET  /api/publicaciones/:tipo/:id/disponibilidad
+                 POST /api/reservas -->
+            <aside class="tarjeta-reserva" id="tarjeta-reserva">
+                <div class="reserva-cabecera">
+                    <div class="reserva-precio">
+                        <span id="reserva-precio"></span>
+                        <small id="reserva-unidad"></small>
+                    </div>
+                    <a class="reserva-valoracion" id="reserva-valoracion" href="#resenas" hidden></a>
+                </div>
+                <p class="reserva-garantia" id="reserva-garantia">Cancelación gratuita hasta un día antes. Sin pagos por adelantado.</p>
+
+                <form id="form-reserva" novalidate>
+                    <div class="fila-campos" data-solo-tipo="hotel">
+                        <div class="campo">
+                            <label for="reserva-entrada">Entrada</label>
+                            <input type="date" id="reserva-entrada">
+                        </div>
+                        <div class="campo">
+                            <label for="reserva-salida">Salida</label>
+                            <input type="date" id="reserva-salida">
+                        </div>
+                    </div>
+                    <div class="campo" data-solo-tipo="actividad">
+                        <label for="reserva-fecha">Fecha</label>
+                        <input type="date" id="reserva-fecha">
+                    </div>
+                    <!-- Alquiler de auto: recogida y devolución con hora, conductor y extras. -->
+                    <div class="campo" data-solo-tipo="vehiculo" hidden>
+                        <label for="reserva-recogida">Recogida</label>
+                        <div class="fecha-hora">
+                            <input type="date" id="reserva-recogida">
+                            <select id="reserva-hora-recogida" aria-label="Hora de recogida"></select>
+                        </div>
+                    </div>
+                    <div class="campo" data-solo-tipo="vehiculo" hidden>
+                        <label for="reserva-devolucion">Devolución</label>
+                        <div class="fecha-hora">
+                            <input type="date" id="reserva-devolucion">
+                            <select id="reserva-hora-devolucion" aria-label="Hora de devolución"></select>
+                        </div>
+                    </div>
+                    <div class="campo" data-solo-tipo="vehiculo" hidden>
+                        <label for="reserva-ciudad-devolucion">Devolver en</label>
+                        <select id="reserva-ciudad-devolucion"></select>
+                    </div>
+                    <div class="campo campo-edad" data-solo-tipo="vehiculo" hidden>
+                        <label for="reserva-edad">Edad del conductor principal</label>
+                        <input type="number" id="reserva-edad" min="18" max="99" value="30" inputmode="numeric">
+                    </div>
+                    <p class="ayuda-campo" id="ayuda-alquiler" data-solo-tipo="vehiculo" hidden></p>
+                    <fieldset class="extras-alquiler" id="reserva-extras" data-solo-tipo="vehiculo" hidden>
+                        <legend>Extras <span class="opcional">(opcional)</span></legend>
+                        <div class="extras-lista" id="lista-extras"></div>
+                    </fieldset>
+
+                    <div class="fila-campos" data-solo-tipo="hotel actividad">
+                        <div class="campo" data-solo-tipo="hotel">
+                            <label for="reserva-habitaciones">Habitaciones</label>
+                            <div class="contador">
+                                <button type="button" class="contador-boton" data-contador="reserva-habitaciones" data-paso="-1" aria-label="Menos habitaciones">-</button>
+                                <input type="number" id="reserva-habitaciones" min="1" max="20" value="1">
+                                <button type="button" class="contador-boton" data-contador="reserva-habitaciones" data-paso="1" aria-label="Más habitaciones">+</button>
+                            </div>
+                        </div>
+                        <div class="campo">
+                            <label for="reserva-personas">Personas</label>
+                            <div class="contador">
+                                <button type="button" class="contador-boton" data-contador="reserva-personas" data-paso="-1" aria-label="Menos personas">-</button>
+                                <input type="number" id="reserva-personas" min="1" max="60" value="2">
+                                <button type="button" class="contador-boton" data-contador="reserva-personas" data-paso="1" aria-label="Más personas">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="campo">
+                        <label for="reserva-comentario">Comentario para la empresa <span class="opcional">(opcional)</span></label>
+                        <textarea id="reserva-comentario" maxlength="500" rows="2" placeholder="Hora de llegada, alergias, celebraciones..."></textarea>
+                    </div>
+
+                    <div class="reserva-resumen" id="reserva-resumen" aria-live="polite"></div>
+                    <div id="mensaje-error" class="mensaje-error" role="alert"></div>
+
+                    <button type="submit" class="btn-secundario btn-bloque" id="boton-reservar" data-sesion="cliente" hidden>Reservar ahora</button>
+                    <a href="login.html" class="btn-secundario btn-bloque" id="boton-login-reservar" data-sesion="invitado">Inicia sesión para reservar</a>
+                    <p class="nota-reserva" data-sesion="empresa" hidden>Las reservas se realizan con una cuenta de viajero.</p>
+                    <p class="nota-reserva" data-sesion="invitado">Confirmación inmediata con tu cuenta de viajero.</p>
+                </form>
+            </aside>
+        </div>
+
+        <!-- Barra inferior en móvil: acceso directo a la tarjeta de reserva. -->
+        <div class="barra-reserva-movil" id="barra-reserva-movil" hidden>
+            <div>
+                <strong id="barra-precio"></strong>
+                <small id="barra-unidad"></small>
+            </div>
+            <a href="#tarjeta-reserva" class="btn-secundario btn-chico">Ver disponibilidad</a>
+        </div>
+
+        <!-- Más publicaciones de la misma categoría -->
+        <section class="seccion relacionadas" id="relacionadas" hidden>
+            <div class="contenedor">
+                <h2 id="titulo-relacionadas">También te puede interesar</h2>
+                <div class="grid-tarjetas columnas-3" id="grid-relacionadas"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Confirmación de reserva -->
+    <dialog class="modal" id="modal-confirmacion" aria-labelledby="confirmacion-titulo">
+        <div class="confirmacion">
+            <svg class="confirmacion-icono" viewBox="0 0 84 84" aria-hidden="true">
+                <circle cx="42" cy="42" r="38"></circle>
+                <path d="M26 43 l11 11 l21 -23"></path>
+            </svg>
+            <h2 id="confirmacion-titulo">Reserva confirmada</h2>
+            <p id="confirmacion-texto"></p>
+            <span class="confirmacion-codigo" id="confirmacion-codigo"></span>
+            <p class="nota-reserva">Guarda este código. La empresa recibirá tu reserva de inmediato.</p>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Seguir explorando</button>
+                <a href="mis-reservas.html" class="btn-primario">Ver mis reservas</a>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- ======================================================================
+         FOOTER
+         ====================================================================== -->
+    <footer class="footer-principal">
+        <div class="contenedor footer-grid">
+            <div>
+                <a href="index.html" class="logo-marca">Booking<span class="logo-rd">RD</span></a>
+                <p class="footer-descripcion">Alojamiento, tours, aventura y autos en República Dominicana, de empresas dominicanas.</p>
+            </div>
+            <div>
+                <h4>Explorar</h4>
+                <a href="explorar.html?tipo=hotel">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <a href="explorar.html?categoria=cultural">Cultura e historia</a>
+            </div>
+            <div>
+                <h4>BookingRD</h4>
+                <a href="index.html#nosotros">Sobre nosotros</a>
+                <a href="index.html#contacto">Contacto</a>
+                <a href="registro.html?tipo=empresa" data-sesion="invitado">Registrar empresa</a>
+            </div>
+            <div>
+                <h4>Cuenta</h4>
+                <a href="login.html" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </div>
+        </div>
+        <div class="franja-decorativa" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <p class="footer-copyright">&copy; 2026 BookingRD. Proyecto académico.</p>
+    </footer>
+
+    <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="js/comun.js"></script>
+    <script src="js/mapa.js"></script>
+    <script src="js/detalle.js"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@
  *   atención por el equipo de BookingRD.
  */
 
-const { obtenerPool, sql } = require('../config/db');
+const contactoRepo = require('../repositories/contacto.repo');
 const { esCorreoValido, textoLimpio } = require('../utils/validacion');
 const { ASUNTOS_CONTACTO } = require('../utils/catalogos');
 
@@ -33,16 +33,7 @@ async function enviarMensaje(req, res) {
         return res.status(400).json({ campo: 'contacto-mensaje', error: `El mensaje debe tener entre ${LONGITUD_MINIMA_MENSAJE} y ${LONGITUD_MAXIMA_MENSAJE} caracteres.` });
     }
 
-    const pool = await obtenerPool();
-    await pool.request()
-        .input('nombre', sql.NVarChar(150), nombre)
-        .input('correo', sql.NVarChar(200), correo)
-        .input('asunto', sql.VarChar(20), asunto)
-        .input('mensaje', sql.NVarChar(LONGITUD_MAXIMA_MENSAJE), mensaje)
-        .query(`
-            INSERT INTO dbo.mensajes_contacto (nombre, correo, asunto, mensaje)
-            VALUES (@nombre, @correo, @asunto, @mensaje)
-        `);
+    await contactoRepo.crear({ nombre, correo, asunto, mensaje });
 
     res.status(201).json({ mensaje: 'Mensaje recibido. Te responderemos al correo indicado.' });
 }

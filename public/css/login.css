@@ -4,9 +4,10 @@
 
    Archivo autónomo: contiene todas las reglas que la página necesita.
    Secciones: base, header, botones, aviso flotante, aparición al desplazar, formularios, inicio de sesión.
-   Las secciones BASE, HEADER, BOTONES, AVISO FLOTANTE, APARICIÓN AL
-   DESPLAZAR y FORMULARIOS son idénticas en todas las hojas de public/css/;
-   un cambio en ellas debe replicarse en los tres archivos.
+   Las secciones comunes (base, header, botones, aviso flotante, aparición
+   al desplazar y, donde aplica, formularios, tarjetas, modales y footer)
+   son idénticas en todas las hojas de public/css/; un cambio en ellas debe
+   replicarse en cada archivo que las contiene.
    Enfoque mobile-first: estilos base para 375 px y ampliaciones con
    @media (min-width: 768px | 1024px | 1280px).
    ============================================================================ */
@@ -133,6 +134,18 @@ button { font-family: inherit; }
 }
 
 /* Etiqueta tipo píldora. La variante clara se usa sobre fotografías. */
+/* Ruta de navegación sobre fondos oscuros (explorar, detalle). */
+.migas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.7);
+}
+.migas a { transition: color var(--transicion); }
+.migas a:hover { color: var(--caribe); }
+
 .pildora {
     display: inline-flex;
     align-items: center;
@@ -171,7 +184,7 @@ button { font-family: inherit; }
     top: 0;
     left: 0;
     right: 0;
-    z-index: 100;
+    z-index: 1000;          /* por encima de mapas, barras fijas y tarjetas */
     background-color: rgba(10, 31, 68, 0.86);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -274,9 +287,9 @@ button { font-family: inherit; }
     top: calc(100% + 18px);
     left: 50%;
     display: grid;
-    grid-template-columns: repeat(3, minmax(170px, 1fr));
-    gap: 6px 28px;
-    min-width: 600px;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 6px 26px;
+    min-width: 740px;
     padding: 24px 26px 18px;
     border-radius: 18px;
     background-color: #FFFFFF;
@@ -365,6 +378,57 @@ button { font-family: inherit; }
     transition: color var(--transicion);
 }
 .enlace-header:hover { color: var(--caribe); }
+.enlace-header.activo {
+    color: var(--caribe);
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+}
+
+/* Guardados (favoritos del viajero): corazón y contador. El texto se
+   muestra desde 1280 px; antes, solo el corazón. */
+.enlace-guardados {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.enlace-guardados svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+.enlace-guardados > span:first-of-type { display: none; }
+.contador-favoritos {
+    display: inline-block;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background-color: var(--dom-red);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 20px;
+    text-align: center;
+    color: #FFFFFF;
+}
+@media (min-width: 1280px) {
+    .enlace-guardados > span:first-of-type { display: inline; }
+}
+
+/* Botón con apariencia de enlace (acciones secundarias). */
+.boton-enlace {
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: var(--fuente-texto);
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--dom-red);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
 
 /* Identificación del usuario con sesión: inicial en círculo y nombre. */
 .usuario-sesion {
@@ -599,6 +663,11 @@ button { font-family: inherit; }
     border-radius: 50%;
     animation: girar 0.7s linear infinite;
 }
+/* Entrada común de bloques y tarjetas. */
+@keyframes aparecer-arriba {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: none; }
+}
 @keyframes girar {
     to { transform: rotate(360deg); }
 }
@@ -612,7 +681,7 @@ button { font-family: inherit; }
     left: 16px;
     right: 16px;
     bottom: 20px;
-    z-index: 200;
+    z-index: 1100;
     padding: 14px 18px;
     border-left: 5px solid var(--jungle-light);
     border-radius: 14px;
@@ -673,6 +742,52 @@ button { font-family: inherit; }
         opacity: 1;
         transform: none;
     }
+}
+
+/* ----------------------------------------------------------------------------
+   AVISO DE SERVIDOR DETENIDO (js/comun.js, mostrarAvisoServidor)
+   ---------------------------------------------------------------------------- */
+
+.aviso-servidor {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+    z-index: 1300;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 16px 20px;
+    border-left: 5px solid var(--dom-red);
+    border-radius: 14px;
+    background-color: var(--night);
+    box-shadow: 0 18px 44px rgba(5, 19, 43, 0.4);
+    color: #FFFFFF;
+    animation: aparecer-arriba 0.3s ease both;
+}
+.aviso-servidor strong { display: block; margin-bottom: 2px; }
+.aviso-servidor span { font-size: 0.9rem; color: rgba(255, 255, 255, 0.82); }
+.aviso-servidor code {
+    padding: 1px 6px;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.14);
+    font-size: 0.88em;
+    color: #FFFFFF;
+}
+.aviso-servidor a { color: var(--caribe); text-decoration: underline; }
+.aviso-servidor button {
+    padding: 9px 18px;
+    border: none;
+    border-radius: var(--radio-chip);
+    background-color: #FFFFFF;
+    font-family: var(--fuente-texto);
+    font-weight: 800;
+    color: var(--night);
+    cursor: pointer;
 }
 
 /* ----------------------------------------------------------------------------
@@ -1072,16 +1187,6 @@ button { font-family: inherit; }
     from {
         opacity: 0;
         transform: translateX(30px);
-    }
-    to {
-        opacity: 1;
-        transform: none;
-    }
-}
-@keyframes aparecer-arriba {
-    from {
-        opacity: 0;
-        transform: translateY(12px);
     }
     to {
         opacity: 1;

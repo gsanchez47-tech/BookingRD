@@ -9,7 +9,8 @@
  *              2. Empresa: nombre comercial, razón social, RNC, teléfono,
  *                 provincia, ciudad, dirección, sitio web y licencia MITUR.
  *              3. Servicios: tipo de empresa (alojamiento | actividades |
- *                 mixto). Según el tipo se habilitan los datos de
+ *                 mixto | vehiculos).
+ *                 Según el tipo se habilitan los datos de
  *                 alojamiento (tipo y número de habitaciones) y/o las
  *                 categorías de actividades.
  *            Cada paso se valida antes de avanzar.
@@ -31,16 +32,16 @@ const PATRON_SITIO_WEB = /^https?:\/\/\S+\.\S+$/i;
 /** Contenido del panel fotográfico y textos del formulario por tipo de cuenta. */
 const PRESENTACION = {
     cliente: {
-        foto: 'img/playa-costa-este.jpg',
+        foto: 'img/registro/viajero.jpg',
         titulo: 'El Caribe dominicano, a un clic',
-        texto: 'Crea tu cuenta en menos de un minuto y guarda tus planes de viaje.',
+        texto: 'Crea tu cuenta en menos de un minuto: reserva, guarda tus favoritos y cuenta cómo te fue.',
         tituloPaso1: 'Tus datos',
         etiquetaNombre: 'Nombre completo'
     },
     empresa: {
-        foto: 'img/hero-playa.jpg',
-        titulo: 'Lleva tu negocio a más viajeros',
-        texto: 'Registra tu hotel, tus tours o tus actividades de aventura y prepárate para publicarlos en BookingRD.',
+        foto: 'img/registro/empresa.jpg',
+        titulo: 'Lleva tu negocio a toda la isla',
+        texto: 'Registra tu empresa con su RNC, publica habitaciones, tours y actividades y responde a las reseñas de tus clientes.',
         tituloPaso1: 'Datos del representante',
         etiquetaNombre: 'Nombre del representante'
     }
@@ -172,6 +173,7 @@ function aplicarTipoServicio() {
     const tipo = document.getElementById('tipoServicio').value;
     document.getElementById('bloque-alojamiento').hidden = !(tipo === 'alojamiento' || tipo === 'mixto');
     document.getElementById('bloque-actividades').hidden = !(tipo === 'actividades' || tipo === 'mixto');
+    document.getElementById('bloque-vehiculos').hidden = tipo !== 'vehiculos';
 }
 
 /* ----------------------------------------------------------------------------
@@ -255,7 +257,7 @@ function validarPaso(paso, datos) {
     }
 
     if (paso === 3) {
-        if (!datos.tipoServicio) return error('tipoServicio', 'Selecciona si la empresa ofrece alojamiento, actividades o ambos.');
+        if (!datos.tipoServicio) return error('tipoServicio', 'Selecciona si la empresa ofrece alojamiento, actividades, ambos o alquiler de vehículos.');
         if ('tipoAlojamiento' in datos) {
             if (!datos.tipoAlojamiento) return error('tipoAlojamiento', 'Selecciona el tipo de alojamiento.');
             if (!Number.isInteger(datos.numeroHabitaciones) || datos.numeroHabitaciones < 1) {

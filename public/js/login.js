@@ -114,9 +114,12 @@ function iniciarFormulario() {
             const respuesta = await apiFetch('/auth/login', { method: 'POST', body: { correo, password } });
             guardarSesion(respuesta.token, respuesta.usuario, recordarme);
             programarAviso(`Bienvenido de vuelta, ${respuesta.usuario.nombre.split(' ')[0]}.`);
-            window.location.href = destinoSeguro(parametros.get('volver'));
+            // Sin página de regreso, cada rol va a su espacio principal.
+            const inicioPorRol = { admin: 'admin.html', empresa: 'panel-empresa.html' };
+            const volver = parametros.get('volver');
+            window.location.href = volver ? destinoSeguro(volver) : (inicioPorRol[respuesta.usuario.rol] || 'index.html');
         } catch (error) {
-            // 401: credenciales incorrectas. El mensaje del backend es genérico.
+            // 401: credenciales incorrectas (mensaje genérico). 403: cuenta suspendida.
             mostrarError(error.message, error.status === 401 ? 'password' : null);
             botonNormal(boton, 'Iniciar sesión');
         }

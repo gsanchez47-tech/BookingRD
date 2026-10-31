@@ -7,7 +7,7 @@
  * Comandos:
  *   npm run bd:probar    Verifica la conexión y muestra el conteo de registros por tabla.
  *   npm run bd:instalar  Ejecuta database/instalacion-completa.sql desde el marcador
- *                        "@inicio-esquema" (tablas, índices y cuentas de demostración).
+ *                        "@inicio-esquema" (tablas, índices y datos de demostración).
  *                        Idempotente: puede ejecutarse varias veces.
  */
 
@@ -20,7 +20,7 @@ const { obtenerPool, configuracionDB } = require('../src/config/db');
 
 const ARCHIVO_SQL = path.join(__dirname, '..', 'database', 'instalacion-completa.sql');
 const MARCADOR = '-- @inicio-esquema';
-const TABLAS = ['usuarios', 'empresas', 'hoteles', 'actividades', 'mensajes_contacto'];
+const TABLAS = ['usuarios', 'empresas', 'imagenes', 'hoteles', 'actividades', 'reservas', 'mensajes_contacto'];
 
 /**
  * Extrae los lotes (batches) a ejecutar: contenido posterior al marcador,
@@ -55,7 +55,8 @@ async function instalar() {
             throw error;
         }
     }
-    console.log('Esquema y cuentas de demostración instalados.');
+    console.log('Esquema y datos de demostración instalados.');
+    console.log('Cuentas: admin@bookingrd.com (Admin123!), cliente@bookingrd.com (Cliente123!), empresa@bookingrd.com (Empresa123!).');
     await probar();
 }
 

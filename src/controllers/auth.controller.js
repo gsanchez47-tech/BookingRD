@@ -19,7 +19,9 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const { obtenerPool, sql } = require('../config/db');
+const { conTransaccion } = require('../config/db');
+const correoService = require('../services/correo.service');
+const cuentasRepo = require('../repositories/cuentas.repo');
 const { esCorreoValido, esTextoNoVacio, aEnteroPositivo, textoLimpio } = require('../utils/validacion');
 const { TIPOS_SERVICIO, TIPOS_ALOJAMIENTO, CATEGORIAS_ACTIVIDAD, PROVINCIAS } = require('../utils/catalogos');
 
@@ -84,7 +86,7 @@ function validarDatosPersona(body, esEmpresa) {
  * Valida y normaliza los datos de empresa.
  *   RNC: 9 dígitos (persona jurídica) u 11 (cédula). Se admiten guiones y
  *        espacios en la entrada; se almacena solo la secuencia de dígitos.
- *   tipoServicio: alojamiento | actividades | mixto. Determina qué datos de
+ *   tipoServicio: alojamiento | actividades | mixto | vehiculos. Determina qué datos de
  *        servicio son obligatorios:
  *          alojamiento -> tipoAlojamiento y numeroHabitaciones
  *          actividades -> categoriasActividad (al menos una)
@@ -121,10 +123,10 @@ function validarDatosEmpresa(body) {
     if (empresa.licenciaMitur && empresa.licenciaMitur.length > 30) return errorCampo('licenciaMitur', 'El número de licencia admite hasta 30 caracteres.');
 
     if (!Object.hasOwn(TIPOS_SERVICIO, empresa.tipoServicio)) {
-        return errorCampo('tipoServicio', 'Selecciona si la empresa ofrece alojamiento, actividades o ambos.');
+        return errorCampo('tipoServicio', 'Selecciona si la empresa ofrece alojamiento, actividades, ambos o alquiler de vehículos.');
     }
 
-    if (empresa.tipoServicio !== 'actividades') {
+    if (['alojamiento', 'mixto'].includes(empresa.tipoServicio)) {
         if (!Object.hasOwn(TIPOS_ALOJAMIENTO, body.tipoAlojamiento)) return errorCampo('tipoAlojamiento', 'Selecciona el tipo de alojamiento.');
         const habitaciones = aEnteroPositivo(body.numeroHabitaciones);
         if (!habitaciones || habitaciones > MAXIMO_HABITACIONES) return errorCampo('numeroHabitaciones', 'Indica el número de habitaciones o unidades.');
@@ -132,7 +134,7 @@ function validarDatosEmpresa(body) {
         empresa.numeroHabitaciones = habitaciones;
     }
 
-    if (empresa.tipoServicio !== 'alojamiento') {
+    if (['actividades', 'mixto'].includes(empresa.tipoServicio)) {
         const categorias = Array.isArray(body.categoriasActividad) ? body.categoriasActividad : [];
         const validas = [...new Set(categorias)].filter((codigo) => Object.hasOwn(CATEGORIAS_ACTIVIDAD, codigo));
         if (!validas.length || validas.length !== categorias.length) {
@@ -173,82 +175,40 @@ async function registrar(req, res) {
     }
 
     const correo = body.correo.trim().toLowerCase();
-    const pool = await obtenerPool();
 
     // Verificación previa de duplicados para responder con un mensaje específico.
     // Las restricciones UNIQUE de la base cubren el caso de peticiones concurrentes.
-    const existente = await pool.request()
-        .input('correo', sql.NVarChar(200), correo)
-        .query('SELECT id_usuario FROM dbo.usuarios WHERE correo = @correo');
-    if (existente.recordset.length > 0) {
+    if (await cuentasRepo.existeCorreo(correo)) {
         return res.status(409).json(errorCampo('correo', 'Ya existe una cuenta registrada con ese correo.'));
     }
-    if (empresa) {
-        const rncExistente = await pool.request()
-            .input('rnc', sql.VarChar(11), empresa.rnc)
-            .query('SELECT id_empresa FROM dbo.empresas WHERE rnc = @rnc');
-        if (rncExistente.recordset.length > 0) {
-            return res.status(409).json(errorCampo('rnc', 'Ya existe una empresa registrada con ese RNC.'));
-        }
+    if (empresa && await cuentasRepo.existeRnc(empresa.rnc)) {
+        return res.status(409).json(errorCampo('rnc', 'Ya existe una empresa registrada con ese RNC.'));
     }
 
     const passwordHash = await bcrypt.hash(body.password, RONDAS_BCRYPT);
 
-    // Usuario y empresa se insertan en una única transacción (atomicidad).
-    const transaccion = new sql.Transaction(pool);
-    await transaccion.begin();
     try {
-        const resultadoUsuario = await new sql.Request(transaccion)
-            .input('nombre', sql.NVarChar(150), textoLimpio(body.nombre))
-            .input('correo', sql.NVarChar(200), correo)
-            .input('telefono', sql.NVarChar(30), esEmpresa ? textoLimpio(body.telefono) : null)
-            .input('passwordHash', sql.NVarChar(200), passwordHash)
-            .input('rol', sql.VarChar(20), tipoCuenta)
-            .query(`
-                INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-                OUTPUT INSERTED.id_usuario, INSERTED.nombre, INSERTED.rol
-                VALUES (@nombre, @correo, @telefono, @passwordHash, @rol)
-            `);
-        const usuario = resultadoUsuario.recordset[0];
-
-        if (empresa) {
-            const resultadoEmpresa = await new sql.Request(transaccion)
-                .input('idUsuario', sql.Int, usuario.id_usuario)
-                .input('cargo', sql.NVarChar(100), textoLimpio(body.cargo))
-                .input('nombreComercial', sql.NVarChar(150), empresa.nombreComercial)
-                .input('razonSocial', sql.NVarChar(150), empresa.razonSocial)
-                .input('rnc', sql.VarChar(11), empresa.rnc)
-                .input('telefono', sql.NVarChar(30), empresa.telefono)
-                .input('provincia', sql.NVarChar(60), empresa.provincia)
-                .input('ciudad', sql.NVarChar(100), empresa.ciudad)
-                .input('direccion', sql.NVarChar(250), empresa.direccion)
-                .input('sitioWeb', sql.NVarChar(300), empresa.sitioWeb)
-                .input('licenciaMitur', sql.NVarChar(30), empresa.licenciaMitur)
-                .input('tipoServicio', sql.VarChar(20), empresa.tipoServicio)
-                .input('tipoAlojamiento', sql.VarChar(20), empresa.tipoAlojamiento)
-                .input('numeroHabitaciones', sql.Int, empresa.numeroHabitaciones)
-                .input('categoriasActividad', sql.VarChar(200), empresa.categoriasActividad)
-                .input('descripcion', sql.NVarChar(sql.MAX), empresa.descripcion)
-                .query(`
-                    INSERT INTO dbo.empresas
-                        (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono,
-                         provincia, ciudad, direccion, sitio_web, licencia_mitur, tipo_servicio,
-                         tipo_alojamiento, numero_habitaciones, categorias_actividad, descripcion)
-                    OUTPUT INSERTED.id_empresa
-                    VALUES
-                        (@idUsuario, @cargo, @nombreComercial, @razonSocial, @rnc, @telefono,
-                         @provincia, @ciudad, @direccion, @sitioWeb, @licenciaMitur, @tipoServicio,
-                         @tipoAlojamiento, @numeroHabitaciones, @categoriasActividad, @descripcion)
-                `);
-            usuario.id_empresa = resultadoEmpresa.recordset[0].id_empresa;
-            usuario.nombre_comercial = empresa.nombreComercial;
-            usuario.tipo_servicio = empresa.tipoServicio;
-        }
-
-        await transaccion.commit();
+        // Usuario y empresa se insertan en una única transacción (atomicidad).
+        const usuario = await conTransaccion(async (transaccion) => {
+            const nuevo = await cuentasRepo.crearUsuario(transaccion, {
+                nombre: textoLimpio(body.nombre),
+                correo,
+                telefono: esEmpresa ? textoLimpio(body.telefono) : null,
+                passwordHash,
+                rol: tipoCuenta
+            });
+            if (empresa) {
+                nuevo.id_empresa = await cuentasRepo.crearEmpresa(transaccion, nuevo.id_usuario,
+                    Object.assign({ cargo: textoLimpio(body.cargo) }, empresa));
+                nuevo.nombre_comercial = empresa.nombreComercial;
+                nuevo.tipo_servicio = empresa.tipoServicio;
+            }
+            return nuevo;
+        });
         res.status(201).json({ token: generarToken(usuario), usuario: usuarioPublico(usuario) });
+        // Correo de bienvenida en segundo plano: no retrasa ni afecta el registro.
+        correoService.bienvenida({ nombre: usuario.nombre, correo, rol: tipoCuenta }, empresa);
     } catch (error) {
-        try { await transaccion.rollback(); } catch (_) { /* transacción ya finalizada */ }
         if (ERRORES_SQL_DUPLICADO.includes(error.number)) {
             return res.status(409).json({ error: 'Ese correo o ese RNC ya están registrados.' });
         }
@@ -260,7 +220,7 @@ async function registrar(req, res) {
  * POST /api/auth/login
  *
  * Body: { correo, password }
- * Respuestas: 200 { token, usuario } | 401 credenciales inválidas.
+ * Respuestas: 200 { token, usuario } | 401 credenciales inválidas | 403 cuenta suspendida.
  * El mensaje de error es genérico para no revelar qué correos existen.
  */
 async function iniciarSesion(req, res) {
@@ -271,25 +231,13 @@ async function iniciarSesion(req, res) {
         return res.status(401).json(errorGenerico);
     }
 
-    const pool = await obtenerPool();
-    const resultado = await pool.request()
-        .input('correo', sql.NVarChar(200), correo.trim().toLowerCase())
-        .query(`
-            SELECT u.id_usuario, u.nombre, u.rol, u.password_hash, u.activo,
-                   e.id_empresa, e.nombre_comercial, e.tipo_servicio
-            FROM dbo.usuarios u
-            LEFT JOIN dbo.empresas e ON e.id_usuario = u.id_usuario
-            WHERE u.correo = @correo
-        `);
-
-    const usuario = resultado.recordset[0];
-    if (!usuario || !usuario.activo) {
+    const usuario = await cuentasRepo.obtenerCredenciales(correo.trim().toLowerCase());
+    if (!usuario || !(await bcrypt.compare(password, usuario.password_hash))) {
         return res.status(401).json(errorGenerico);
     }
-
-    const coincide = await bcrypt.compare(password, usuario.password_hash);
-    if (!coincide) {
-        return res.status(401).json(errorGenerico);
+    // El aviso de suspensión solo se muestra con la contraseña correcta.
+    if (!usuario.activo) {
+        return res.status(403).json({ error: 'Tu cuenta está suspendida. Escribe a soporte@bookingrd.com para más información.' });
     }
 
     res.json({ token: generarToken(usuario), usuario: usuarioPublico(usuario) });

@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BookingRD | Hoteles y actividades en República Dominicana</title>
-    <meta name="description" content="BookingRD: alojamiento, tours y aventura en República Dominicana.">
+    <title>BookingRD | Hoteles, actividades y autos en República Dominicana</title>
+    <meta name="description" content="BookingRD: alojamiento, tours, aventura y alquiler de autos en República Dominicana.">
+    <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
 
     <!-- Tipografías institucionales: Fraunces (títulos) y Nunito (texto). -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,7 +31,7 @@
             aviso.innerHTML = '<div style="max-width:620px;padding:32px;border-radius:20px;background:#0A1F44;border-top:8px solid #CE1126;">'
                 + '<h1 style="margin:0 0 12px;font-size:26px;">No se pudieron cargar los estilos de BookingRD</h1>'
                 + '<p style="margin:0 0 12px;">Esto ocurre cuando la página se abre <strong>desde dentro del archivo .zip</strong>: el navegador solo recibe el HTML, sin la carpeta <code>css/</code>.</p>'
-                + '<ol style="margin:0 0 12px;padding-left:20px;"><li>Cierra esta pestaña.</li><li>Clic derecho sobre <strong>BookingRD.zip</strong> &gt; <strong>Extraer todo</strong> &gt; <strong>Extraer</strong>.</li><li>Abre <strong>public/index.html</strong> desde la carpeta extraída.</li></ol>'
+                + '<ol style="margin:0 0 12px;padding-left:20px;"><li>Cierra esta pestaña.</li><li>Clic derecho sobre <strong>BookingRD.zip</strong> &gt; <strong>Extraer todo</strong> &gt; <strong>Extraer</strong>.</li><li>En la carpeta extraída ejecuta <strong>npm install</strong> y <strong>npm start</strong>.</li><li>Abre <strong>http://localhost:3000</strong> en el navegador.</li></ol>'
                 + '<p style="margin:0;color:#00B4D8;">Ruta actual: ' + decodeURIComponent(location.pathname).replace(/</g, '&lt;') + '</p></div>';
             document.body.appendChild(aviso);
         });
@@ -46,10 +47,12 @@
          ====================================================================== -->
     <header class="header-principal">
         <div class="header-contenido">
-            <a href="#inicio" class="logo-marca" aria-label="BookingRD, inicio">Booking<span class="logo-rd">RD</span></a>
+            <a href="index.html" class="logo-marca" aria-label="BookingRD, inicio">Booking<span class="logo-rd">RD</span></a>
 
             <nav class="nav-principal" aria-label="Menú principal">
-                <a href="#inicio" class="nav-enlace activo">Inicio</a>
+                <a href="index.html" class="nav-enlace activo">Inicio</a>
+                <a href="explorar.html" class="nav-enlace">Explorar</a>
+                <a href="autos.html" class="nav-enlace">Autos</a>
                 <div class="nav-desplegable">
                     <button type="button" class="nav-enlace" aria-expanded="false" aria-controls="menu-servicios">
                         Servicios <span class="flecha" aria-hidden="true"></span>
@@ -57,25 +60,35 @@
                     <div class="menu-servicios" id="menu-servicios">
                         <div class="menu-servicios-columna">
                             <span class="menu-servicios-titulo">Alojamiento</span>
-                            <a href="#servicio-hoteles">Hoteles y resorts</a>
-                            <a href="#servicio-villas">Villas y cabañas</a>
+                            <a href="explorar.html?categoria=hoteles-resorts">Hoteles y resorts</a>
+                            <a href="explorar.html?categoria=villas-cabanas">Villas y cabañas</a>
                         </div>
                         <div class="menu-servicios-columna">
                             <span class="menu-servicios-titulo">Tours</span>
-                            <a href="#servicio-tour-playa">Tours de playa</a>
-                            <a href="#servicio-tour-montana">Tours de montaña</a>
-                            <a href="#servicio-tour-gastronomico">Tours gastronómicos</a>
+                            <a href="explorar.html?categoria=tour-playa">Tours de playa</a>
+                            <a href="explorar.html?categoria=tour-montana">Tours de montaña</a>
+                            <a href="explorar.html?categoria=tour-gastronomico">Tours gastronómicos</a>
+                            <a href="explorar.html?categoria=cultural">Culturales e históricos</a>
                         </div>
                         <div class="menu-servicios-columna">
                             <span class="menu-servicios-titulo">Aventura</span>
-                            <a href="#servicio-zip-line">Zip line</a>
-                            <a href="#servicio-motocross">Motocross y buggies</a>
-                            <a href="#servicio-acuaticas">Actividades acuáticas</a>
+                            <a href="explorar.html?categoria=zip-line">Zip line y parapente</a>
+                            <a href="explorar.html?categoria=motocross">Motocross y buggies</a>
+                            <a href="explorar.html?categoria=acuaticas">Actividades acuáticas</a>
+                            <a href="explorar.html?categoria=golf">Golf</a>
                         </div>
-                        <a href="#destacados" class="menu-servicios-pie">Ver publicaciones disponibles</a>
+                        <div class="menu-servicios-columna">
+                            <span class="menu-servicios-titulo">Alquiler de autos</span>
+                            <a href="explorar.html?categoria=economico">Económicos</a>
+                            <a href="explorar.html?categoria=suv">SUV y familiares</a>
+                            <a href="explorar.html?categoria=pickup">Pickups 4x4</a>
+                            <a href="explorar.html?categoria=lujo">Lujo</a>
+                            <a href="explorar.html?categoria=convertible">Convertibles</a>
+                        </div>
+                        <a href="explorar.html" class="menu-servicios-pie">Ver todo el catálogo</a>
                     </div>
                 </div>
-                <a href="#nosotros" class="nav-enlace">Sobre nosotros</a>
+                <a href="#nosotros" class="nav-enlace">Nosotros</a>
                 <a href="#contacto" class="nav-enlace">Contacto</a>
             </nav>
 
@@ -85,11 +98,19 @@
                     <a href="registro.html" class="btn-primario btn-chico btn-header">Crear cuenta</a>
                 </div>
                 <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <a href="mis-reservas.html?vista=guardados" class="enlace-header enlace-guardados" data-sesion="cliente" hidden aria-label="Guardados">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 20.6s-7.6-4.6-9.4-9.3C1.4 8 3.4 4.6 6.9 4.6c2 0 3.6 1.1 4.6 2.7h1c1-1.6 2.6-2.7 4.6-2.7 3.5 0 5.5 3.4 4.3 6.7-1.8 4.7-9.4 9.3-9.4 9.3z"/></svg>
+                        <span>Guardados</span>
+                        <span class="contador-favoritos" data-contador-favoritos hidden>0</span>
+                    </a>
+                    <a href="mis-reservas.html" class="enlace-header" data-sesion="cliente" hidden>Mis reservas</a>
+                    <a href="panel-empresa.html" class="enlace-header" data-sesion="empresa" hidden>Mi panel</a>
+                    <a href="admin.html" class="enlace-header" data-sesion="admin" hidden>Administración</a>
                     <span class="usuario-sesion">
                         <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
                         <span class="usuario-nombre" data-nombre-usuario></span>
                     </span>
-                    <button type="button" class="boton-texto-claro" data-accion="cerrar-sesion">Cerrar sesión</button>
+                    <button type="button" class="boton-texto-claro" data-accion="cerrar-sesion">Salir</button>
                 </div>
                 <button id="boton-menu-movil" class="boton-menu-movil" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-movil">
                     <span></span><span></span><span></span>
@@ -99,23 +120,37 @@
 
         <nav id="menu-movil" class="menu-movil" aria-label="Menú móvil">
             <div class="menu-movil-contenido">
-                <a href="#inicio">Inicio</a>
+                <a href="index.html">Inicio</a>
+                <a href="explorar.html">Explorar</a>
+                <a href="autos.html">Alquiler de autos</a>
                 <details>
                     <summary>Servicios <span class="flecha" aria-hidden="true"></span></summary>
                     <span class="menu-movil-categoria">Alojamiento</span>
-                    <a href="#servicio-hoteles">Hoteles y resorts</a>
-                    <a href="#servicio-villas">Villas y cabañas</a>
+                    <a href="explorar.html?categoria=hoteles-resorts">Hoteles y resorts</a>
+                    <a href="explorar.html?categoria=villas-cabanas">Villas y cabañas</a>
                     <span class="menu-movil-categoria">Tours</span>
-                    <a href="#servicio-tour-playa">Tours de playa</a>
-                    <a href="#servicio-tour-montana">Tours de montaña</a>
-                    <a href="#servicio-tour-gastronomico">Tours gastronómicos</a>
+                    <a href="explorar.html?categoria=tour-playa">Tours de playa</a>
+                    <a href="explorar.html?categoria=tour-montana">Tours de montaña</a>
+                    <a href="explorar.html?categoria=tour-gastronomico">Tours gastronómicos</a>
+                    <a href="explorar.html?categoria=cultural">Culturales e históricos</a>
                     <span class="menu-movil-categoria">Aventura</span>
-                    <a href="#servicio-zip-line">Zip line</a>
-                    <a href="#servicio-motocross">Motocross y buggies</a>
-                    <a href="#servicio-acuaticas">Actividades acuáticas</a>
+                    <a href="explorar.html?categoria=zip-line">Zip line y parapente</a>
+                    <a href="explorar.html?categoria=motocross">Motocross y buggies</a>
+                    <a href="explorar.html?categoria=acuaticas">Actividades acuáticas</a>
+                    <a href="explorar.html?categoria=golf">Golf</a>
+                    <span class="menu-movil-categoria">Alquiler de autos</span>
+                    <a href="explorar.html?tipo=vehiculo">Todos los autos</a>
+                    <a href="explorar.html?categoria=suv">SUV y familiares</a>
+                    <a href="explorar.html?categoria=pickup">Pickups 4x4</a>
+                    <a href="explorar.html?categoria=lujo">Lujo</a>
+                            <a href="explorar.html?categoria=convertible">Convertibles</a>
                 </details>
-                <a href="#nosotros">Sobre nosotros</a>
+                <a href="#nosotros">Nosotros</a>
                 <a href="#contacto">Contacto</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
                 <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
                 <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
                 <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
@@ -125,45 +160,97 @@
 
     <!-- ======================================================================
          HERO Y BUSCADOR
-         El buscador filtra la sección "Destacados" (js/index.js).
+         Fotografía con acercamiento lento, destino que cambia en el título y
+         buscador con autocompletado de destinos y fechas (js/buscador.js).
          ====================================================================== -->
     <section class="hero" id="inicio">
+        <!-- Presentación de fotografías: fundido con acercamiento lento cada
+             7 segundos (js/index.js). Sin JavaScript se ve la primera. -->
+        <div class="hero-fondo con-diapositivas" aria-hidden="true">
+            <img class="hero-diapositiva activa" src="img/hero/playa-samana.jpg" alt="" fetchpriority="high">
+            <img class="hero-diapositiva" src="img/hero/viajeros-bandera.jpg" alt="" loading="lazy" style="object-position: 60% 30%;">
+            <img class="hero-diapositiva" src="img/hero/terraza-piscina.jpg" alt="" loading="lazy">
+        </div>
+        <div class="hero-indicadores" id="hero-indicadores">
+            <button type="button" class="hero-indicador activo" data-diapositiva="0" aria-label="Fotografía 1: playas del Caribe"><span class="hero-indicador-texto">Playas del Caribe</span><span class="hero-indicador-barra"><span></span></span></button>
+            <button type="button" class="hero-indicador" data-diapositiva="1" aria-label="Fotografía 2: viajes con identidad dominicana"><span class="hero-indicador-texto">Sabor dominicano</span><span class="hero-indicador-barra"><span></span></span></button>
+            <button type="button" class="hero-indicador" data-diapositiva="2" aria-label="Fotografía 3: hoteles con vista"><span class="hero-indicador-texto">Hoteles con vista</span><span class="hero-indicador-barra"><span></span></span></button>
+        </div>
         <div class="contenedor hero-contenido">
             <span class="pildora pildora-clara"><span class="pildora-punto" aria-hidden="true"></span>Vive el Caribe dominicano</span>
-            <h1 class="hero-titulo">Tu próxima aventura<br><span class="italica-caribe">empieza en la isla</span></h1>
-            <p class="hero-subtitulo">Hoteles y actividades en las mejores ciudades de República Dominicana, con cupo real y confirmación inmediata.</p>
+            <h1 class="hero-titulo">Tu próxima aventura<br>
+                <span class="italica-caribe linea-destino">empieza en <span class="hero-destino" id="hero-destino" aria-hidden="true"><span class="hero-destino-opcion activa">la isla</span><span class="hero-destino-opcion">Punta Cana</span><span class="hero-destino-opcion">Samaná</span><span class="hero-destino-opcion">Jarabacoa</span><span class="hero-destino-opcion">Puerto Plata</span><span class="hero-destino-opcion">Las Terrenas</span><span class="hero-destino-opcion">Constanza</span><span class="hero-destino-opcion">Pedernales</span></span><span class="visualmente-oculto">la isla</span></span>
+            </h1>
+            <p class="hero-subtitulo">Hoteles, actividades y alquiler de autos en las mejores ciudades de República Dominicana, con disponibilidad real y confirmación inmediata.</p>
 
-            <form id="form-busqueda" class="tarjeta-busqueda" aria-label="Buscar hoteles o actividades">
-                <div class="campo-busqueda">
-                    <label for="busqueda-tipo">Qué buscas</label>
-                    <select id="busqueda-tipo">
-                        <option value="hoteles">Hoteles</option>
-                        <option value="actividades">Actividades</option>
-                    </select>
+            <!-- Buscador: abre explorar.html con los filtros elegidos. -->
+            <form id="form-busqueda" class="tarjeta-busqueda" action="explorar.html" autocomplete="off" aria-label="Buscar hoteles, actividades o autos" data-tipo="hotel">
+                <div class="busqueda-tipos" role="radiogroup" aria-label="Qué buscas">
+                    <label class="busqueda-tipo"><input type="radio" name="tipo" value="hotel" checked><span>Alojamiento</span></label>
+                    <label class="busqueda-tipo"><input type="radio" name="tipo" value="actividad"><span>Actividades</span></label>
+                    <label class="busqueda-tipo"><input type="radio" name="tipo" value="vehiculo"><span>Autos</span></label>
                 </div>
-                <div class="campo-busqueda">
-                    <label for="busqueda-ciudad">Ciudad</label>
-                    <select id="busqueda-ciudad">
-                        <option value="">Todas las ciudades</option>
-                    </select>
+                <div class="busqueda-campos">
+                    <div class="campo-busqueda campo-destino">
+                        <label for="busqueda-destino" id="etiqueta-destino">Destino</label>
+                        <input type="text" id="busqueda-destino" placeholder="¿A dónde vas?" maxlength="100"
+                               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugerencias-destino">
+                        <ul class="sugerencias" id="sugerencias-destino" role="listbox" aria-label="Destinos sugeridos" hidden></ul>
+                    </div>
+                    <div class="campo-busqueda" data-busqueda-tipo="hotel">
+                        <label for="busqueda-entrada">Llegada</label>
+                        <input type="date" id="busqueda-entrada">
+                    </div>
+                    <div class="campo-busqueda" data-busqueda-tipo="hotel">
+                        <label for="busqueda-salida">Salida</label>
+                        <input type="date" id="busqueda-salida">
+                    </div>
+                    <div class="campo-busqueda" data-busqueda-tipo="actividad" hidden>
+                        <label for="busqueda-fecha">Fecha</label>
+                        <input type="date" id="busqueda-fecha">
+                    </div>
+                    <div class="campo-busqueda campo-fecha-hora" data-busqueda-tipo="vehiculo" hidden>
+                        <label for="busqueda-recogida">Recogida</label>
+                        <div class="fecha-hora">
+                            <input type="date" id="busqueda-recogida">
+                            <select id="busqueda-hora-recogida" aria-label="Hora de recogida"></select>
+                        </div>
+                    </div>
+                    <div class="campo-busqueda campo-fecha-hora" data-busqueda-tipo="vehiculo" hidden>
+                        <label for="busqueda-devolucion">Devolución</label>
+                        <div class="fecha-hora">
+                            <input type="date" id="busqueda-devolucion">
+                            <select id="busqueda-hora-devolucion" aria-label="Hora de devolución"></select>
+                        </div>
+                    </div>
+                    <div class="campo-busqueda campo-busqueda-personas" data-busqueda-tipo="hotel actividad">
+                        <label for="busqueda-personas">Personas</label>
+                        <input type="number" id="busqueda-personas" min="1" max="60" value="2">
+                    </div>
+                    <div class="campo-busqueda campo-busqueda-accion">
+                        <button type="submit" class="btn-primario btn-bloque">Buscar</button>
+                    </div>
                 </div>
-                <div class="campo-busqueda">
-                    <label for="busqueda-personas">Personas</label>
-                    <input type="number" id="busqueda-personas" min="1" max="50" value="2">
-                </div>
-                <div class="campo-busqueda campo-busqueda-accion">
-                    <button type="submit" class="btn-primario btn-bloque">Buscar</button>
-                </div>
+                <p class="busqueda-nota" id="busqueda-resumen" aria-live="polite"></p>
             </form>
         </div>
         <div class="franja-decorativa franja-inferior" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
     </section>
 
+    <!-- Cinta de destinos en movimiento continuo (decorativa; se detiene al
+         pasar el cursor y con "reducir movimiento"). -->
+    <div class="cinta-destinos" aria-hidden="true">
+        <div class="cinta-pista">
+            <span>Punta Cana</span><span>Samaná</span><span>Santo Domingo</span><span>Puerto Plata</span><span>Las Terrenas</span><span>Jarabacoa</span><span>La Romana</span><span>Constanza</span><span>Cabarete</span><span>Bahía de las Águilas</span>
+            <span>Punta Cana</span><span>Samaná</span><span>Santo Domingo</span><span>Puerto Plata</span><span>Las Terrenas</span><span>Jarabacoa</span><span>La Romana</span><span>Constanza</span><span>Cabarete</span><span>Bahía de las Águilas</span>
+        </div>
+    </div>
+
     <main>
         <!-- ==================================================================
              DESTINOS
-             Chips generados con las ciudades que tienen publicaciones
-             (GET /api/estadisticas). Al elegir uno se filtra "Destacados".
+             Chips con los destinos que tienen publicaciones
+             (GET /api/estadisticas). Cada uno abre explorar.html?ciudad=.
              ================================================================== -->
         <section class="seccion-destinos" id="destinos">
             <div class="contenedor">
@@ -188,6 +275,10 @@
                     <div class="estadistica-etiqueta">Actividades publicadas</div>
                 </div>
                 <div data-revelar>
+                    <div class="estadistica-numero" id="stat-vehiculos">0</div>
+                    <div class="estadistica-etiqueta">Autos en alquiler</div>
+                </div>
+                <div data-revelar>
                     <div class="estadistica-numero" id="stat-ciudades">0</div>
                     <div class="estadistica-etiqueta">Ciudades</div>
                 </div>
@@ -195,22 +286,100 @@
                     <div class="estadistica-numero" id="stat-empresas">0</div>
                     <div class="estadistica-etiqueta">Empresas registradas</div>
                 </div>
+                <div data-revelar>
+                    <div class="estadistica-numero" id="stat-valoracion">-</div>
+                    <div class="estadistica-etiqueta" id="stat-valoracion-texto">Valoración de viajeros</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             DESTINOS PARA DESCUBRIR
+             Mosaico de fotografías; cada una abre explorar.html filtrado por
+             el destino y muestra su número de publicaciones (js/index.js).
+             ================================================================== -->
+        <section class="seccion seccion-destinos-fotos" id="destinos-fotos">
+            <div class="contenedor">
+                <div class="seccion-encabezado" data-revelar>
+                    <span class="pildora">Destinos</span>
+                    <h2>Descubre la isla, <span class="italica-caribe">destino por destino</span></h2>
+                    <p>De la capital colonial a las montañas del Cibao: elige por dónde empezar.</p>
+                </div>
+                <div class="mosaico-destinos">
+                    <a class="destino-foto destino-principal" href="explorar.html?ciudad=Santo+Domingo" data-revelar>
+                        <img src="img/destinos/santo-domingo.jpg" alt="Calle de la Zona Colonial de Santo Domingo" loading="lazy">
+                        <span class="destino-foto-texto">
+                            <strong>Santo Domingo</strong>
+                            <span>La Zona Colonial, el Malecón y la vida de la capital.</span>
+                            <small data-conteo-destino="Santo Domingo"></small>
+                        </span>
+                    </a>
+                    <a class="destino-foto" href="explorar.html?ciudad=Punta+Cana" data-revelar>
+                        <img src="img/destinos/punta-cana.jpg" alt="Helicóptero en una playa de Punta Cana" loading="lazy">
+                        <span class="destino-foto-texto">
+                            <strong>Punta Cana</strong>
+                            <span>Playas de arena blanca, resorts y excursiones en helicóptero.</span>
+                            <small data-conteo-destino="Punta Cana"></small>
+                        </span>
+                    </a>
+                    <a class="destino-foto" href="explorar.html?ciudad=La+Romana" data-revelar>
+                        <img src="img/destinos/la-romana.jpg" alt="Iglesia de San Estanislao en Altos de Chavón" loading="lazy">
+                        <span class="destino-foto-texto">
+                            <strong>La Romana</strong>
+                            <span>Altos de Chavón, Casa de Campo e Isla Catalina.</span>
+                            <small data-conteo-destino="La Romana"></small>
+                        </span>
+                    </a>
+                    <a class="destino-foto" href="explorar.html?ciudad=Jarabacoa" data-revelar>
+                        <img src="img/destinos/jarabacoa.jpg" alt="Casa de campo azul con vacas en las montañas de Jarabacoa" loading="lazy">
+                        <span class="destino-foto-texto">
+                            <strong>Jarabacoa</strong>
+                            <span>Montañas, ríos y campo en la Cordillera Central.</span>
+                            <small data-conteo-destino="Jarabacoa"></small>
+                        </span>
+                    </a>
+                    <a class="destino-foto" href="explorar.html?ciudad=Constanza" data-revelar>
+                        <img src="img/destinos/constanza.jpg" alt="Agricultores en los cultivos del valle de Constanza" loading="lazy">
+                        <span class="destino-foto-texto">
+                            <strong>Constanza</strong>
+                            <span>El valle agrícola más alto del Caribe, de clima fresco.</span>
+                            <small data-conteo-destino="Constanza"></small>
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             VISTOS RECIENTEMENTE
+             Publicaciones abiertas en este navegador (localStorage, js/comun.js).
+             Oculta si no hay ninguna.
+             ================================================================== -->
+        <section class="seccion seccion-vistos" id="vistos" hidden>
+            <div class="contenedor">
+                <div class="vistos-encabezado">
+                    <div>
+                        <span class="pildora">Sigue donde lo dejaste</span>
+                        <h2>Vistos recientemente</h2>
+                    </div>
+                    <button type="button" class="boton-enlace" id="boton-borrar-vistos">Borrar historial</button>
+                </div>
+                <div class="carrusel-pista pista-vistos" id="grid-vistos"></div>
             </div>
         </section>
 
         <!-- ==================================================================
              SERVICIOS
-             Vitrina de las categorías de servicio que ofrecerán las empresas.
-             Contenido informativo: las fotografías de public/img/servicios/
-             pueden reemplazarse conservando el nombre de archivo.
-             Los id (servicio-*) son los destinos del menú "Servicios".
+             Vitrina de categorías. Cada tarjeta abre explorar.html filtrado por
+             su categoría y muestra la cantidad de publicaciones activas
+             (GET /api/estadisticas, porCategoria).
              ================================================================== -->
         <section class="seccion seccion-servicios" id="servicios">
             <div class="contenedor">
                 <div class="seccion-encabezado" data-revelar>
                     <span class="pildora">Servicios</span>
                     <h2>Todo lo que puedes vivir en la isla</h2>
-                    <p>Dónde quedarte, qué recorrer y cuánta adrenalina quieres: hoteles, tours y aventura de empresas dominicanas.</p>
+                    <p>Dónde quedarte, qué recorrer, cuánta adrenalina quieres y cómo moverte: hoteles, tours, aventura y autos de empresas dominicanas.</p>
                 </div>
 
                 <!-- Alojamiento -->
@@ -223,22 +392,24 @@
                         </div>
                     </div>
                     <div class="grid-servicios grid-servicios-2">
-                        <article class="servicio" id="servicio-hoteles" data-revelar>
-                            <img src="img/servicios/hoteles-resorts.jpg" alt="Hotel entre palmeras frente a una playa de arena blanca" loading="lazy">
+                        <a class="servicio" id="servicio-hoteles-resorts" href="explorar.html?categoria=hoteles-resorts" data-revelar>
+                            <img src="img/servicios/hoteles-resorts.jpg" alt="Piscina de resort con palmeras frente a la playa" loading="lazy">
                             <div class="servicio-texto">
                                 <span class="servicio-etiqueta">Alojamiento</span>
                                 <h4>Hoteles y resorts</h4>
                                 <p>Todo incluido, hoteles boutique y hoteles de ciudad.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="hoteles-resorts">Ver publicaciones</span>
                             </div>
-                        </article>
-                        <article class="servicio" id="servicio-villas" data-revelar>
-                            <img src="img/servicios/villas-cabanas.jpg" alt="Playa con palmeras y arena blanca en Samaná" loading="lazy">
+                        </a>
+                        <a class="servicio" id="servicio-villas-cabanas" href="explorar.html?categoria=villas-cabanas" data-revelar>
+                            <img src="img/servicios/villas-cabanas.jpg" alt="Villa con piscina entre la vegetación tropical" loading="lazy">
                             <div class="servicio-texto">
                                 <span class="servicio-etiqueta">Alojamiento</span>
                                 <h4>Villas y cabañas</h4>
                                 <p>Espacios privados en la playa o en la montaña.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="villas-cabanas">Ver publicaciones</span>
                             </div>
-                        </article>
+                        </a>
                     </div>
                 </div>
 
@@ -248,34 +419,46 @@
                         <span class="grupo-numero">02</span>
                         <div>
                             <h3>Tours</h3>
-                            <p>Recorridos guiados por las costas, las montañas y la cocina dominicana.</p>
+                            <p>Recorridos guiados por las costas, las montañas, la cocina y la historia dominicana.</p>
                         </div>
                     </div>
-                    <div class="grid-servicios grid-servicios-3">
-                        <article class="servicio" id="servicio-tour-playa" data-revelar>
-                            <img src="img/servicios/tour-playa.jpg" alt="Playa de aguas turquesa con palmeras" loading="lazy">
+                    <div class="grid-servicios grid-servicios-4">
+                        <a class="servicio" id="servicio-tour-playa" href="explorar.html?categoria=tour-playa" data-revelar>
+                            <img src="img/servicios/tour-playa.jpg" alt="Cabalgata por la orilla de una playa con cocoteros" loading="lazy">
                             <div class="servicio-texto">
                                 <span class="servicio-etiqueta">Tours</span>
                                 <h4>Tours de playa</h4>
-                                <p>Cayos, bahías y playas vírgenes.</p>
+                                <p>Saona, Bahía de las Águilas y Playa Rincón.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="tour-playa">Ver publicaciones</span>
                             </div>
-                        </article>
-                        <article class="servicio" id="servicio-tour-montana" data-revelar>
-                            <img src="img/servicios/tour-montana.jpg" alt="Lomas verdes y caminos de montaña" loading="lazy">
+                        </a>
+                        <a class="servicio" id="servicio-tour-montana" href="explorar.html?categoria=tour-montana" data-revelar>
+                            <img src="img/servicios/tour-montana.jpg" alt="Teleférico de Puerto Plata entre montañas verdes" loading="lazy">
                             <div class="servicio-texto">
                                 <span class="servicio-etiqueta">Tours</span>
                                 <h4>Tours de montaña</h4>
-                                <p>Senderos, ríos y cascadas del Cibao.</p>
+                                <p>Saltos, valles y el Pico Duarte.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="tour-montana">Ver publicaciones</span>
                             </div>
-                        </article>
-                        <article class="servicio" id="servicio-tour-gastronomico" data-revelar>
-                            <img src="img/servicios/tour-gastronomico.jpg" alt="Casas de campo dominicanas" loading="lazy">
+                        </a>
+                        <a class="servicio" id="servicio-tour-gastronomico" href="explorar.html?categoria=tour-gastronomico" data-revelar>
+                            <img src="img/servicios/tour-gastronomico.jpg" alt="Mesa con platos típicos dominicanos" loading="lazy">
                             <div class="servicio-texto">
                                 <span class="servicio-etiqueta">Tours</span>
                                 <h4>Tours gastronómicos</h4>
-                                <p>Cocina criolla, cacao, café y mercados locales.</p>
+                                <p>Café, cacao, mangú, sancocho y la bandera dominicana.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="tour-gastronomico">Ver publicaciones</span>
                             </div>
-                        </article>
+                        </a>
+                        <a class="servicio" id="servicio-cultural" href="explorar.html?categoria=cultural" data-revelar>
+                            <img src="img/servicios/cultural.jpg" alt="Bailarines de merengue con trajes tricolores" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Tours</span>
+                                <h4>Culturales e históricos</h4>
+                                <p>Zona Colonial, Puerto Plata victoriana y arte taíno.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="cultural">Ver publicaciones</span>
+                            </div>
+                        </a>
                     </div>
                 </div>
 
@@ -285,34 +468,84 @@
                         <span class="grupo-numero">03</span>
                         <div>
                             <h3>Aventura</h3>
-                            <p>Para quienes buscan velocidad, altura y mar abierto.</p>
+                            <p>Para quienes buscan velocidad, altura, mar abierto o un buen campo de golf.</p>
                         </div>
                     </div>
-                    <div class="grid-servicios grid-servicios-3">
-                        <article class="servicio" id="servicio-zip-line" data-revelar>
-                            <img src="img/servicios/zip-line.jpg" alt="Bosque tropical visto desde lo alto" loading="lazy">
+                    <div class="grid-servicios grid-servicios-4">
+                        <a class="servicio" id="servicio-zip-line" href="explorar.html?categoria=zip-line" data-revelar>
+                            <img src="img/servicios/zip-line.jpg" alt="Persona en una tirolesa sobre la montaña" loading="lazy">
                             <div class="servicio-texto">
                                 <span class="servicio-etiqueta">Aventura</span>
-                                <h4>Zip line</h4>
-                                <p>Tirolesas sobre el bosque tropical.</p>
+                                <h4>Zip line y parapente</h4>
+                                <p>Tirolesas en la selva y vuelos sobre los valles.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="zip-line">Ver publicaciones</span>
                             </div>
-                        </article>
-                        <article class="servicio" id="servicio-motocross" data-revelar>
-                            <img src="img/servicios/motocross.jpg" alt="Carretera de montaña entre colinas verdes" loading="lazy">
+                        </a>
+                        <a class="servicio" id="servicio-motocross" href="explorar.html?categoria=motocross" data-revelar>
+                            <img src="img/servicios/motocross.jpg" alt="Buggy atravesando un camino de tierra" loading="lazy">
                             <div class="servicio-texto">
                                 <span class="servicio-etiqueta">Aventura</span>
                                 <h4>Motocross y buggies</h4>
-                                <p>Rutas por caminos rurales y playas.</p>
+                                <p>Cuatrimotos y buggies por caminos rurales y playas.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="motocross">Ver publicaciones</span>
                             </div>
-                        </article>
-                        <article class="servicio" id="servicio-acuaticas" data-revelar>
-                            <img src="img/servicios/acuaticas.jpg" alt="Mar turquesa frente a acantilados" loading="lazy">
+                        </a>
+                        <a class="servicio" id="servicio-acuaticas" href="explorar.html?categoria=acuaticas" data-revelar>
+                            <img src="img/servicios/acuaticas.jpg" alt="Río de aguas turquesa entre paredes de roca" loading="lazy">
                             <div class="servicio-texto">
                                 <span class="servicio-etiqueta">Aventura</span>
                                 <h4>Actividades acuáticas</h4>
-                                <p>Catamarán, snorkel, kayak y buceo.</p>
+                                <p>Snorkel en arrecifes y los 27 Charcos de Damajagua.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="acuaticas">Ver publicaciones</span>
                             </div>
-                        </article>
+                        </a>
+                        <a class="servicio" id="servicio-golf" href="explorar.html?categoria=golf" data-revelar>
+                            <img src="img/servicios/golf.jpg" alt="Golfistas caminando por un campo junto al mar" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Aventura</span>
+                                <h4>Golf</h4>
+                                <p>Campos de clase mundial frente al mar Caribe.</p>
+                                <span class="servicio-conteo" data-conteo-categoria="golf">Ver publicaciones</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Alquiler de autos -->
+                <div class="grupo-servicios" id="categoria-autos">
+                    <div class="grupo-encabezado" data-revelar>
+                        <span class="grupo-numero">04</span>
+                        <div>
+                            <h3>Alquiler de autos</h3>
+                            <p>Recoge tu auto en el aeropuerto y recorre la isla a tu ritmo.</p>
+                        </div>
+                    </div>
+                    <div class="grid-autos">
+                        <a class="servicio servicio-autos" id="servicio-autos" href="explorar.html?tipo=vehiculo" data-revelar>
+                            <img src="img/servicios/alquiler-autos.jpg" alt="Flota de autos estacionados listos para alquilar" loading="lazy">
+                            <div class="servicio-texto">
+                                <span class="servicio-etiqueta">Autos</span>
+                                <h4>Encuentra tu auto ideal</h4>
+                                <p>Económicos, SUV, pickups 4x4, lujo y convertibles en Santo Domingo, Punta Cana, Puerto Plata y Samaná.</p>
+                                <span class="servicio-conteo" data-conteo-tipo="vehiculo">Ver autos</span>
+                            </div>
+                        </a>
+                        <div class="autos-ventajas" data-revelar>
+                            <h4>Alquila con tranquilidad</h4>
+                            <ul class="lista-ventajas">
+                                <li><strong>Precio final desde el inicio</strong><span>Seguro básico, impuestos y asistencia 24 horas incluidos en la tarifa diaria.</span></li>
+                                <li><strong>Cancelación gratuita</strong><span>Cancela sin costo hasta un día antes de la recogida.</span></li>
+                                <li><strong>Recogida en aeropuertos</strong><span>Mostradores en Las Américas, Punta Cana y Puerto Plata.</span></li>
+                                <li><strong>Devolución en otra ciudad</strong><span>Muchos modelos permiten dejar el auto en otro destino.</span></li>
+                            </ul>
+                            <div class="autos-categorias" aria-label="Tipos de auto">
+                                <a class="chip" href="explorar.html?categoria=economico">Económicos<span class="chip-conteo" data-conteo-chip="economico">0</span></a>
+                                <a class="chip" href="explorar.html?categoria=suv">SUV<span class="chip-conteo" data-conteo-chip="suv">0</span></a>
+                                <a class="chip" href="explorar.html?categoria=pickup">Pickups 4x4<span class="chip-conteo" data-conteo-chip="pickup">0</span></a>
+                                <a class="chip" href="explorar.html?categoria=lujo">Lujo<span class="chip-conteo" data-conteo-chip="lujo">0</span></a>
+                                <a class="chip" href="explorar.html?categoria=convertible">Convertibles<span class="chip-conteo" data-conteo-chip="convertible">0</span></a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -320,28 +553,79 @@
 
         <!-- ==================================================================
              DESTACADOS
-             GET /api/hoteles o GET /api/actividades según la pestaña activa,
-             con los filtros ciudad y personas del buscador.
+             GET /api/publicaciones?tipo=hotel|actividad|vehiculo&orden=destacados,
+             presentado como carrusel horizontal.
              ================================================================== -->
         <section class="seccion seccion-destacados" id="destacados">
             <div class="contenedor">
                 <div class="seccion-encabezado" data-revelar>
-                    <span class="pildora">Publicaciones</span>
+                    <span class="pildora">Destacados</span>
                     <h2>Lo mejor de la isla</h2>
-                    <p>Hoteles y actividades publicados por empresas registradas en BookingRD.</p>
+                    <p>Alojamientos, experiencias y autos publicados por empresas dominicanas registradas en BookingRD.</p>
                 </div>
 
-                <div class="tabs-catalogo" role="tablist" aria-label="Tipo de publicación">
-                    <button class="tab-boton activo" data-tab="hoteles" type="button" role="tab" aria-selected="true">Hoteles</button>
-                    <button class="tab-boton" data-tab="actividades" type="button" role="tab" aria-selected="false">Actividades</button>
+                <div class="destacados-barra">
+                    <div class="tabs-catalogo" role="tablist" aria-label="Tipo de publicación">
+                        <button class="tab-boton activo" data-tab="hotel" type="button" role="tab" aria-selected="true">Alojamiento</button>
+                        <button class="tab-boton" data-tab="actividad" type="button" role="tab" aria-selected="false">Actividades</button>
+                        <button class="tab-boton" data-tab="vehiculo" type="button" role="tab" aria-selected="false">Autos</button>
+                    </div>
+                    <a href="explorar.html?tipo=hotel" class="enlace-ver-todo" id="enlace-ver-todo">Ver todo el alojamiento</a>
                 </div>
 
-                <div id="filtro-activo" class="filtro-activo" hidden>
-                    <span id="filtro-activo-texto"></span>
-                    <button type="button" id="boton-quitar-filtro" class="boton-enlace">Quitar filtros</button>
+                <div class="carrusel" id="carrusel-destacados">
+                    <button type="button" class="carrusel-boton anterior" aria-label="Anteriores"><span class="flecha-carrusel"></span></button>
+                    <div class="carrusel-pista" id="grid-destacados" aria-live="polite"></div>
+                    <button type="button" class="carrusel-boton siguiente" aria-label="Siguientes"><span class="flecha-carrusel"></span></button>
                 </div>
+            </div>
+        </section>
 
-                <div id="grid-destacados" class="grid-tarjetas" aria-live="polite"></div>
+        <!-- ==================================================================
+             MAPA DE LA ISLA
+             Todas las publicaciones en el mapa con su precio. Filtro por tipo
+             y lista de destinos con su cantidad de publicaciones.
+             GET /api/publicaciones (los tres tipos), GET /api/estadisticas
+             ================================================================== -->
+        <section class="seccion seccion-mapa" id="mapa">
+            <div class="contenedor">
+                <div class="seccion-encabezado" data-revelar>
+                    <span class="pildora">Mapa</span>
+                    <h2>Recorre la isla de punta a punta</h2>
+                    <p>De la Zona Colonial a Bahía de las Águilas: encuentra en el mapa dónde quedarte, qué hacer y dónde recoger tu auto.</p>
+                </div>
+                <div class="mapa-layout">
+                    <aside class="mapa-panel">
+                        <div class="mapa-filtros" role="group" aria-label="Mostrar en el mapa">
+                            <button type="button" class="mapa-filtro activo" data-mapa-filtro="todos" aria-pressed="true">Todo</button>
+                            <button type="button" class="mapa-filtro" data-mapa-filtro="hotel" aria-pressed="false"><span class="punto-mapa es-hotel" aria-hidden="true"></span>Alojamiento</button>
+                            <button type="button" class="mapa-filtro" data-mapa-filtro="actividad" aria-pressed="false"><span class="punto-mapa es-actividad" aria-hidden="true"></span>Actividades</button>
+                            <button type="button" class="mapa-filtro" data-mapa-filtro="vehiculo" aria-pressed="false"><span class="punto-mapa es-vehiculo" aria-hidden="true"></span>Autos</button>
+                        </div>
+                        <ol class="mapa-destinos" id="mapa-destinos" aria-label="Destinos"></ol>
+                    </aside>
+                    <div class="mapa-contenedor" id="mapa-isla" role="region" aria-label="Mapa de publicaciones en República Dominicana"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================================================================
+             OPINIONES DE VIAJEROS
+             Reseñas reales de reservas disfrutadas, con puntuación alta.
+             GET /api/resenas/destacadas
+             ================================================================== -->
+        <section class="seccion seccion-opiniones" id="opiniones" hidden>
+            <div class="contenedor">
+                <div class="seccion-encabezado" data-revelar>
+                    <span class="pildora pildora-clara">Opiniones verificadas</span>
+                    <h2>Lo que cuentan los viajeros</h2>
+                    <p>Solo quien reservó y vivió la experiencia en BookingRD puede dejar una reseña.</p>
+                </div>
+                <div class="carrusel" id="carrusel-opiniones">
+                    <button type="button" class="carrusel-boton anterior" aria-label="Opiniones anteriores"><span class="flecha-carrusel"></span></button>
+                    <div class="carrusel-pista pista-opiniones" id="grid-opiniones"></div>
+                    <button type="button" class="carrusel-boton siguiente" aria-label="Más opiniones"><span class="flecha-carrusel"></span></button>
+                </div>
             </div>
         </section>
 
@@ -351,8 +635,8 @@
         <section class="seccion seccion-nosotros" id="nosotros">
             <div class="contenedor grid-nosotros">
                 <div class="nosotros-fotos" data-revelar>
-                    <img class="nosotros-foto-principal" src="img/playa-costa-este.jpg" alt="Costa este de República Dominicana" loading="lazy">
-                    <img class="nosotros-foto-secundaria" src="img/foto-palmeras-samana.jpg" alt="Playa con palmeras en Samaná" loading="lazy">
+                    <img class="nosotros-foto-principal" src="img/nosotros-malecon.jpg" alt="Malecón de Santo Domingo frente al mar Caribe" loading="lazy">
+                    <img class="nosotros-foto-secundaria" src="img/nosotros-viajera.jpg" alt="Viajera con su maleta en el aeropuerto" loading="lazy">
                     <div class="nosotros-sello">
                         <strong>100%</strong>
                         <span>empresas dominicanas</span>
@@ -372,11 +656,15 @@
                         </li>
                         <li>
                             <strong>Cupo en tiempo real</strong>
-                            <span>Cada servicio mostrará su disponibilidad actualizada con cada reserva.</span>
+                            <span>La disponibilidad se recalcula con cada reserva, sin sobreventa.</span>
                         </li>
                         <li>
                             <strong>Turismo local</strong>
                             <span>Impulsamos a hoteles, guías y operadores de todas las provincias.</span>
+                        </li>
+                        <li>
+                            <strong>Opiniones verificadas</strong>
+                            <span>Solo quien reservó y vivió la experiencia puede dejar una reseña.</span>
                         </li>
                     </ul>
                 </div>
@@ -389,18 +677,17 @@
              ================================================================== -->
         <section class="franja-empresas" id="empresas">
             <div class="contenedor" data-revelar>
-                <span class="pildora pildora-clara">Para hoteles y operadores</span>
-                <h2>¿Tienes un hotel o un tour en la isla?</h2>
-                <p>Registra tu empresa en BookingRD y prepárate para publicar tus habitaciones y actividades.</p>
+                <span class="pildora pildora-clara">Para hoteles, operadores y rent a car</span>
+                <h2>¿Tienes un hotel, un tour o un rent a car en la isla?</h2>
+                <p>Registra tu empresa, publica tus habitaciones, actividades o tu flota con fotos, y recibe reservas con disponibilidad controlada.</p>
                 <ul class="lista-beneficios">
-                    <li>Registro como alojamiento, actividades o ambos.</li>
+                    <li>Publica alojamiento, actividades o vehículos desde tu panel.</li>
                     <li>Perfil de empresa con RNC y datos de contacto.</li>
-                    <li>Cupo controlado en tiempo real para cada servicio.</li>
+                    <li>Reservas confirmadas al instante, sin sobreventa.</li>
+                    <li>Responde a las reseñas de tus clientes y sigue tu valoración.</li>
                 </ul>
                 <a href="registro.html?tipo=empresa" class="btn-secundario" data-sesion="invitado">Registrar mi empresa</a>
-                <p class="nota-empresa" data-sesion="empresa" hidden>
-                    Tu empresa <span data-nombre-empresa></span> ya está registrada. La publicación de servicios se habilitará en la siguiente fase del proyecto.
-                </p>
+                <a href="panel-empresa.html" class="btn-secundario" data-sesion="empresa" hidden>Ir a mi panel</a>
                 <p class="nota-empresa" data-sesion="cliente" hidden>
                     Tienes una cuenta de viajero. Para registrar una empresa, cierra sesión y crea una cuenta de empresa.
                 </p>
@@ -484,26 +771,29 @@
     <footer class="footer-principal">
         <div class="contenedor footer-grid">
             <div>
-                <a href="#inicio" class="logo-marca">Booking<span class="logo-rd">RD</span></a>
-                <p class="footer-descripcion">Alojamiento, tours y aventura en República Dominicana.</p>
+                <a href="index.html" class="logo-marca">Booking<span class="logo-rd">RD</span></a>
+                <p class="footer-descripcion">Alojamiento, tours, aventura y autos en República Dominicana, de empresas dominicanas.</p>
             </div>
             <div>
-                <h4>Servicios</h4>
-                <a href="#categoria-alojamiento">Alojamiento</a>
-                <a href="#categoria-tours">Tours</a>
-                <a href="#categoria-aventura">Aventura</a>
+                <h4>Explorar</h4>
+                <a href="explorar.html?tipo=hotel">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <a href="explorar.html?categoria=cultural">Cultura e historia</a>
             </div>
             <div>
                 <h4>BookingRD</h4>
-                <a href="#nosotros">Sobre nosotros</a>
-                <a href="#contacto">Contacto</a>
-                <a href="#destacados">Publicaciones</a>
+                <a href="index.html#nosotros">Sobre nosotros</a>
+                <a href="index.html#contacto">Contacto</a>
+                <a href="registro.html?tipo=empresa" data-sesion="invitado">Registrar empresa</a>
             </div>
             <div>
                 <h4>Cuenta</h4>
                 <a href="login.html" data-sesion="invitado">Iniciar sesión</a>
                 <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
-                <a href="registro.html?tipo=empresa" data-sesion="invitado">Registrar empresa</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
                 <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
             </div>
         </div>
@@ -511,7 +801,10 @@
         <p class="footer-copyright">&copy; 2026 BookingRD. Proyecto académico.</p>
     </footer>
 
+    <script src="vendor/leaflet/leaflet.js"></script>
     <script src="js/comun.js"></script>
+    <script src="js/mapa.js"></script>
+    <script src="js/buscador.js"></script>
     <script src="js/index.js"></script>
 </body>
 </html>

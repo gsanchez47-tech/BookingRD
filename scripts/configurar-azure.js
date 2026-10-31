@@ -66,6 +66,12 @@ function normalizarServidor(valor) {
     return servidor;
 }
 
+/** Variables de correo que se conservan al regenerar .env, con su valor por defecto. */
+const VARIABLES_CORREO = [
+    ['SMTP_HOST', ''], ['SMTP_PORT', '587'], ['SMTP_USUARIO', ''], ['SMTP_CLAVE', ''],
+    ['CORREO_REMITENTE', 'BookingRD <no-responder@bookingrd.com>'], ['URL_SITIO', 'http://localhost:3000']
+];
+
 function escribirEnv(datos) {
     const jwtExistente = leerVariableExistente('JWT_SECRET');
     const jwtSecret = jwtExistente && !jwtExistente.startsWith('reemplazar') ? jwtExistente : crypto.randomBytes(48).toString('hex');
@@ -85,6 +91,10 @@ PORT=3000
 
 JWT_SECRET=${jwtSecret}
 JWT_EXPIRES_IN=7d
+
+# Correo (bienvenida y confirmación de reservas). Sin SMTP_HOST se guardan en
+# correos-enviados/. Ver .env.example para Gmail u Outlook.
+${VARIABLES_CORREO.map(([nombre, defecto]) => `${nombre}=${leerVariableExistente(nombre) ?? defecto}`).join('\n')}
 `;
     fs.writeFileSync(ARCHIVO_ENV, contenido, 'utf8');
 }

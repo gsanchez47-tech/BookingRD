@@ -4,6 +4,9 @@ node_modules/
 # Variables de entorno con credenciales
 .env
 
+# Correos guardados en desarrollo cuando no hay SMTP configurado
+correos-enviados/
+
 # Registros y archivos del sistema o del editor
 *.log
 .DS_Store
