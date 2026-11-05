@@ -116,6 +116,28 @@
             </div>
         </section>
 
+        <!-- Por qué BookingRD: cuatro garantías en una franja -->
+        <section class="banda-arena beneficios-banda" aria-label="Por qué reservar con BookingRD">
+            <ul class="contenedor beneficios">
+                <li>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3"></path><rect x="5" y="11" width="14" height="10" rx="2"></rect></svg>
+                    <div><strong>Pago protegido</strong><span>Con tarjeta al reservar o en el destino, con recibo al instante.</span></div>
+                </li>
+                <li>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"></path></svg>
+                    <div><strong>Cancelación gratuita</strong><span>Hasta un día antes, con reembolso automático.</span></div>
+                </li>
+                <li>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.2-8 9-4.6-.8-8-4.5-8-9V6z"></path><path d="M9 12l2 2 4-4"></path></svg>
+                    <div><strong>Empresas verificadas</strong><span>Registradas con RNC y licencia turística.</span></div>
+                </li>
+                <li>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path></svg>
+                    <div><strong>Reseñas reales</strong><span>Solo opina quien reservó y terminó su viaje.</span></div>
+                </li>
+            </ul>
+        </section>
+
         <!-- 3. Destinos: mapa interactivo y ficha con fotografía, oferta y clima -->
         <section class="seccion banda-oscura seccion-mapa" id="destinos" aria-labelledby="titulo-mapa">
             <div class="contenedor">
@@ -135,6 +157,21 @@
                     </div>
                     <div class="ficha-destino" id="ficha-destino" aria-live="polite"></div>
                 </figure>
+            </div>
+        </section>
+
+        <!-- Experiencias por categoría, con su conteo -->
+        <section class="seccion" id="experiencias" aria-labelledby="titulo-experiencias">
+            <div class="contenedor">
+                <div class="seccion-cabecera">
+                    <div>
+                        <p class="etiqueta-caribe">Experiencias</p>
+                        <h2 id="titulo-experiencias">Qué hacer <em>en la isla</em></h2>
+                        <p>Excursiones y aventuras de operadores locales, agrupadas como las buscarías.</p>
+                    </div>
+                    <a class="btn-outline" href="explorar.html?tipo=actividad">Ver todas las actividades</a>
+                </div>
+                <ul class="experiencias" id="lista-experiencias"></ul>
             </div>
         </section>
 
@@ -167,6 +204,35 @@
                     <button type="button" class="boton-enlace" id="boton-borrar-vistos">Borrar historial</button>
                 </div>
                 <div class="rejilla-tarjetas" id="grid-vistos"></div>
+            </div>
+        </section>
+
+        <!-- Cómo funciona: los tres pasos de una reserva -->
+        <section class="seccion banda-arena" aria-labelledby="titulo-pasos">
+            <div class="contenedor">
+                <div class="seccion-cabecera centrada">
+                    <div>
+                        <p class="etiqueta-caribe">Cómo funciona</p>
+                        <h2 id="titulo-pasos">Tu viaje <em>en tres pasos</em></h2>
+                    </div>
+                </div>
+                <ol class="pasos-inicio">
+                    <li>
+                        <span class="paso-numero" aria-hidden="true">1</span>
+                        <h3>Busca y compara</h3>
+                        <p>Filtra por destino, fechas, precio y valoración. La disponibilidad es real, de cada empresa.</p>
+                    </li>
+                    <li>
+                        <span class="paso-numero" aria-hidden="true">2</span>
+                        <h3>Reserva y paga</h3>
+                        <p>Con tarjeta en una ventana segura o en el destino. Recibes el código y el recibo al momento.</p>
+                    </li>
+                    <li>
+                        <span class="paso-numero" aria-hidden="true">3</span>
+                        <h3>Disfruta y opina</h3>
+                        <p>Gestiona o cancela desde Mis reservas y, al volver, cuenta cómo te fue.</p>
+                    </li>
+                </ol>
             </div>
         </section>
 

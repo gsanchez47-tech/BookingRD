@@ -83,6 +83,7 @@ async function cargarEstadisticas() {
             elemento.textContent = textoPublicaciones(totales[elemento.dataset.conteo] || 0);
         });
 
+        pintarExperiencias(datos.porCategoria);
         pintarFicha(estado.destinoElegido);
     } catch (_) {
         document.querySelectorAll('[data-conteo]').forEach((elemento) => { elemento.textContent = ''; });
@@ -208,6 +209,25 @@ function pintarFicha(ciudad) {
             ${total ? `<a class="btn-primario btn-bloque" href="explorar.html?ciudad=${encodeURIComponent(ciudad)}">Ver todo en ${escaparHtml(ciudad)}</a>` : ''}
         </div>`;
     pintarClimaCompacto(document.getElementById('ficha-clima'), ciudad);
+}
+
+/* ----------------------------------------------------------------------------
+   Experiencias por categoría
+   ---------------------------------------------------------------------------- */
+
+/** Categorías de actividad con su conteo; las vacías no se muestran. */
+function pintarExperiencias(porCategoria) {
+    const lista = document.getElementById('lista-experiencias');
+    const categorias = Object.entries(CATALOGOS.categorias)
+        .filter(([clave, c]) => c.tipo === 'actividad' && porCategoria[clave]);
+    lista.innerHTML = categorias.map(([clave, c]) => `
+        <li>
+            <a class="experiencia" href="explorar.html?tipo=actividad&categoria=${encodeURIComponent(clave)}">
+                <span class="experiencia-grupo">${escaparHtml(c.grupo)}</span>
+                <strong>${escaparHtml(c.nombre)}</strong>
+                <span class="experiencia-conteo">${escaparHtml(textoPublicaciones(porCategoria[clave]))}</span>
+            </a>
+        </li>`).join('');
 }
 
 /* ----------------------------------------------------------------------------

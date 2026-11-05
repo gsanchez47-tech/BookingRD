@@ -21,7 +21,7 @@ Sin `.env`, arranca en modo de demostración con todos los datos de ejemplo. Con
 
 | Parte | Detalle |
 |---|---|
-| Inicio | Seis bloques claros: portada con buscador y cifras, qué reservar, mapa de destinos con ficha (foto, oferta y clima), recomendados, opiniones, y empresas con contacto. Sin carruseles ni movimiento automático. |
+| Inicio | Portada con buscador y cifras, qué reservar, garantías, mapa de destinos con ficha (foto, oferta y clima), experiencias por categoría, recomendados, cómo funciona, opiniones, y empresas con contacto. Sin carruseles ni movimiento automático. |
 | Explorar | Todos los filtros en un panel a la izquierda; lista o mapa; siete órdenes; clima del destino; búsqueda en la URL. |
 | Detalle y reserva | Fotografía, características, ubicación y pronóstico, reseñas, políticas, disponibilidad y total en tiempo real, control de cupo en transacción. |
 | Alquiler de autos | Recogida y devolución con hora, ciudad de devolución, edad del conductor, extras, precio por bloques de 24 horas con desglose, disponibilidad por flota. |

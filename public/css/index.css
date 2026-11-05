@@ -2801,6 +2801,65 @@ body:has(.banda-empresas) .pie {
 }
 
 /* ----------------------------------------------------------------------------
+   Por qué BookingRD: franja de cuatro garantías
+   ------------------------------------------------------------------------- */
+
+.beneficios-banda {
+    padding: var(--e-6) 0;
+    border-block: 1px solid rgba(244, 162, 97, 0.25);
+}
+
+.beneficios {
+    display: grid;
+    gap: var(--e-5);
+    margin: 0 auto;
+    list-style: none;
+}
+
+.beneficios li {
+    display: flex;
+    gap: var(--e-3);
+    align-items: flex-start;
+}
+
+.beneficios svg {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--caribe-deep) 0%, var(--azul) 100%);
+    box-shadow: 0 10px 22px -12px rgba(0, 48, 135, 0.8);
+    fill: none;
+    stroke: #fff;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.beneficios strong {
+    display: block;
+    color: var(--azul);
+}
+
+.beneficios span {
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+}
+
+@media (min-width: 640px) {
+    .beneficios {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1040px) {
+    .beneficios {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* ----------------------------------------------------------------------------
    3. Destinos: mapa de la isla y ficha
    ------------------------------------------------------------------------- */
 
@@ -3052,6 +3111,135 @@ body:has(.banda-empresas) .pie {
 
     .ficha-destino {
         margin: 0;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   Experiencias por categoría
+   ------------------------------------------------------------------------- */
+
+.experiencias {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+    gap: var(--e-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Tarjeta con un borde degradado del mar que se enciende al pasar el cursor. */
+.experiencia {
+    position: relative;
+    display: grid;
+    gap: 4px;
+    height: 100%;
+    padding: var(--e-4);
+    border: 1px solid var(--linea);
+    border-radius: 18px;
+    background:
+        radial-gradient(120% 100% at 100% 0%, rgba(0, 180, 216, 0.1) 0%, transparent 55%),
+        var(--superficie);
+    color: var(--tinta);
+    text-decoration: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.experiencia::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    border-radius: 18px 0 0 18px;
+    background: linear-gradient(180deg, var(--caribe) 0%, var(--azul) 100%);
+}
+
+.experiencia:hover {
+    border-color: var(--caribe);
+    box-shadow: 0 0 0 1px var(--caribe), 0 16px 32px -20px rgba(0, 119, 168, 0.6);
+}
+
+.experiencia-grupo {
+    color: var(--caribe-deep);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.experiencia strong {
+    font-family: var(--f-display);
+    font-size: var(--t-l);
+    line-height: 1.2;
+}
+
+.experiencia-conteo {
+    color: var(--tinta-3);
+    font-size: var(--t-s);
+    font-weight: 700;
+}
+
+/* ----------------------------------------------------------------------------
+   Cómo funciona
+   ------------------------------------------------------------------------- */
+
+.pasos-inicio {
+    display: grid;
+    gap: var(--e-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: none;
+}
+
+.pasos-inicio li {
+    position: relative;
+    padding: var(--e-5);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 20px 40px -28px rgba(5, 19, 43, 0.5);
+}
+
+.paso-numero {
+    display: grid;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    margin-bottom: var(--e-3);
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--caribe) 0%, var(--azul) 100%);
+    box-shadow: 0 0 0 6px rgba(0, 180, 216, 0.15), 0 10px 24px -10px rgba(0, 48, 135, 0.8);
+    color: #fff;
+    font-family: var(--f-display);
+    font-size: var(--t-xl);
+    font-weight: 700;
+}
+
+.pasos-inicio h3 {
+    color: var(--azul);
+    font-size: var(--t-l);
+}
+
+.pasos-inicio p {
+    margin-top: var(--e-2);
+    color: var(--tinta-2);
+}
+
+@media (min-width: 900px) {
+    .pasos-inicio {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    /* Línea punteada que une los pasos. */
+    .pasos-inicio li:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: calc(var(--e-5) + 24px);
+        left: calc(var(--e-5) + 60px);
+        right: calc(-1 * var(--e-5));
+        border-top: 2px dashed rgba(0, 119, 168, 0.35);
     }
 }
 
