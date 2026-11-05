@@ -1,4 +1,4 @@
-﻿/*
+/*
 ================================================================================
   BookingRD - Script de instalación de base de datos
 ================================================================================
@@ -22,9 +22,11 @@
     b) SQL Server local: abrir en SSMS con un login administrador y ejecutar
        el script completo (F5).
 
-  Bases creadas con versiones anteriores de este script: las tablas cuya
-  estructura cambió (empresas, hoteles, actividades) se recrean
-  automáticamente; las cuentas de usuario se conservan.
+  Para empezar de cero en una base ya instalada: `npm run bd:reiniciar`
+  (elimina las tablas de BookingRD y vuelve a ejecutar este script).
+
+  Este archivo se genera con `npm run bd:generar` a partir de
+  database/esquema.sql (estructura) y database/datos-demo.js (datos).
 ================================================================================
 */
 
@@ -79,26 +81,6 @@ GO
 -- -----------------------------------------------------------------------------
 -- 3. Tablas e índices
 -- -----------------------------------------------------------------------------
-
--- 3.0 Actualización desde versiones anteriores del esquema.
---     Se eliminan, en orden de dependencias, las tablas cuya estructura cambió.
---     Las versiones anteriores no contenían publicaciones ni reservas reales.
-IF OBJECT_ID(N'dbo.hoteles', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.hoteles', N'tipo_alojamiento') IS NULL
-    OR OBJECT_ID(N'dbo.actividades', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.actividades', N'categoria') IS NULL
-    OR OBJECT_ID(N'dbo.empresas', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.empresas', N'razon_social') IS NULL
-BEGIN
-    IF OBJECT_ID(N'dbo.resenas', N'U') IS NOT NULL DROP TABLE dbo.resenas;
-    IF OBJECT_ID(N'dbo.favoritos', N'U') IS NOT NULL DROP TABLE dbo.favoritos;
-    IF OBJECT_ID(N'dbo.reservas', N'U') IS NOT NULL DROP TABLE dbo.reservas;
-    IF OBJECT_ID(N'dbo.vehiculos', N'U') IS NOT NULL DROP TABLE dbo.vehiculos;
-    IF OBJECT_ID(N'dbo.hoteles', N'U') IS NOT NULL DROP TABLE dbo.hoteles;
-    IF OBJECT_ID(N'dbo.actividades', N'U') IS NOT NULL DROP TABLE dbo.actividades;
-    IF OBJECT_ID(N'dbo.imagenes', N'U') IS NOT NULL DROP TABLE dbo.imagenes;
-    IF OBJECT_ID(N'dbo.empresas', N'U') IS NOT NULL AND COL_LENGTH(N'dbo.empresas', N'razon_social') IS NULL
-        DROP TABLE dbo.empresas;
-    PRINT N'Tablas de una versión anterior actualizadas a la estructura vigente.';
-END
-GO
 
 -- usuarios: cuentas del sistema. rol: cliente | empresa | admin.
 IF OBJECT_ID(N'dbo.usuarios', N'U') IS NULL
@@ -420,78 +402,6 @@ BEGIN
 END
 GO
 
--- 3.9 Actualización de bases instaladas con versiones anteriores (alquiler de
---     autos y categoría Golf). Cada paso se ejecuta solo si hace falta y no
---     modifica los datos existentes.
-IF COL_LENGTH(N'dbo.reservas', N'id_vehiculo') IS NULL
-    ALTER TABLE dbo.reservas ADD
-        id_vehiculo         INT             NULL,
-        hora_inicio         TIME(0)         NULL,
-        hora_fin            TIME(0)         NULL,
-        ciudad_devolucion   NVARCHAR(60)    NULL,
-        edad_conductor      TINYINT         NULL,
-        extras              VARCHAR(200)    NULL,
-        deposito            DECIMAL(10,2)   NULL;
-GO
-IF OBJECT_ID(N'dbo.FK_reservas_vehiculos', N'F') IS NULL
-    ALTER TABLE dbo.reservas ADD CONSTRAINT FK_reservas_vehiculos FOREIGN KEY (id_vehiculo) REFERENCES dbo.vehiculos(id_vehiculo);
-GO
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_reservas_publicacion' AND definition NOT LIKE N'%id_vehiculo%')
-    ALTER TABLE dbo.reservas DROP CONSTRAINT CK_reservas_publicacion;
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_reservas_publicacion')
-    ALTER TABLE dbo.reservas ADD CONSTRAINT CK_reservas_publicacion CHECK (
-        (CASE WHEN id_hotel IS NULL THEN 0 ELSE 1 END
-         + CASE WHEN id_actividad IS NULL THEN 0 ELSE 1 END
-         + CASE WHEN id_vehiculo IS NULL THEN 0 ELSE 1 END) = 1);
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_reservas_fechas_vehiculo')
-    ALTER TABLE dbo.reservas ADD CONSTRAINT CK_reservas_fechas_vehiculo CHECK (
-        id_vehiculo IS NULL OR (fecha_fin IS NOT NULL AND fecha_fin >= fecha_inicio
-                                AND hora_inicio IS NOT NULL AND hora_fin IS NOT NULL AND edad_conductor IS NOT NULL));
-GO
-IF COL_LENGTH(N'dbo.favoritos', N'id_vehiculo') IS NULL
-    ALTER TABLE dbo.favoritos ADD id_vehiculo INT NULL CONSTRAINT FK_favoritos_vehiculos REFERENCES dbo.vehiculos(id_vehiculo);
-GO
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_favoritos_publicacion' AND definition NOT LIKE N'%id_vehiculo%')
-    ALTER TABLE dbo.favoritos DROP CONSTRAINT CK_favoritos_publicacion;
-GO
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_favoritos_publicacion')
-    ALTER TABLE dbo.favoritos ADD CONSTRAINT CK_favoritos_publicacion CHECK (
-        (CASE WHEN id_hotel IS NULL THEN 0 ELSE 1 END
-         + CASE WHEN id_actividad IS NULL THEN 0 ELSE 1 END
-         + CASE WHEN id_vehiculo IS NULL THEN 0 ELSE 1 END) = 1);
-GO
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_empresas_tipo' AND definition NOT LIKE N'%vehiculos%')
-BEGIN
-    ALTER TABLE dbo.empresas DROP CONSTRAINT CK_empresas_tipo;
-    ALTER TABLE dbo.empresas ADD CONSTRAINT CK_empresas_tipo CHECK (tipo_servicio IN ('alojamiento', 'actividades', 'mixto', 'vehiculos'));
-END
-GO
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_empresas_datos_alojamiento' AND definition NOT LIKE N'%vehiculos%')
-BEGIN
-    ALTER TABLE dbo.empresas DROP CONSTRAINT CK_empresas_datos_alojamiento;
-    ALTER TABLE dbo.empresas ADD CONSTRAINT CK_empresas_datos_alojamiento CHECK (
-        tipo_servicio IN ('actividades', 'vehiculos')
-        OR (tipo_alojamiento IS NOT NULL AND numero_habitaciones IS NOT NULL AND numero_habitaciones > 0));
-END
-GO
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_empresas_datos_actividades' AND definition NOT LIKE N'%vehiculos%')
-BEGIN
-    ALTER TABLE dbo.empresas DROP CONSTRAINT CK_empresas_datos_actividades;
-    ALTER TABLE dbo.empresas ADD CONSTRAINT CK_empresas_datos_actividades CHECK (
-        tipo_servicio IN ('alojamiento', 'vehiculos')
-        OR (categorias_actividad IS NOT NULL AND LEN(categorias_actividad) > 0));
-END
-GO
-IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_actividades_categoria' AND definition NOT LIKE N'%golf%')
-BEGIN
-    ALTER TABLE dbo.actividades DROP CONSTRAINT CK_actividades_categoria;
-    ALTER TABLE dbo.actividades ADD CONSTRAINT CK_actividades_categoria CHECK (
-        categoria IN ('tour-playa', 'tour-montana', 'tour-gastronomico', 'cultural', 'zip-line', 'motocross', 'acuaticas', 'golf'));
-END
-GO
-
 -- Índices de soporte para los listados, el panel de empresa y la
 -- disponibilidad de reservas.
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_hoteles_ciudad')
@@ -539,1956 +449,2116 @@ GO
 -- -----------------------------------------------------------------------------
 -- 4. Datos de demostración
 -- -----------------------------------------------------------------------------
--- Contraseñas almacenadas como hash bcrypt (10 rondas):
+-- Generado por scripts/generar-sql.js a partir de database/datos-demo.js.
+-- No editar a mano: los cambios se pierden al volver a generar.
+--
+-- Contraseñas de demostración (hash bcrypt de 10 rondas):
 --   admin@bookingrd.com      Admin123!     administración de la plataforma
 --   cliente@bookingrd.com    Cliente123!   viajero (también los demás viajeros de ejemplo)
---   empresa@bookingrd.com    Empresa123!   Bahía Caribe Tours (mixto)
---   hoteles@bookingrd.com    Empresa123!   Coralia Hotels & Resorts (alojamiento)
---   aventura@bookingrd.com   Empresa123!   Aventura Quisqueya (actividades)
---   montana@bookingrd.com    Empresa123!   Montaña Verde Ecotours (actividades)
---   cultura@bookingrd.com    Empresa123!   Raíces Dominicanas Tours (actividades)
---   autos@bookingrd.com      Empresa123!   Caribe Rent a Car (alquiler de vehículos)
---   rentacar@bookingrd.com   Empresa123!   Ozama Rent a Car (alquiler de vehículos)
--- Cada inserción se omite si el registro ya existe.
+--   empresa@bookingrd.com    Empresa123!   Bahía Caribe Tours
+--   hoteles@bookingrd.com    Empresa123!   Coralia Hotels & Resorts
+--   aventura@bookingrd.com   Empresa123!   Aventura Quisqueya
+--   montana@bookingrd.com    Empresa123!   Montaña Verde Ecotours
+--   cultura@bookingrd.com    Empresa123!   Raíces Dominicanas Tours
+--   autos@bookingrd.com      Empresa123!   Caribe Rent a Car
+--   rentacar@bookingrd.com   Empresa123!   Ozama Rent a Car
+--
+-- Cada inserción se omite si el registro ya existe, por lo que el script
+-- puede ejecutarse más de una vez.
 
--- 4.1 Administración y viajeros
+-- 4.1 Cuentas de administración, viajeros y representantes de empresas
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'admin@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Equipo BookingRD', N'admin@bookingrd.com', NULL, N'$2b$10$cjMFwZZ93VU.uubX76EFruIXUaj1Xjn.4sk3k3Gffx9LC2.S/X2ji', 'admin');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Equipo BookingRD', N'admin@bookingrd.com', NULL, N'$2b$10$cjMFwZZ93VU.uubX76EFruIXUaj1Xjn.4sk3k3Gffx9LC2.S/X2ji', N'admin', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'cliente@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'María Rodríguez', N'cliente@bookingrd.com', N'809-555-0190', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'María Rodríguez', N'cliente@bookingrd.com', N'809-555-0190', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'luis.fernandez@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Luis Fernández', N'luis.fernandez@correo.com', N'829-555-0111', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Luis Fernández', N'luis.fernandez@correo.com', N'829-555-0111', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'carmen.jimenez@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Carmen Jiménez', N'carmen.jimenez@correo.com', N'849-555-0122', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Carmen Jiménez', N'carmen.jimenez@correo.com', N'849-555-0122', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'daniel.ortiz@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Daniel Ortiz', N'daniel.ortiz@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Daniel Ortiz', N'daniel.ortiz@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'ana.castillo@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Ana Belén Castillo', N'ana.castillo@correo.com', N'809-555-0131', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Ana Belén Castillo', N'ana.castillo@correo.com', N'809-555-0131', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'roberto.sanchez@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Roberto Sánchez', N'roberto.sanchez@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Roberto Sánchez', N'roberto.sanchez@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'patricia.nunez@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Patricia Núñez', N'patricia.nunez@correo.com', N'829-555-0144', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Patricia Núñez', N'patricia.nunez@correo.com', N'829-555-0144', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'miguel.herrera@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Miguel Ángel Herrera', N'miguel.herrera@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Miguel Ángel Herrera', N'miguel.herrera@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'yesenia.paulino@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Yesenia Paulino', N'yesenia.paulino@correo.com', N'849-555-0156', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Yesenia Paulino', N'yesenia.paulino@correo.com', N'849-555-0156', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'andres.cabrera@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Andrés Cabrera', N'andres.cabrera@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Andrés Cabrera', N'andres.cabrera@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'laura.vasquez@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Laura Vásquez', N'laura.vasquez@correo.com', N'809-555-0167', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Laura Vásquez', N'laura.vasquez@correo.com', N'809-555-0167', N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'hector.marte@correo.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Héctor Marte', N'hector.marte@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', 'cliente');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Héctor Marte', N'hector.marte@correo.com', NULL, N'$2b$10$vyE683kNv9zJDAxZLG53qeQ0uLLshumOyOtIh6bwoIsmRDrA9JNZ6', N'cliente', 1);
 GO
-
--- 4.2 Empresas y sus representantes
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'empresa@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Carlos Peña', N'empresa@bookingrd.com', N'809-555-0101', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', 'empresa');
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = '131456789')
-    INSERT INTO dbo.empresas
-        (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad,
-         direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones,
-         categorias_actividad, descripcion)
-    SELECT u.id_usuario, N'Gerente general', N'Bahía Caribe Tours', N'Bahía Caribe Tours SRL', '131456789', N'809-538-2020',
-           N'Samaná', N'Samaná', N'Av. Malecón 45, Santa Bárbara de Samaná', NULL, N'MITUR-SAM-0142',
-           'mixto', N'resort', 96, N'tour-playa,tour-montana,cultural', N'Operador de la península de Samaná con alojamiento frente a la bahía y excursiones a cayos, cascadas y parques nacionales.'
-    FROM dbo.usuarios u WHERE u.correo = N'empresa@bookingrd.com';
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Carlos Peña', N'empresa@bookingrd.com', N'809-555-0101', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', N'empresa', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'hoteles@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Laura Méndez', N'hoteles@bookingrd.com', N'809-555-0120', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', 'empresa');
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = '132508741')
-    INSERT INTO dbo.empresas
-        (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad,
-         direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones,
-         categorias_actividad, descripcion)
-    SELECT u.id_usuario, N'Directora comercial', N'Coralia Hotels & Resorts', N'Coralia Hoteles del Caribe SRL', '132508741', N'809-552-4000',
-           N'La Altagracia', N'Punta Cana', N'Blvd. Turístico del Este km 28, Bávaro', N'https://coralia.example.com', N'MITUR-ALT-0877',
-           'alojamiento', N'resort', 1450, NULL, N'Cadena dominicana de resorts y hoteles de playa y ciudad en las principales zonas turísticas del país.'
-    FROM dbo.usuarios u WHERE u.correo = N'hoteles@bookingrd.com';
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Laura Méndez', N'hoteles@bookingrd.com', N'809-555-0120', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', N'empresa', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'aventura@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'José Almonte', N'aventura@bookingrd.com', N'809-555-0133', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', 'empresa');
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = '131998452')
-    INSERT INTO dbo.empresas
-        (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad,
-         direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones,
-         categorias_actividad, descripcion)
-    SELECT u.id_usuario, N'Socio gerente', N'Aventura Quisqueya', N'Aventura Quisqueya Excursiones SRL', '131998452', N'809-466-7788',
-           N'La Altagracia', N'Punta Cana', N'Plaza Bávaro, local 12, Bávaro', NULL, N'MITUR-ALT-1203',
-           'actividades', NULL, NULL, N'tour-playa,zip-line,motocross,acuaticas', N'Excursiones de aventura en el este y el norte del país: buggies, canopy, catamaranes y snorkel.'
-    FROM dbo.usuarios u WHERE u.correo = N'aventura@bookingrd.com';
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'José Almonte', N'aventura@bookingrd.com', N'809-555-0133', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', N'empresa', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'montana@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Ana Lucía Taveras', N'montana@bookingrd.com', N'809-555-0145', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', 'empresa');
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = '130774519')
-    INSERT INTO dbo.empresas
-        (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad,
-         direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones,
-         categorias_actividad, descripcion)
-    SELECT u.id_usuario, N'Administradora', N'Montaña Verde Ecotours', N'Montaña Verde Ecoturismo EIRL', '130774519', N'809-574-2121',
-           N'La Vega', N'Jarabacoa', N'Calle Independencia 18, Jarabacoa', NULL, N'MITUR-LVG-0391',
-           'actividades', NULL, NULL, N'tour-montana,tour-gastronomico,zip-line,motocross', N'Guías certificados de montaña para senderismo, cabalgatas y rutas de café en la Cordillera Central.'
-    FROM dbo.usuarios u WHERE u.correo = N'montana@bookingrd.com';
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Ana Lucía Taveras', N'montana@bookingrd.com', N'809-555-0145', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', N'empresa', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'cultura@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Pedro Guzmán', N'cultura@bookingrd.com', N'809-555-0158', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', 'empresa');
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = '132115630')
-    INSERT INTO dbo.empresas
-        (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad,
-         direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones,
-         categorias_actividad, descripcion)
-    SELECT u.id_usuario, N'Director', N'Raíces Dominicanas Tours', N'Raíces Dominicanas Turismo Cultural SRL', '132115630', N'809-686-3030',
-           N'Distrito Nacional', N'Santo Domingo', N'Calle El Conde 205, Zona Colonial', NULL, N'MITUR-DN-0566',
-           'actividades', NULL, NULL, N'cultural,tour-gastronomico,tour-playa,acuaticas', N'Turismo cultural, histórico y gastronómico con guías locales en todo el país.'
-    FROM dbo.usuarios u WHERE u.correo = N'cultura@bookingrd.com';
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Pedro Guzmán', N'cultura@bookingrd.com', N'809-555-0158', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', N'empresa', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'autos@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Ramón Batista', N'autos@bookingrd.com', N'809-555-0170', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', 'empresa');
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = '132667418')
-    INSERT INTO dbo.empresas
-        (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad,
-         direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones,
-         categorias_actividad, descripcion)
-    SELECT u.id_usuario, N'Gerente de operaciones', N'Caribe Rent a Car', N'Caribe Rent a Car SRL', '132667418', N'809-959-2277',
-           N'La Altagracia', N'Punta Cana', N'Aeropuerto Internacional de Punta Cana, terminal B', NULL, NULL,
-           'vehiculos', NULL, NULL, NULL, N'Alquiler de autos con mostradores en Punta Cana y Las Terrenas: SUV, pickups 4x4 y convertibles con asistencia en carretera 24 horas.'
-    FROM dbo.usuarios u WHERE u.correo = N'autos@bookingrd.com';
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Ramón Batista', N'autos@bookingrd.com', N'809-555-0170', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', N'empresa', 1);
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = N'rentacar@bookingrd.com')
-    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol)
-    VALUES (N'Gabriela Rosario', N'rentacar@bookingrd.com', N'809-555-0181', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', 'empresa');
+    INSERT INTO dbo.usuarios (nombre, correo, telefono, password_hash, rol, activo)
+    VALUES (N'Gabriela Rosario', N'rentacar@bookingrd.com', N'809-555-0181', N'$2b$10$WLULWZV2s8IiRHwjGVPRsO2Cd0/h6EhI1BLOTmSvPxZl6p/5WTFEO', N'empresa', 1);
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = '131778902')
-    INSERT INTO dbo.empresas
-        (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad,
-         direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones,
-         categorias_actividad, descripcion)
-    SELECT u.id_usuario, N'Directora', N'Ozama Rent a Car', N'Ozama Autos y Transporte SRL', '131778902', N'809-549-0303',
-           N'Santo Domingo', N'Boca Chica', N'Aeropuerto Internacional Las Américas, nivel de llegadas', N'https://ozama-rent.example.com', NULL,
-           'vehiculos', NULL, NULL, NULL, N'Flota de autos económicos y ejecutivos en los aeropuertos de Santo Domingo y Puerto Plata, con devolución en otras ciudades.'
+-- 4.2 Empresas
+IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = N'131456789')
+    INSERT INTO dbo.empresas (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad, direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones, categorias_actividad, descripcion)
+    SELECT u.id_usuario, N'Gerente general', N'Bahía Caribe Tours', N'Bahía Caribe Tours SRL', N'131456789', N'809-538-2020', N'Samaná', N'Samaná', N'Av. Malecón 45, Santa Bárbara de Samaná', NULL, N'MITUR-SAM-0142', N'mixto', N'resort', 96, N'tour-playa,tour-montana,cultural', N'Operador de la península de Samaná con alojamiento frente a la bahía y excursiones a cayos, cascadas y parques nacionales.'
+    FROM dbo.usuarios u WHERE u.correo = N'empresa@bookingrd.com';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = N'132508741')
+    INSERT INTO dbo.empresas (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad, direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones, categorias_actividad, descripcion)
+    SELECT u.id_usuario, N'Directora comercial', N'Coralia Hotels & Resorts', N'Coralia Hoteles del Caribe SRL', N'132508741', N'809-552-4000', N'La Altagracia', N'Punta Cana', N'Blvd. Turístico del Este km 28, Bávaro', N'https://coralia.example.com', N'MITUR-ALT-0877', N'alojamiento', N'resort', 1450, NULL, N'Cadena dominicana de resorts y hoteles de playa y ciudad en las principales zonas turísticas del país.'
+    FROM dbo.usuarios u WHERE u.correo = N'hoteles@bookingrd.com';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = N'131998452')
+    INSERT INTO dbo.empresas (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad, direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones, categorias_actividad, descripcion)
+    SELECT u.id_usuario, N'Socio gerente', N'Aventura Quisqueya', N'Aventura Quisqueya Excursiones SRL', N'131998452', N'809-466-7788', N'La Altagracia', N'Punta Cana', N'Plaza Bávaro, local 12, Bávaro', NULL, N'MITUR-ALT-1203', N'actividades', NULL, NULL, N'tour-playa,zip-line,motocross,acuaticas', N'Excursiones de aventura en el este y el norte del país: buggies, canopy, catamaranes y snorkel.'
+    FROM dbo.usuarios u WHERE u.correo = N'aventura@bookingrd.com';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = N'130774519')
+    INSERT INTO dbo.empresas (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad, direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones, categorias_actividad, descripcion)
+    SELECT u.id_usuario, N'Administradora', N'Montaña Verde Ecotours', N'Montaña Verde Ecoturismo EIRL', N'130774519', N'809-574-2121', N'La Vega', N'Jarabacoa', N'Calle Independencia 18, Jarabacoa', NULL, N'MITUR-LVG-0391', N'actividades', NULL, NULL, N'tour-montana,tour-gastronomico,zip-line,motocross', N'Guías certificados de montaña para senderismo, cabalgatas y rutas de café en la Cordillera Central.'
+    FROM dbo.usuarios u WHERE u.correo = N'montana@bookingrd.com';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = N'132115630')
+    INSERT INTO dbo.empresas (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad, direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones, categorias_actividad, descripcion)
+    SELECT u.id_usuario, N'Director', N'Raíces Dominicanas Tours', N'Raíces Dominicanas Turismo Cultural SRL', N'132115630', N'809-686-3030', N'Distrito Nacional', N'Santo Domingo', N'Calle El Conde 205, Zona Colonial', NULL, N'MITUR-DN-0566', N'actividades', NULL, NULL, N'cultural,tour-gastronomico,tour-playa,acuaticas', N'Turismo cultural, histórico y gastronómico con guías locales en todo el país.'
+    FROM dbo.usuarios u WHERE u.correo = N'cultura@bookingrd.com';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = N'132667418')
+    INSERT INTO dbo.empresas (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad, direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones, categorias_actividad, descripcion)
+    SELECT u.id_usuario, N'Gerente de operaciones', N'Caribe Rent a Car', N'Caribe Rent a Car SRL', N'132667418', N'809-959-2277', N'La Altagracia', N'Punta Cana', N'Aeropuerto Internacional de Punta Cana, terminal B', NULL, NULL, N'vehiculos', NULL, NULL, NULL, N'Alquiler de autos con mostradores en Punta Cana y Las Terrenas: SUV, pickups 4x4 y convertibles con asistencia en carretera 24 horas.'
+    FROM dbo.usuarios u WHERE u.correo = N'autos@bookingrd.com';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.empresas WHERE rnc = N'131778902')
+    INSERT INTO dbo.empresas (id_usuario, cargo_representante, nombre_comercial, razon_social, rnc, telefono, provincia, ciudad, direccion, sitio_web, licencia_mitur, tipo_servicio, tipo_alojamiento, numero_habitaciones, categorias_actividad, descripcion)
+    SELECT u.id_usuario, N'Directora', N'Ozama Rent a Car', N'Ozama Autos y Transporte SRL', N'131778902', N'809-549-0303', N'Santo Domingo', N'Boca Chica', N'Aeropuerto Internacional Las Américas, nivel de llegadas', N'https://ozama-rent.example.com', NULL, N'vehiculos', NULL, NULL, NULL, N'Flota de autos económicos y ejecutivos en los aeropuertos de Santo Domingo y Puerto Plata, con devolución en otras ciudades.'
     FROM dbo.usuarios u WHERE u.correo = N'rentacar@bookingrd.com';
 GO
-
--- 4.3 Actualización de los datos de demostración de versiones anteriores
---     Publicaciones retiradas: se eliminan si no tienen reservas; si las
---     tienen, se ocultan. Las renombradas conservan su id y sus reservas.
---     Las fotografías de demostración se actualizan solo si la empresa no
---     subió una propia.
-UPDATE dbo.actividades SET nombre = N'Zona Colonial a pie: Catedral Primada y Parque Colón'
-WHERE nombre = N'Zona Colonial a pie: Catedral Primada y Alcázar de Colón'
-  AND NOT EXISTS (SELECT 1 FROM dbo.actividades x WHERE x.nombre = N'Zona Colonial a pie: Catedral Primada y Parque Colón');
-GO
-UPDATE p SET activo = 0
-FROM dbo.hoteles p
-WHERE p.nombre IN (N'Villa Brisas de Las Terrenas')
-  AND EXISTS (SELECT 1 FROM dbo.reservas r WHERE r.id_hotel = p.id_hotel);
-DELETE p
-FROM dbo.hoteles p
-WHERE p.nombre IN (N'Villa Brisas de Las Terrenas')
-  AND NOT EXISTS (SELECT 1 FROM dbo.reservas r WHERE r.id_hotel = p.id_hotel);
-GO
-UPDATE p SET activo = 0
-FROM dbo.actividades p
-WHERE p.nombre IN (N'Dunas de Baní y playa Las Salinas', N'Tirolesa sobre el bosque de Samaná', N'Tour de buggies por Bávaro y playa Macao', N'Avistamiento de ballenas jorobadas', N'Clase de kitesurf en Cabarete', N'Altos de Chavón y su anfiteatro')
-  AND EXISTS (SELECT 1 FROM dbo.reservas r WHERE r.id_actividad = p.id_actividad);
-DELETE p
-FROM dbo.actividades p
-WHERE p.nombre IN (N'Dunas de Baní y playa Las Salinas', N'Tirolesa sobre el bosque de Samaná', N'Tour de buggies por Bávaro y playa Macao', N'Avistamiento de ballenas jorobadas', N'Clase de kitesurf en Cabarete', N'Altos de Chavón y su anfiteatro')
-  AND NOT EXISTS (SELECT 1 FROM dbo.reservas r WHERE r.id_actividad = p.id_actividad);
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/coralia-grand.jpg', ciudad = N'Punta Cana',
-       direccion = N'Playa Bávaro, Punta Cana', descripcion = N'Resort todo incluido frente a la playa de Bávaro, con piscinas rodeadas de palmeras, cabañas privadas, spa y siete restaurantes.'
-WHERE nombre = N'Coralia Grand Resort & Spa' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/cayo-azul.jpg', ciudad = N'Punta Cana',
-       direccion = N'Playa Arena Gorda, Bávaro', descripcion = N'Palapas privadas sobre la arena blanca de Arena Gorda, piscinas conectadas con la playa y entretenimiento diurno y nocturno.'
-WHERE nombre = N'Cayo Azul All-Inclusive Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/azura-caribbean.jpg', ciudad = N'Santo Domingo',
-       direccion = N'Av. Anacaona, Los Cacicazgos', descripcion = N'Hotel de ciudad frente al Parque Mirador Sur, con vista al mar Caribe, canchas de tenis y piscina tipo laguna.'
-WHERE nombre = N'Azura Caribbean Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/mirador-del-mar.jpg', ciudad = N'Cabarete',
-       direccion = N'Carretera Sosúa-Cabarete, Cabarete', descripcion = N'Suites de piedra y madera con terraza privada, piscina individual y vista al Atlántico. Solo para adultos.'
-WHERE nombre = N'Mirador del Mar Luxury Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/solaria-island.jpg', ciudad = N'La Romana',
-       direccion = N'Playa Dominicus, Bayahibe', descripcion = N'Resort frente a la playa Dominicus, punto de salida de las excursiones a Isla Saona y a Isla Catalina.'
-WHERE nombre = N'Solaria Island Beach Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/bahia-serena.jpg', ciudad = N'Boca Chica',
-       direccion = N'Calle Duarte, Boca Chica', descripcion = N'Habitaciones con ventanales y vista a la ciudad costera, frente a la laguna de aguas tranquilas de Boca Chica y a 15 minutos del aeropuerto de Las Américas.'
-WHERE nombre = N'Bahía Serena Golf & Beach Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/costa-dorada.jpg', ciudad = N'Sosúa',
-       direccion = N'Playa Alicia, Sosúa', descripcion = N'Habitaciones amplias de diseño contemporáneo sobre la bahía de Sosúa, conocida por sus arrecifes de coral y su malecón peatonal.'
-WHERE nombre = N'Costa Dorada Palace Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/palma-real-haven.jpg', ciudad = N'Juan Dolio',
-       direccion = N'Autopista Las Américas km 55, Juan Dolio', descripcion = N'Villas privadas entre cocoteros con piscina, ranchos de techo de cana y área de barbacoa, a cinco minutos de la playa.'
-WHERE nombre = N'Palma Real Haven Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/samana-bay-palms.jpg', ciudad = N'Samaná',
-       direccion = N'Carretera Las Galeras km 4, Samaná', descripcion = N'Habitaciones con vista a una playa de arena blanca en la bahía de Samaná, punto de salida de los paseos a Cayo Levantado y de avistamiento de ballenas.'
-WHERE nombre = N'Samaná Bay Palms Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/paraiso-escondido.jpg', ciudad = N'Las Galeras',
-       direccion = N'Camino a Playa Rincón, Las Galeras', descripcion = N'Villas ecológicas sobre la colina con piscina infinita, jardines tropicales y vista al mar abierto.'
-WHERE nombre = N'Paraíso Escondido Eco-Resort' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/villa-casa-de-campo.jpg', ciudad = N'La Romana',
-       direccion = N'Casa de Campo, La Romana', descripcion = N'Villa de cinco habitaciones sobre el acantilado, con piscina, terraza frente al mar Caribe, playa privada con sombrillas y servicio de mayordomo.'
-WHERE nombre = N'Villa Acantilado Casa de Campo' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/torre-malecon.jpg', ciudad = N'Santo Domingo',
-       direccion = N'Av. Winston Churchill, Piantini, Santo Domingo', descripcion = N'Apartamentos de una y dos habitaciones en el polígono central, con cocina equipada, vista a la ciudad y a pocos minutos del Malecón y la Zona Colonial.'
-WHERE nombre = N'Torre Malecón Suites' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/hotel-el-conde.jpg', ciudad = N'Santo Domingo',
-       direccion = N'Calle El Conde 410, Zona Colonial, Santo Domingo', descripcion = N'Hotel boutique en una casona restaurada de la calle peatonal El Conde, con recepción 24 horas, desayuno criollo y la Catedral Primada a dos cuadras.'
-WHERE nombre = N'Hotel Boutique El Conde' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.hoteles SET imagen_url = N'img/publicaciones/atlantico-business.jpg', ciudad = N'Puerto Plata',
-       direccion = N'Av. Luis Ginebra, Puerto Plata', descripcion = N'Hotel de ciudad frente al Malecón de Puerto Plata, con salas de reuniones, gimnasio y check-in rápido para viajes de trabajo.'
-WHERE nombre = N'Atlántico Business Hotel' AND id_imagen IS NULL AND imagen_url LIKE N'img/publicaciones/%';
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/isla-saona.jpg', ciudad = N'La Romana',
-       punto_encuentro = N'Muelle de Bayahibe', descripcion = N'Navegación en catamarán hasta Isla Saona, almuerzo en la playa y regreso en lancha rápida con parada en la piscina natural.', incluye = N'Transporte, catamarán, almuerzo buffet, bebidas y parada en la piscina natural'
-WHERE nombre = N'Excursión en catamarán a Isla Saona' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/playa-rincon.jpg', ciudad = N'Las Terrenas',
-       punto_encuentro = N'Calle Duarte, Las Terrenas', descripcion = N'Salida desde Las Terrenas, recorrido en lancha por los acantilados de Cabo Cabrón y día libre en Playa Rincón, una de las playas vírgenes más extensas del país.', incluye = N'Transporte, lancha, guía, almuerzo de pescado frito y bebidas'
-WHERE nombre = N'Excursión a Playa Rincón y Cabo Cabrón' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/bahia-aguilas.jpg', ciudad = N'Pedernales',
-       punto_encuentro = N'Muelle de La Cueva, Cabo Rojo', descripcion = N'Travesía en bote por los acantilados y la costa árida del Parque Nacional Jaragua hasta los ocho kilómetros de arena blanca de Bahía de las Águilas.', incluye = N'Bote, guía naturalista, almuerzo y equipo de snorkel'
-WHERE nombre = N'Bahía de las Águilas en bote' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/salto-el-limon.jpg', ciudad = N'Samaná',
-       punto_encuentro = N'Comunidad de El Limón', descripcion = N'Sendero entre la selva húmeda de la península hasta la cascada de 40 metros del Salto El Limón, con baño en la poza.', incluye = N'Guía local, caballo opcional, almuerzo criollo'
-WHERE nombre = N'Senderismo al Salto El Limón' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/pico-duarte.jpg', ciudad = N'Jarabacoa',
-       punto_encuentro = N'La Ciénaga de Manabao', descripcion = N'Expedición de tres días al punto más alto del Caribe (3,098 m) por bosques de pino, con amanecer sobre el mar de nubes junto al busto de Duarte.', incluye = N'Guías certificados, mulas de carga, comidas, permisos y equipo de campamento'
-WHERE nombre = N'Ascenso al Pico Duarte' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/valle-rincon.jpg', ciudad = N'Jarabacoa',
-       punto_encuentro = N'Parque central de Jarabacoa', descripcion = N'Ruta por el Valle del Rincón con visita a los saltos de Jimenoa y Baiguate y miradores sobre el río Yaque del Norte.', incluye = N'Transporte, guía, entrada a los saltos y almuerzo'
-WHERE nombre = N'Valle del Rincón y cascadas de Jarabacoa' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/cabalgata-cafetales.jpg', ciudad = N'Jarabacoa',
-       punto_encuentro = N'Rancho Montaña Verde, Jarabacoa', descripcion = N'Recorrido a caballo por fincas de café, con explicación del proceso del grano y degustación en una casa de campo.', incluye = N'Caballo, guía, cata de café de altura y almuerzo campestre'
-WHERE nombre = N'Cabalgata a los cafetales de la Cordillera' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/ruta-cacao.jpg', ciudad = N'Río San Juan',
-       punto_encuentro = N'Parque central de Río San Juan', descripcion = N'Visita a una comunidad productora de cacao orgánico: del árbol a la tableta de chocolate hecha por los visitantes.', incluye = N'Transporte, visita a la finca, taller de chocolate y almuerzo'
-WHERE nombre = N'Ruta del cacao orgánico' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/desayuno-criollo.jpg', ciudad = N'Santo Domingo',
-       punto_encuentro = N'Mercado Modelo, Av. Mella', descripcion = N'Mañana de sabores: desayuno de mangú con salami, queso frito y huevos, y recorrido por los puestos de frutas, especias y dulces del Mercado Modelo.', incluye = N'Guía gastronómico, desayuno de mangú con los tres golpes, jugos naturales y degustaciones'
-WHERE nombre = N'Desayuno criollo y Mercado Modelo' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/sancocho.jpg', ciudad = N'Boca Chica',
-       punto_encuentro = N'Casa de cocina La Caldera, Boca Chica', descripcion = N'Aprende a preparar el sancocho de siete carnes con víveres de la tierra y compártelo en la mesa con el chef y el grupo.', incluye = N'Ingredientes, chef instructor, recetario y almuerzo'
-WHERE nombre = N'Clase de cocina: sancocho dominicano' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/almuerzo-bandera.jpg', ciudad = N'Juan Dolio',
-       punto_encuentro = N'Comedor Doña Rosa, Juan Dolio', descripcion = N'Arroz blanco, habichuelas guisadas, pollo criollo, ensalada y tostones en un comedor familiar, con la historia de cada plato.', incluye = N'Almuerzo completo, bebida natural y postre de la casa'
-WHERE nombre = N'Almuerzo típico: la bandera dominicana' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/zona-colonial.jpg', ciudad = N'Santo Domingo',
-       punto_encuentro = N'Parque Colón, Zona Colonial', descripcion = N'Recorrido por la primera ciudad del Nuevo Mundo: Catedral Primada, Parque Colón, Alcázar de Colón, Calle Las Damas y Panteón Nacional.', incluye = N'Guía historiador y entradas al Alcázar de Colón y al Museo de las Casas Reales'
-WHERE nombre = N'Zona Colonial a pie: Catedral Primada y Parque Colón' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/los-haitises.jpg', ciudad = N'Samaná',
-       punto_encuentro = N'Muelle de Samaná', descripcion = N'Navegación entre cayos y manglares hasta las cuevas de la Arena y de la Línea, con pictografías taínas.', incluye = N'Lancha, guía, entrada al parque y almuerzo'
-WHERE nombre = N'Parque Nacional Los Haitises y cuevas taínas' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/basilica-higuey.jpg', ciudad = N'Punta Cana',
-       punto_encuentro = N'Recogida en el hotel (zona Bávaro)', descripcion = N'Visita a la Basílica de Nuestra Señora de la Altagracia y al pueblo de estilo mediterráneo de Altos de Chavón, con su anfiteatro sobre el río.', incluye = N'Transporte, guía, entradas y almuerzo'
-WHERE nombre = N'Basílica de Higüey y Altos de Chavón' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/puerto-plata-victoriana.jpg', ciudad = N'Puerto Plata',
-       punto_encuentro = N'Parque Independencia, Puerto Plata', descripcion = N'Casas victorianas, la Calle de la Sombrilla, la Fortaleza San Felipe y el Museo del Ámbar en el centro histórico de Puerto Plata.', incluye = N'Guía local, entrada a la Fortaleza San Felipe y degustación de chocolate'
-WHERE nombre = N'Puerto Plata victoriana y Calle de la Sombrilla' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/monumento-santiago.jpg', ciudad = N'Puerto Plata',
-       punto_encuentro = N'Parque central de Puerto Plata', descripcion = N'Excursión a la ciudad corazón del Cibao: Monumento a los Héroes de la Restauración, Centro León y una fábrica de cigarros artesanales.', incluye = N'Transporte, guía, entrada al Monumento y al Centro León, almuerzo'
-WHERE nombre = N'Santiago de los Caballeros y su Monumento' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/canopy-anamuya.jpg', ciudad = N'Punta Cana',
-       punto_encuentro = N'Recogida en el hotel (zona Bávaro)', descripcion = N'Doce líneas de tirolesa sobre las montañas de Anamuya, con plataformas en los árboles y una línea de 700 metros.', incluye = N'Transporte, equipo certificado, 12 líneas de tirolesa y refrigerio'
-WHERE nombre = N'Canopy en la selva de Anamuya' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/parapente-constanza.jpg', ciudad = N'Constanza',
-       punto_encuentro = N'Mirador de Constanza', descripcion = N'Vuelo biplaza con piloto certificado sobre el valle agrícola más alto del Caribe, sin experiencia previa.', incluye = N'Piloto certificado, equipo completo, fotos y video del vuelo'
-WHERE nombre = N'Vuelo en parapente sobre el valle de Constanza' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/cuatrimoto-constanza.jpg', ciudad = N'Constanza',
-       punto_encuentro = N'Parque central de Constanza', descripcion = N'Recorrido en cuatrimoto por las carreteras y caminos de montaña de Constanza, entre fincas y lomas, hasta las pirámides de Valle Nuevo.', incluye = N'Cuatrimoto, casco, guía, merienda y almuerzo campestre'
-WHERE nombre = N'Ruta en cuatrimoto por Valle Nuevo' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/snorkel-catalina.jpg', ciudad = N'La Romana',
-       punto_encuentro = N'Marina de Casa de Campo', descripcion = N'Snorkel en las paredes de coral de Isla Catalina, con peces tropicales, esponjas y aguas de visibilidad excepcional.', incluye = N'Barco, equipo de snorkel, guía de buceo y almuerzo'
-WHERE nombre = N'Snorkel en los arrecifes de Isla Catalina' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/27-charcos.jpg', ciudad = N'Puerto Plata',
-       punto_encuentro = N'Centro de visitantes de Damajagua, Imbert', descripcion = N'Descenso por saltos y toboganes naturales de piedra caliza en el río Damajagua, acompañado por guías.', incluye = N'Transporte, casco, chaleco, guías y almuerzo'
-WHERE nombre = N'27 Charcos de Damajagua' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/marina-casa-de-campo.jpg', ciudad = N'La Romana',
-       punto_encuentro = N'Marina Casa de Campo, muelle principal', descripcion = N'Salida desde la marina hacia la desembocadura del río Chavón y la costa de La Romana, con parada para nadar y snorkel.', incluye = N'Yate con capitán, bebidas, snorkel en la desembocadura del río Chavón'
-WHERE nombre = N'Paseo en yate por la Marina de Casa de Campo' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/parque-acuatico.jpg', ciudad = N'Punta Cana',
-       punto_encuentro = N'Recepción del parque, Bávaro', descripcion = N'Toboganes de espiral, piscinas y zona infantil para pasar el día en familia, con almuerzo incluido.', incluye = N'Entrada, toboganes, piscinas, almuerzo y casillero'
-WHERE nombre = N'Día de parque acuático en Punta Cana' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-UPDATE dbo.actividades SET imagen_url = N'img/publicaciones/golf-casa-de-campo.jpg', ciudad = N'La Romana',
-       punto_encuentro = N'Casa Club de Casa de Campo, La Romana', descripcion = N'Ronda de 18 hoyos en el campo diseñado por Pete Dye, con siete hoyos junto al mar Caribe. Alquiler de palos disponible.', incluye = N'Green fee de 18 hoyos, carrito compartido, cubeta de práctica y caddie'
-WHERE nombre = N'Golf en Teeth of the Dog, Casa de Campo' AND id_imagen IS NULL AND (imagen_url IS NULL OR imagen_url LIKE N'img/publicaciones/%');
-GO
-
--- 4.4 Hoteles
+-- 4.3 Alojamiento
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Coralia Grand Resort & Spa')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Coralia Grand Resort & Spa', 'resort', N'Punta Cana', N'Playa Bávaro, Punta Cana', N'Resort todo incluido frente a la playa de Bávaro, con piscinas rodeadas de palmeras, cabañas privadas, spa y siete restaurantes.',
-           'todo-incluido,piscina,playa,spa,gimnasio,restaurante,wifi,aire,traslado', 14500, 4, 320, N'img/publicaciones/coralia-grand.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Coralia Grand Resort & Spa', N'resort', N'Punta Cana', N'Playa Bávaro, Punta Cana', N'Resort todo incluido frente a la playa de Bávaro, con piscinas rodeadas de palmeras, cabañas privadas, spa y siete restaurantes.', N'todo-incluido,piscina,playa,spa,gimnasio,restaurante,wifi,aire,traslado', 14500, 4, 320, N'img/publicaciones/coralia-grand.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -300, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Cayo Azul All-Inclusive Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Cayo Azul All-Inclusive Resort', 'resort', N'Punta Cana', N'Playa Arena Gorda, Bávaro', N'Palapas privadas sobre la arena blanca de Arena Gorda, piscinas conectadas con la playa y entretenimiento diurno y nocturno.',
-           'todo-incluido,piscina,playa,restaurante,wifi,aire,gimnasio', 12800, 4, 280, N'img/publicaciones/cayo-azul.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Cayo Azul All-Inclusive Resort', N'resort', N'Punta Cana', N'Playa Arena Gorda, Bávaro', N'Palapas privadas sobre la arena blanca de Arena Gorda, piscinas conectadas con la playa y entretenimiento diurno y nocturno.', N'todo-incluido,piscina,playa,restaurante,wifi,aire,gimnasio', 12800, 4, 280, N'img/publicaciones/cayo-azul.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -297, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Azura Caribbean Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Azura Caribbean Resort', 'hotel', N'Santo Domingo', N'Av. Anacaona, Los Cacicazgos', N'Hotel de ciudad frente al Parque Mirador Sur, con vista al mar Caribe, canchas de tenis y piscina tipo laguna.',
-           'piscina,restaurante,gimnasio,wifi,aire,estacionamiento,traslado', 6900, 3, 180, N'img/publicaciones/azura-caribbean.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Azura Caribbean Resort', N'hotel', N'Santo Domingo', N'Av. Anacaona, Los Cacicazgos', N'Hotel de ciudad frente al Parque Mirador Sur, con vista al mar Caribe, canchas de tenis y piscina tipo laguna.', N'piscina,restaurante,gimnasio,wifi,aire,estacionamiento,traslado', 6900, 3, 180, N'img/publicaciones/azura-caribbean.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -294, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Mirador del Mar Luxury Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Mirador del Mar Luxury Resort', 'boutique', N'Cabarete', N'Carretera Sosúa-Cabarete, Cabarete', N'Suites de piedra y madera con terraza privada, piscina individual y vista al Atlántico. Solo para adultos.',
-           'piscina,spa,restaurante,wifi,aire,desayuno', 9800, 2, 36, N'img/publicaciones/mirador-del-mar.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Mirador del Mar Luxury Resort', N'boutique', N'Cabarete', N'Carretera Sosúa-Cabarete, Cabarete', N'Suites de piedra y madera con terraza privada, piscina individual y vista al Atlántico. Solo para adultos.', N'piscina,spa,restaurante,wifi,aire,desayuno', 9800, 2, 36, N'img/publicaciones/mirador-del-mar.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Solaria Island Beach Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Solaria Island Beach Resort', 'resort', N'La Romana', N'Playa Dominicus, Bayahibe', N'Resort frente a la playa Dominicus, punto de salida de las excursiones a Isla Saona y a Isla Catalina.',
-           'todo-incluido,piscina,playa,restaurante,wifi,aire', 11200, 4, 240, N'img/publicaciones/solaria-island.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Solaria Island Beach Resort', N'resort', N'La Romana', N'Playa Dominicus, Bayahibe', N'Resort frente a la playa Dominicus, punto de salida de las excursiones a Isla Saona y a Isla Catalina.', N'todo-incluido,piscina,playa,restaurante,wifi,aire', 11200, 4, 240, N'img/publicaciones/solaria-island.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -288, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Bahía Serena Golf & Beach Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Bahía Serena Golf & Beach Resort', 'resort', N'Boca Chica', N'Calle Duarte, Boca Chica', N'Habitaciones con ventanales y vista a la ciudad costera, frente a la laguna de aguas tranquilas de Boca Chica y a 15 minutos del aeropuerto de Las Américas.',
-           'todo-incluido,piscina,playa,gimnasio,wifi,aire,estacionamiento', 8700, 4, 150, N'img/publicaciones/bahia-serena.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Bahía Serena Golf & Beach Resort', N'resort', N'Boca Chica', N'Calle Duarte, Boca Chica', N'Habitaciones con ventanales y vista a la ciudad costera, frente a la laguna de aguas tranquilas de Boca Chica y a 15 minutos del aeropuerto de Las Américas.', N'todo-incluido,piscina,playa,gimnasio,wifi,aire,estacionamiento', 8700, 4, 150, N'img/publicaciones/bahia-serena.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -285, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Costa Dorada Palace Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Costa Dorada Palace Resort', 'resort', N'Sosúa', N'Playa Alicia, Sosúa', N'Habitaciones amplias de diseño contemporáneo sobre la bahía de Sosúa, conocida por sus arrecifes de coral y su malecón peatonal.',
-           'todo-incluido,piscina,playa,spa,restaurante,wifi,aire', 9400, 4, 210, N'img/publicaciones/costa-dorada.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Costa Dorada Palace Resort', N'resort', N'Sosúa', N'Playa Alicia, Sosúa', N'Habitaciones amplias de diseño contemporáneo sobre la bahía de Sosúa, conocida por sus arrecifes de coral y su malecón peatonal.', N'todo-incluido,piscina,playa,spa,restaurante,wifi,aire', 9400, 4, 210, N'img/publicaciones/costa-dorada.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -282, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Palma Real Haven Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Palma Real Haven Resort', 'villa', N'Juan Dolio', N'Autopista Las Américas km 55, Juan Dolio', N'Villas privadas entre cocoteros con piscina, ranchos de techo de cana y área de barbacoa, a cinco minutos de la playa.',
-           'piscina,wifi,aire,estacionamiento,mascotas,restaurante', 16500, 8, 12, N'img/publicaciones/palma-real-haven.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Palma Real Haven Resort', N'villa', N'Juan Dolio', N'Autopista Las Américas km 55, Juan Dolio', N'Villas privadas entre cocoteros con piscina, ranchos de techo de cana y área de barbacoa, a cinco minutos de la playa.', N'piscina,wifi,aire,estacionamiento,mascotas,restaurante', 16500, 8, 12, N'img/publicaciones/palma-real-haven.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -279, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Samaná Bay Palms Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Samaná Bay Palms Resort', 'resort', N'Samaná', N'Carretera Las Galeras km 4, Samaná', N'Habitaciones con vista a una playa de arena blanca en la bahía de Samaná, punto de salida de los paseos a Cayo Levantado y de avistamiento de ballenas.',
-           'piscina,playa,restaurante,wifi,aire,desayuno', 7800, 4, 96, N'img/publicaciones/samana-bay-palms.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '131456789';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Samaná Bay Palms Resort', N'resort', N'Samaná', N'Carretera Las Galeras km 4, Samaná', N'Habitaciones con vista a una playa de arena blanca en la bahía de Samaná, punto de salida de los paseos a Cayo Levantado y de avistamiento de ballenas.', N'piscina,playa,restaurante,wifi,aire,desayuno', 7800, 4, 96, N'img/publicaciones/samana-bay-palms.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -276, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Paraíso Escondido Eco-Resort')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Paraíso Escondido Eco-Resort', 'villa', N'Las Galeras', N'Camino a Playa Rincón, Las Galeras', N'Villas ecológicas sobre la colina con piscina infinita, jardines tropicales y vista al mar abierto.',
-           'piscina,desayuno,wifi,spa', 13200, 4, 10, N'img/publicaciones/paraiso-escondido.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131456789';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Paraíso Escondido Eco-Resort', N'villa', N'Las Galeras', N'Camino a Playa Rincón, Las Galeras', N'Villas ecológicas sobre la colina con piscina infinita, jardines tropicales y vista al mar abierto.', N'piscina,desayuno,wifi,spa', 13200, 4, 10, N'img/publicaciones/paraiso-escondido.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -273, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Villa Acantilado Casa de Campo')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Villa Acantilado Casa de Campo', 'villa', N'La Romana', N'Casa de Campo, La Romana', N'Villa de cinco habitaciones sobre el acantilado, con piscina, terraza frente al mar Caribe, playa privada con sombrillas y servicio de mayordomo.',
-           'piscina,playa,wifi,aire,estacionamiento,traslado,desayuno', 38500, 10, 2, N'img/publicaciones/villa-casa-de-campo.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Villa Acantilado Casa de Campo', N'villa', N'La Romana', N'Casa de Campo, La Romana', N'Villa de cinco habitaciones sobre el acantilado, con piscina, terraza frente al mar Caribe, playa privada con sombrillas y servicio de mayordomo.', N'piscina,playa,wifi,aire,estacionamiento,traslado,desayuno', 38500, 10, 2, N'img/publicaciones/villa-casa-de-campo.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -270, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Torre Malecón Suites')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Torre Malecón Suites', 'apartamento', N'Santo Domingo', N'Av. Winston Churchill, Piantini, Santo Domingo', N'Apartamentos de una y dos habitaciones en el polígono central, con cocina equipada, vista a la ciudad y a pocos minutos del Malecón y la Zona Colonial.',
-           'wifi,aire,gimnasio,piscina,estacionamiento', 6200, 4, 24, N'img/publicaciones/torre-malecon.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Torre Malecón Suites', N'apartamento', N'Santo Domingo', N'Av. Winston Churchill, Piantini, Santo Domingo', N'Apartamentos de una y dos habitaciones en el polígono central, con cocina equipada, vista a la ciudad y a pocos minutos del Malecón y la Zona Colonial.', N'wifi,aire,gimnasio,piscina,estacionamiento', 6200, 4, 24, N'img/publicaciones/torre-malecon.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -267, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Hotel Boutique El Conde')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Hotel Boutique El Conde', 'boutique', N'Santo Domingo', N'Calle El Conde 410, Zona Colonial, Santo Domingo', N'Hotel boutique en una casona restaurada de la calle peatonal El Conde, con recepción 24 horas, desayuno criollo y la Catedral Primada a dos cuadras.',
-           'wifi,aire,desayuno,restaurante,traslado', 7400, 3, 28, N'img/publicaciones/hotel-el-conde.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Hotel Boutique El Conde', N'boutique', N'Santo Domingo', N'Calle El Conde 410, Zona Colonial, Santo Domingo', N'Hotel boutique en una casona restaurada de la calle peatonal El Conde, con recepción 24 horas, desayuno criollo y la Catedral Primada a dos cuadras.', N'wifi,aire,desayuno,restaurante,traslado', 7400, 3, 28, N'img/publicaciones/hotel-el-conde.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -264, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Atlántico Business Hotel')
-    INSERT INTO dbo.hoteles
-        (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche,
-         capacidad_personas, habitaciones, imagen_url, destacado)
-    SELECT e.id_empresa, N'Atlántico Business Hotel', 'hotel', N'Puerto Plata', N'Av. Luis Ginebra, Puerto Plata', N'Hotel de ciudad frente al Malecón de Puerto Plata, con salas de reuniones, gimnasio y check-in rápido para viajes de trabajo.',
-           'wifi,aire,gimnasio,piscina,estacionamiento,restaurante', 5600, 2, 60, N'img/publicaciones/atlantico-business.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132508741';
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Atlántico Business Hotel', N'hotel', N'Puerto Plata', N'Av. Luis Ginebra, Puerto Plata', N'Hotel de ciudad frente al Malecón de Puerto Plata, con salas de reuniones, gimnasio y check-in rápido para viajes de trabajo.', N'wifi,aire,gimnasio,piscina,estacionamiento,restaurante', 5600, 2, 60, N'img/publicaciones/atlantico-business.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
-
--- 4.5 Actividades
+IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Palmar de Bávaro Beach Resort')
+    INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Palmar de Bávaro Beach Resort', N'resort', N'Punta Cana', N'Playa Bávaro, Av. Alemania, Punta Cana', N'Resort todo incluido entre cocoteros, con piscinas conectadas por puentes de madera, siete restaurantes y acceso directo a la arena blanca de Bávaro.', N'wifi,piscina,playa,todo-incluido,restaurante,spa,gimnasio,aire,traslado', 16800, 4, 220, N'img/publicaciones/palmar-bavaro.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -258, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132508741';
+GO
+-- 4.4 Actividades
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Excursión en catamarán a Isla Saona')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Excursión en catamarán a Isla Saona', 'tour-playa', N'La Romana', N'Muelle de Bayahibe', N'Navegación en catamarán hasta Isla Saona, almuerzo en la playa y regreso en lancha rápida con parada en la piscina natural.',
-           N'Transporte, catamarán, almuerzo buffet, bebidas y parada en la piscina natural', 9, 5900, 60, N'img/publicaciones/isla-saona.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131998452';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Excursión en catamarán a Isla Saona', N'tour-playa', N'La Romana', N'Muelle de Bayahibe', N'Navegación en catamarán hasta Isla Saona, almuerzo en la playa y regreso en lancha rápida con parada en la piscina natural.', N'Transporte, catamarán, almuerzo buffet, bebidas y parada en la piscina natural', 9, 5900, 60, N'img/publicaciones/isla-saona.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -300, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Excursión a Playa Rincón y Cabo Cabrón')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Excursión a Playa Rincón y Cabo Cabrón', 'tour-playa', N'Las Terrenas', N'Calle Duarte, Las Terrenas', N'Salida desde Las Terrenas, recorrido en lancha por los acantilados de Cabo Cabrón y día libre en Playa Rincón, una de las playas vírgenes más extensas del país.',
-           N'Transporte, lancha, guía, almuerzo de pescado frito y bebidas', 7, 3200, 20, N'img/publicaciones/playa-rincon.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '131456789';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Excursión a Playa Rincón y Cabo Cabrón', N'tour-playa', N'Las Terrenas', N'Calle Duarte, Las Terrenas', N'Salida desde Las Terrenas, recorrido en lancha por los acantilados de Cabo Cabrón y día libre en Playa Rincón, una de las playas vírgenes más extensas del país.', N'Transporte, lancha, guía, almuerzo de pescado frito y bebidas', 7, 3200, 20, N'img/publicaciones/playa-rincon.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -297, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Bahía de las Águilas en bote')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Bahía de las Águilas en bote', 'tour-playa', N'Pedernales', N'Muelle de La Cueva, Cabo Rojo', N'Travesía en bote por los acantilados y la costa árida del Parque Nacional Jaragua hasta los ocho kilómetros de arena blanca de Bahía de las Águilas.',
-           N'Bote, guía naturalista, almuerzo y equipo de snorkel', 7, 3600, 18, N'img/publicaciones/bahia-aguilas.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132115630';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Bahía de las Águilas en bote', N'tour-playa', N'Pedernales', N'Muelle de La Cueva, Cabo Rojo', N'Travesía en bote por los acantilados y la costa árida del Parque Nacional Jaragua hasta los ocho kilómetros de arena blanca de Bahía de las Águilas.', N'Bote, guía naturalista, almuerzo y equipo de snorkel', 7, 3600, 18, N'img/publicaciones/bahia-aguilas.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -294, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Senderismo al Salto El Limón')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Senderismo al Salto El Limón', 'tour-montana', N'Samaná', N'Comunidad de El Limón', N'Sendero entre la selva húmeda de la península hasta la cascada de 40 metros del Salto El Limón, con baño en la poza.',
-           N'Guía local, caballo opcional, almuerzo criollo', 4, 2200, 30, N'img/publicaciones/salto-el-limon.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131456789';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Senderismo al Salto El Limón', N'tour-montana', N'Samaná', N'Comunidad de El Limón', N'Sendero entre la selva húmeda de la península hasta la cascada de 40 metros del Salto El Limón, con baño en la poza.', N'Guía local, caballo opcional, almuerzo criollo', 4, 2200, 30, N'img/publicaciones/salto-el-limon.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ascenso al Pico Duarte')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Ascenso al Pico Duarte', 'tour-montana', N'Jarabacoa', N'La Ciénaga de Manabao', N'Expedición de tres días al punto más alto del Caribe (3,098 m) por bosques de pino, con amanecer sobre el mar de nubes junto al busto de Duarte.',
-           N'Guías certificados, mulas de carga, comidas, permisos y equipo de campamento', 72, 14500, 12, N'img/publicaciones/pico-duarte.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '130774519';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Ascenso al Pico Duarte', N'tour-montana', N'Jarabacoa', N'La Ciénaga de Manabao', N'Expedición de tres días al punto más alto del Caribe (3,098 m) por bosques de pino, con amanecer sobre el mar de nubes junto al busto de Duarte.', N'Guías certificados, mulas de carga, comidas, permisos y equipo de campamento', 72, 14500, 12, N'img/publicaciones/pico-duarte.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -288, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Valle del Rincón y cascadas de Jarabacoa')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Valle del Rincón y cascadas de Jarabacoa', 'tour-montana', N'Jarabacoa', N'Parque central de Jarabacoa', N'Ruta por el Valle del Rincón con visita a los saltos de Jimenoa y Baiguate y miradores sobre el río Yaque del Norte.',
-           N'Transporte, guía, entrada a los saltos y almuerzo', 5, 2400, 20, N'img/publicaciones/valle-rincon.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '130774519';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Valle del Rincón y cascadas de Jarabacoa', N'tour-montana', N'Jarabacoa', N'Parque central de Jarabacoa', N'Ruta por el Valle del Rincón con visita a los saltos de Jimenoa y Baiguate y miradores sobre el río Yaque del Norte.', N'Transporte, guía, entrada a los saltos y almuerzo', 5, 2400, 20, N'img/publicaciones/valle-rincon.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -285, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Cabalgata a los cafetales de la Cordillera')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Cabalgata a los cafetales de la Cordillera', 'tour-gastronomico', N'Jarabacoa', N'Rancho Montaña Verde, Jarabacoa', N'Recorrido a caballo por fincas de café, con explicación del proceso del grano y degustación en una casa de campo.',
-           N'Caballo, guía, cata de café de altura y almuerzo campestre', 4, 2600, 14, N'img/publicaciones/cabalgata-cafetales.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '130774519';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Cabalgata a los cafetales de la Cordillera', N'tour-gastronomico', N'Jarabacoa', N'Rancho Montaña Verde, Jarabacoa', N'Recorrido a caballo por fincas de café, con explicación del proceso del grano y degustación en una casa de campo.', N'Caballo, guía, cata de café de altura y almuerzo campestre', 4, 2600, 14, N'img/publicaciones/cabalgata-cafetales.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -282, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ruta del cacao orgánico')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Ruta del cacao orgánico', 'tour-gastronomico', N'Río San Juan', N'Parque central de Río San Juan', N'Visita a una comunidad productora de cacao orgánico: del árbol a la tableta de chocolate hecha por los visitantes.',
-           N'Transporte, visita a la finca, taller de chocolate y almuerzo', 5, 2300, 20, N'img/publicaciones/ruta-cacao.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132115630';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Ruta del cacao orgánico', N'tour-gastronomico', N'Río San Juan', N'Parque central de Río San Juan', N'Visita a una comunidad productora de cacao orgánico: del árbol a la tableta de chocolate hecha por los visitantes.', N'Transporte, visita a la finca, taller de chocolate y almuerzo', 5, 2300, 20, N'img/publicaciones/ruta-cacao.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -279, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Desayuno criollo y Mercado Modelo')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Desayuno criollo y Mercado Modelo', 'tour-gastronomico', N'Santo Domingo', N'Mercado Modelo, Av. Mella', N'Mañana de sabores: desayuno de mangú con salami, queso frito y huevos, y recorrido por los puestos de frutas, especias y dulces del Mercado Modelo.',
-           N'Guía gastronómico, desayuno de mangú con los tres golpes, jugos naturales y degustaciones', 3, 1800, 16, N'img/publicaciones/desayuno-criollo.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132115630';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Desayuno criollo y Mercado Modelo', N'tour-gastronomico', N'Santo Domingo', N'Mercado Modelo, Av. Mella', N'Mañana de sabores: desayuno de mangú con salami, queso frito y huevos, y recorrido por los puestos de frutas, especias y dulces del Mercado Modelo.', N'Guía gastronómico, desayuno de mangú con los tres golpes, jugos naturales y degustaciones', 3, 1800, 16, N'img/publicaciones/desayuno-criollo.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -276, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Clase de cocina: sancocho dominicano')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Clase de cocina: sancocho dominicano', 'tour-gastronomico', N'Boca Chica', N'Casa de cocina La Caldera, Boca Chica', N'Aprende a preparar el sancocho de siete carnes con víveres de la tierra y compártelo en la mesa con el chef y el grupo.',
-           N'Ingredientes, chef instructor, recetario y almuerzo', 3, 2700, 12, N'img/publicaciones/sancocho.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132115630';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Clase de cocina: sancocho dominicano', N'tour-gastronomico', N'Boca Chica', N'Casa de cocina La Caldera, Boca Chica', N'Aprende a preparar el sancocho de siete carnes con víveres de la tierra y compártelo en la mesa con el chef y el grupo.', N'Ingredientes, chef instructor, recetario y almuerzo', 3, 2700, 12, N'img/publicaciones/sancocho.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -273, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Almuerzo típico: la bandera dominicana')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Almuerzo típico: la bandera dominicana', 'tour-gastronomico', N'Juan Dolio', N'Comedor Doña Rosa, Juan Dolio', N'Arroz blanco, habichuelas guisadas, pollo criollo, ensalada y tostones en un comedor familiar, con la historia de cada plato.',
-           N'Almuerzo completo, bebida natural y postre de la casa', 2, 1200, 24, N'img/publicaciones/almuerzo-bandera.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132115630';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Almuerzo típico: la bandera dominicana', N'tour-gastronomico', N'Juan Dolio', N'Comedor Doña Rosa, Juan Dolio', N'Arroz blanco, habichuelas guisadas, pollo criollo, ensalada y tostones en un comedor familiar, con la historia de cada plato.', N'Almuerzo completo, bebida natural y postre de la casa', 2, 1200, 24, N'img/publicaciones/almuerzo-bandera.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -270, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Zona Colonial a pie: Catedral Primada y Parque Colón')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Zona Colonial a pie: Catedral Primada y Parque Colón', 'cultural', N'Santo Domingo', N'Parque Colón, Zona Colonial', N'Recorrido por la primera ciudad del Nuevo Mundo: Catedral Primada, Parque Colón, Alcázar de Colón, Calle Las Damas y Panteón Nacional.',
-           N'Guía historiador y entradas al Alcázar de Colón y al Museo de las Casas Reales', 3, 1500, 25, N'img/publicaciones/zona-colonial.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132115630';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Zona Colonial a pie: Catedral Primada y Parque Colón', N'cultural', N'Santo Domingo', N'Parque Colón, Zona Colonial', N'Recorrido por la primera ciudad del Nuevo Mundo: Catedral Primada, Parque Colón, Alcázar de Colón, Calle Las Damas y Panteón Nacional.', N'Guía historiador y entradas al Alcázar de Colón y al Museo de las Casas Reales', 3, 1500, 25, N'img/publicaciones/zona-colonial.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -267, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Parque Nacional Los Haitises y cuevas taínas')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Parque Nacional Los Haitises y cuevas taínas', 'cultural', N'Samaná', N'Muelle de Samaná', N'Navegación entre cayos y manglares hasta las cuevas de la Arena y de la Línea, con pictografías taínas.',
-           N'Lancha, guía, entrada al parque y almuerzo', 6, 3400, 24, N'img/publicaciones/los-haitises.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '131456789';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Parque Nacional Los Haitises y cuevas taínas', N'cultural', N'Samaná', N'Muelle de Samaná', N'Navegación entre cayos y manglares hasta las cuevas de la Arena y de la Línea, con pictografías taínas.', N'Lancha, guía, entrada al parque y almuerzo', 6, 3400, 24, N'img/publicaciones/los-haitises.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -264, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Basílica de Higüey y Altos de Chavón')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Basílica de Higüey y Altos de Chavón', 'cultural', N'Punta Cana', N'Recogida en el hotel (zona Bávaro)', N'Visita a la Basílica de Nuestra Señora de la Altagracia y al pueblo de estilo mediterráneo de Altos de Chavón, con su anfiteatro sobre el río.',
-           N'Transporte, guía, entradas y almuerzo', 7, 3900, 30, N'img/publicaciones/basilica-higuey.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132115630';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Basílica de Higüey y Altos de Chavón', N'cultural', N'Punta Cana', N'Recogida en el hotel (zona Bávaro)', N'Visita a la Basílica de Nuestra Señora de la Altagracia y al pueblo de estilo mediterráneo de Altos de Chavón, con su anfiteatro sobre el río.', N'Transporte, guía, entradas y almuerzo', 7, 3900, 30, N'img/publicaciones/basilica-higuey.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Puerto Plata victoriana y Calle de la Sombrilla')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Puerto Plata victoriana y Calle de la Sombrilla', 'cultural', N'Puerto Plata', N'Parque Independencia, Puerto Plata', N'Casas victorianas, la Calle de la Sombrilla, la Fortaleza San Felipe y el Museo del Ámbar en el centro histórico de Puerto Plata.',
-           N'Guía local, entrada a la Fortaleza San Felipe y degustación de chocolate', 3, 1700, 25, N'img/publicaciones/puerto-plata-victoriana.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '131456789';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Puerto Plata victoriana y Calle de la Sombrilla', N'cultural', N'Puerto Plata', N'Parque Independencia, Puerto Plata', N'Casas victorianas, la Calle de la Sombrilla, la Fortaleza San Felipe y el Museo del Ámbar en el centro histórico de Puerto Plata.', N'Guía local, entrada a la Fortaleza San Felipe y degustación de chocolate', 3, 1700, 25, N'img/publicaciones/puerto-plata-victoriana.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -258, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Santiago de los Caballeros y su Monumento')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Santiago de los Caballeros y su Monumento', 'cultural', N'Puerto Plata', N'Parque central de Puerto Plata', N'Excursión a la ciudad corazón del Cibao: Monumento a los Héroes de la Restauración, Centro León y una fábrica de cigarros artesanales.',
-           N'Transporte, guía, entrada al Monumento y al Centro León, almuerzo', 8, 3500, 20, N'img/publicaciones/monumento-santiago.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132115630';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Santiago de los Caballeros y su Monumento', N'cultural', N'Puerto Plata', N'Parque central de Puerto Plata', N'Excursión a la ciudad corazón del Cibao: Monumento a los Héroes de la Restauración, Centro León y una fábrica de cigarros artesanales.', N'Transporte, guía, entrada al Monumento y al Centro León, almuerzo', 8, 3500, 20, N'img/publicaciones/monumento-santiago.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -255, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Canopy en la selva de Anamuya')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Canopy en la selva de Anamuya', 'zip-line', N'Punta Cana', N'Recogida en el hotel (zona Bávaro)', N'Doce líneas de tirolesa sobre las montañas de Anamuya, con plataformas en los árboles y una línea de 700 metros.',
-           N'Transporte, equipo certificado, 12 líneas de tirolesa y refrigerio', 4, 4200, 24, N'img/publicaciones/canopy-anamuya.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131998452';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Canopy en la selva de Anamuya', N'zip-line', N'Punta Cana', N'Recogida en el hotel (zona Bávaro)', N'Doce líneas de tirolesa sobre las montañas de Anamuya, con plataformas en los árboles y una línea de 700 metros.', N'Transporte, equipo certificado, 12 líneas de tirolesa y refrigerio', 4, 4200, 24, N'img/publicaciones/canopy-anamuya.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -252, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Vuelo en parapente sobre el valle de Constanza')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Vuelo en parapente sobre el valle de Constanza', 'zip-line', N'Constanza', N'Mirador de Constanza', N'Vuelo biplaza con piloto certificado sobre el valle agrícola más alto del Caribe, sin experiencia previa.',
-           N'Piloto certificado, equipo completo, fotos y video del vuelo', 2, 5500, 8, N'img/publicaciones/parapente-constanza.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '130774519';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Vuelo en parapente sobre el valle de Constanza', N'zip-line', N'Constanza', N'Mirador de Constanza', N'Vuelo biplaza con piloto certificado sobre el valle agrícola más alto del Caribe, sin experiencia previa.', N'Piloto certificado, equipo completo, fotos y video del vuelo', 2, 5500, 8, N'img/publicaciones/parapente-constanza.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -249, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ruta en cuatrimoto por Valle Nuevo')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Ruta en cuatrimoto por Valle Nuevo', 'motocross', N'Constanza', N'Parque central de Constanza', N'Recorrido en cuatrimoto por las carreteras y caminos de montaña de Constanza, entre fincas y lomas, hasta las pirámides de Valle Nuevo.',
-           N'Cuatrimoto, casco, guía, merienda y almuerzo campestre', 5, 5200, 10, N'img/publicaciones/cuatrimoto-constanza.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '130774519';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Ruta en cuatrimoto por Valle Nuevo', N'motocross', N'Constanza', N'Parque central de Constanza', N'Recorrido en cuatrimoto por las carreteras y caminos de montaña de Constanza, entre fincas y lomas, hasta las pirámides de Valle Nuevo.', N'Cuatrimoto, casco, guía, merienda y almuerzo campestre', 5, 5200, 10, N'img/publicaciones/cuatrimoto-constanza.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -246, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Snorkel en los arrecifes de Isla Catalina')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Snorkel en los arrecifes de Isla Catalina', 'acuaticas', N'La Romana', N'Marina de Casa de Campo', N'Snorkel en las paredes de coral de Isla Catalina, con peces tropicales, esponjas y aguas de visibilidad excepcional.',
-           N'Barco, equipo de snorkel, guía de buceo y almuerzo', 7, 4600, 40, N'img/publicaciones/snorkel-catalina.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131998452';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Snorkel en los arrecifes de Isla Catalina', N'acuaticas', N'La Romana', N'Marina de Casa de Campo', N'Snorkel en las paredes de coral de Isla Catalina, con peces tropicales, esponjas y aguas de visibilidad excepcional.', N'Barco, equipo de snorkel, guía de buceo y almuerzo', 7, 4600, 40, N'img/publicaciones/snorkel-catalina.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -243, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'27 Charcos de Damajagua')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'27 Charcos de Damajagua', 'acuaticas', N'Puerto Plata', N'Centro de visitantes de Damajagua, Imbert', N'Descenso por saltos y toboganes naturales de piedra caliza en el río Damajagua, acompañado por guías.',
-           N'Transporte, casco, chaleco, guías y almuerzo', 5, 3100, 30, N'img/publicaciones/27-charcos.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '131998452';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'27 Charcos de Damajagua', N'acuaticas', N'Puerto Plata', N'Centro de visitantes de Damajagua, Imbert', N'Descenso por saltos y toboganes naturales de piedra caliza en el río Damajagua, acompañado por guías.', N'Transporte, casco, chaleco, guías y almuerzo', 5, 3100, 30, N'img/publicaciones/27-charcos.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -240, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Paseo en yate por la Marina de Casa de Campo')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Paseo en yate por la Marina de Casa de Campo', 'acuaticas', N'La Romana', N'Marina Casa de Campo, muelle principal', N'Salida desde la marina hacia la desembocadura del río Chavón y la costa de La Romana, con parada para nadar y snorkel.',
-           N'Yate con capitán, bebidas, snorkel en la desembocadura del río Chavón', 4, 7800, 12, N'img/publicaciones/marina-casa-de-campo.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131998452';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Paseo en yate por la Marina de Casa de Campo', N'acuaticas', N'La Romana', N'Marina Casa de Campo, muelle principal', N'Salida desde la marina hacia la desembocadura del río Chavón y la costa de La Romana, con parada para nadar y snorkel.', N'Yate con capitán, bebidas, snorkel en la desembocadura del río Chavón', 4, 7800, 12, N'img/publicaciones/marina-casa-de-campo.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -237, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Día de parque acuático en Punta Cana')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Día de parque acuático en Punta Cana', 'acuaticas', N'Punta Cana', N'Recepción del parque, Bávaro', N'Toboganes de espiral, piscinas y zona infantil para pasar el día en familia, con almuerzo incluido.',
-           N'Entrada, toboganes, piscinas, almuerzo y casillero', 6, 2900, 80, N'img/publicaciones/parque-acuatico.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '131998452';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Día de parque acuático en Punta Cana', N'acuaticas', N'Punta Cana', N'Recepción del parque, Bávaro', N'Toboganes de espiral, piscinas y zona infantil para pasar el día en familia, con almuerzo incluido.', N'Entrada, toboganes, piscinas, almuerzo y casillero', 6, 2900, 80, N'img/publicaciones/parque-acuatico.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -234, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Golf en Teeth of the Dog, Casa de Campo')
-    INSERT INTO dbo.actividades
-        (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas,
-         precio_persona, cupo_diario, imagen_url, destacado)
-    SELECT e.id_empresa, N'Golf en Teeth of the Dog, Casa de Campo', 'golf', N'La Romana', N'Casa Club de Casa de Campo, La Romana', N'Ronda de 18 hoyos en el campo diseñado por Pete Dye, con siete hoyos junto al mar Caribe. Alquiler de palos disponible.',
-           N'Green fee de 18 hoyos, carrito compartido, cubeta de práctica y caddie', 5, 18500, 16, N'img/publicaciones/golf-casa-de-campo.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131998452';
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Golf en Teeth of the Dog, Casa de Campo', N'golf', N'La Romana', N'Casa Club de Casa de Campo, La Romana', N'Ronda de 18 hoyos en el campo diseñado por Pete Dye, con siete hoyos junto al mar Caribe. Alquiler de palos disponible.', N'Green fee de 18 hoyos, carrito compartido, cubeta de práctica y caddie', 5, 18500, 16, N'img/publicaciones/golf-casa-de-campo.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -231, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
-
--- 4.5b Vehículos de alquiler
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Parque Nacional Los Tres Ojos')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Parque Nacional Los Tres Ojos', N'cultural', N'Santo Domingo', N'Entrada del parque, Av. Las Américas, Santo Domingo Este', N'Descenso guiado a las cuatro lagunas de agua dulce dentro de cavernas de piedra caliza, con cruce en balsa hacia el cuarto ojo y explicación de su uso por los taínos.', N'Guía, entrada al parque, cruce en balsa y agua', 2.5, 1450, 30, N'img/publicaciones/tres-ojos.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -228, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Plaza de la Cultura y Biblioteca Nacional')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Plaza de la Cultura y Biblioteca Nacional', N'cultural', N'Santo Domingo', N'Monumento a Lemba, Plaza de la Cultura, Av. Máximo Gómez', N'Recorrido por los museos de la Plaza de la Cultura, el Teatro Nacional y la Biblioteca Nacional Pedro Henríquez Ureña, con la historia del cimarrón Lemba frente a su monumento.', N'Guía de historia, entradas a dos museos y transporte desde la Zona Colonial', 4, 2200, 20, N'img/publicaciones/plaza-cultura.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -225, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Noche de tambores y son en la Zona Colonial')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Noche de tambores y son en la Zona Colonial', N'cultural', N'Santo Domingo', N'Parque Colón, frente a la Catedral Primada', N'Paseo nocturno por las calles iluminadas de la Ciudad Colonial que termina en una peña de son y tambores con músicos locales y clase corta de baile.', N'Guía, clase de baile, una bebida y entrada a la peña', 3, 1900, 24, N'img/publicaciones/tambores-zona-colonial.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -222, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ruta de bachata y karaoke en Sosúa')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Ruta de bachata y karaoke en Sosúa', N'cultural', N'Sosúa', N'Calle Pedro Clisante, Sosúa', N'Noche por los bares de Sosúa con un anfitrión local: bachata en vivo, karaoke y la historia musical de la costa norte, con transporte de regreso al hotel.', N'Anfitrión, dos bebidas, entradas y transporte de regreso', 4, 2400, 16, N'img/publicaciones/bachata-sosua.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -219, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132115630';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Mirador de San José de Ocoa por Valle Nuevo')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Mirador de San José de Ocoa por Valle Nuevo', N'tour-montana', N'Constanza', N'Parque central de Constanza', N'Travesía en 4x4 por el Parque Nacional Valle Nuevo hasta los miradores de San José de Ocoa, con parada en las Pirámides y almuerzo campestre.', N'Transporte 4x4, guía, almuerzo y entrada al parque', 8, 3900, 12, N'img/publicaciones/mirador-ocoa.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -216, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'130774519';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Tirolesa sobre la península de Samaná')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Tirolesa sobre la península de Samaná', N'zip-line', N'Samaná', N'Base de la tirolesa, carretera Samaná - Las Galeras km 6', N'Doce líneas de tirolesa sobre el bosque húmedo con vista a la bahía de Samaná, incluida la línea final de 600 metros. Apta desde los 8 años.', N'Equipo de seguridad, guías certificados, transporte desde Samaná y fruta', 3, 4300, 40, N'img/publicaciones/tirolesa-samana.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -213, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Vuelo en helicóptero sobre Punta Cana')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Vuelo en helicóptero sobre Punta Cana', N'zip-line', N'Punta Cana', N'Helipuerto de Bávaro, Av. Barceló', N'Vuelo panorámico de 20 minutos sobre las playas de Bávaro, Cabeza de Toro y Cap Cana, con salida desde Bávaro y recogida en tu hotel.', N'Vuelo, piloto, auriculares, recogida y regreso al hotel', 1.5, 9800, 18, N'img/publicaciones/helicoptero-punta-cana.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -210, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Paseo en yate privado desde Boca Chica')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Paseo en yate privado desde Boca Chica', N'acuaticas', N'Boca Chica', N'Marina Zarpar, Boca Chica', N'Yate privado para hasta 10 personas con parada para nadar en las aguas tranquilas de la bahía de Boca Chica y en La Matica, con música y bebidas a bordo.', N'Capitán, tripulación, bebidas, snacks y equipo de snorkel', 4, 5200, 10, N'img/publicaciones/yate-boca-chica.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -207, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Catamarán privado por la bahía de Samaná')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Catamarán privado por la bahía de Samaná', N'tour-playa', N'Samaná', N'Muelle turístico de Samaná, Malecón', N'Catamarán a motor para grupos pequeños: Cayo Levantado, la costa de Los Haitises y, entre enero y marzo, avistamiento de ballenas jorobadas.', N'Capitán, guía, almuerzo a bordo, bebidas y entrada a Cayo Levantado', 6, 6900, 12, N'img/publicaciones/catamaran-samana.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -204, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131456789';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Moto acuática en playa Bávaro')
+    INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Moto acuática en playa Bávaro', N'acuaticas', N'Punta Cana', N'Playa Bávaro, frente al Palmar de Bávaro Beach Resort', N'Media hora en moto acuática por la costa de Bávaro con instructor, para una o dos personas por moto. No se necesita experiencia.', N'Moto acuática, chaleco, instrucción y combustible', 0.5, 3200, 30, N'img/publicaciones/moto-acuatica.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -201, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131998452';
+GO
+-- 4.5 Autos de alquiler
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Toyota Corolla o similar')
-    INSERT INTO dbo.vehiculos
-        (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas,
-         aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima,
-         cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado)
-    SELECT e.id_empresa, N'Toyota Corolla o similar', N'Toyota', N'Corolla', 2024, 'economico',
-           'automatica', 'gasolina', 5, 4, 2, 1, NULL,
-           N'Santo Domingo', N'Aeropuerto Internacional Las Américas (SDQ), mostrador en llegadas', N'Sedán económico y de bajo consumo, ideal para moverte por la capital y recorrer el país. Recógelo al aterrizar en Las Américas.', N'Seguro básico de colisión con deducible, asistencia en carretera 24 horas, kilometraje ilimitado', 2900, 15000,
-           21, 600, 4500, 8, N'img/publicaciones/toyota-corolla.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131778902';
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Toyota Corolla o similar', N'Toyota', N'Corolla', 2024, N'economico', N'automatica', N'gasolina', 5, 4, 2, 1, NULL, N'Santo Domingo', N'Aeropuerto Internacional Las Américas (SDQ), mostrador en llegadas', N'Sedán económico y de bajo consumo, ideal para moverte por la capital y recorrer el país. Recógelo al aterrizar en Las Américas.', N'Seguro básico de colisión con deducible, asistencia en carretera 24 horas, kilometraje ilimitado', 2900, 15000, 21, 600, 4500, 8, N'img/publicaciones/toyota-corolla.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -300, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131778902';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Mercedes-Benz Clase C')
-    INSERT INTO dbo.vehiculos
-        (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas,
-         aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima,
-         cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado)
-    SELECT e.id_empresa, N'Mercedes-Benz Clase C', N'Mercedes-Benz', N'C 200', 2023, 'lujo',
-           'automatica', 'gasolina', 5, 4, 3, 1, NULL,
-           N'Santo Domingo', N'Aeropuerto Internacional Las Américas (SDQ), mostrador en llegadas', N'Sedán ejecutivo con interior de piel, asistente de estacionamiento y Apple CarPlay. Para viajes de negocios o una ocasión especial.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, entrega con tanque lleno', 9500, 45000,
-           25, NULL, 6000, 3, N'img/publicaciones/mercedes-clase-c.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '131778902';
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Mercedes-Benz Clase C', N'Mercedes-Benz', N'C 200', 2023, N'lujo', N'automatica', N'gasolina', 5, 4, 3, 1, NULL, N'Santo Domingo', N'Aeropuerto Internacional Las Américas (SDQ), mostrador en llegadas', N'Sedán ejecutivo con interior de piel, asistente de estacionamiento y Apple CarPlay. Para viajes de negocios o una ocasión especial.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, entrega con tanque lleno', 9500, 45000, 25, NULL, 6000, 3, N'img/publicaciones/mercedes-clase-c.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -297, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131778902';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Ford Mustang Convertible')
-    INSERT INTO dbo.vehiculos
-        (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas,
-         aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima,
-         cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado)
-    SELECT e.id_empresa, N'Ford Mustang Convertible', N'Ford', N'Mustang EcoBoost Convertible', 2023, 'convertible',
-           'automatica', 'gasolina', 4, 2, 1, 1, 300,
-           N'Puerto Plata', N'Aeropuerto Internacional Gregorio Luperón (POP), mostrador en llegadas', N'Descapotable para recorrer la costa norte entre Puerto Plata, Sosúa y Cabarete con la capota abajo.', N'Seguro de colisión con deducible, asistencia 24 horas, 300 km diarios', 8900, 40000,
-           25, NULL, NULL, 2, N'img/publicaciones/ford-mustang.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '131778902';
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Ford Mustang Convertible', N'Ford', N'Mustang EcoBoost Convertible', 2023, N'convertible', N'automatica', N'gasolina', 4, 2, 1, 1, 300, N'Puerto Plata', N'Aeropuerto Internacional Gregorio Luperón (POP), mostrador en llegadas', N'Descapotable para recorrer la costa norte entre Puerto Plata, Sosúa y Cabarete con la capota abajo.', N'Seguro de colisión con deducible, asistencia 24 horas, 300 km diarios', 8900, 40000, 25, NULL, NULL, 2, N'img/publicaciones/ford-mustang.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -294, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131778902';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Cadillac Escalade')
-    INSERT INTO dbo.vehiculos
-        (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas,
-         aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima,
-         cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado)
-    SELECT e.id_empresa, N'Cadillac Escalade', N'Cadillac', N'Escalade', 2024, 'suv',
-           'automatica', 'gasolina', 7, 5, 5, 1, NULL,
-           N'Punta Cana', N'Aeropuerto Internacional de Punta Cana (PUJ), terminal B', N'SUV de lujo de tres filas para familias o grupos con mucho equipaje. Asientos de piel, pantalla trasera y techo panorámico.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, kilometraje ilimitado', 14500, 60000,
-           25, NULL, 7500, 2, N'img/publicaciones/cadillac-escalade.jpg', 1
-    FROM dbo.empresas e WHERE e.rnc = '132667418';
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Cadillac Escalade', N'Cadillac', N'Escalade', 2024, N'suv', N'automatica', N'gasolina', 7, 5, 5, 1, NULL, N'Punta Cana', N'Aeropuerto Internacional de Punta Cana (PUJ), terminal B', N'SUV de lujo de tres filas para familias o grupos con mucho equipaje. Asientos de piel, pantalla trasera y techo panorámico.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, kilometraje ilimitado', 14500, 60000, 25, NULL, 7500, 2, N'img/publicaciones/cadillac-escalade.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132667418';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Jeep Gladiator 4x4')
-    INSERT INTO dbo.vehiculos
-        (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas,
-         aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima,
-         cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado)
-    SELECT e.id_empresa, N'Jeep Gladiator 4x4', N'Jeep', N'Gladiator Rubicon', 2023, 'pickup',
-           'automatica', 'gasolina', 5, 4, 4, 1, 250,
-           N'Las Terrenas', N'Oficina Las Terrenas, Calle Duarte frente al Pueblo de los Pescadores', N'Pickup 4x4 con techo desmontable para llegar a Playa Rincón, Playa Frontón y los caminos de montaña de la península de Samaná.', N'Seguro de colisión con deducible, asistencia 24 horas, 250 km diarios', 7800, 35000,
-           25, NULL, 5500, 3, N'img/publicaciones/jeep-gladiator.jpg', 0
-    FROM dbo.empresas e WHERE e.rnc = '132667418';
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Jeep Gladiator 4x4', N'Jeep', N'Gladiator Rubicon', 2023, N'pickup', N'automatica', N'gasolina', 5, 4, 4, 1, 250, N'Las Terrenas', N'Oficina Las Terrenas, Calle Duarte frente al Pueblo de los Pescadores', N'Pickup 4x4 con techo desmontable para llegar a Playa Rincón, Playa Frontón y los caminos de montaña de la península de Samaná.', N'Seguro de colisión con deducible, asistencia 24 horas, 250 km diarios', 7800, 35000, 25, NULL, 5500, 3, N'img/publicaciones/jeep-gladiator.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -288, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132667418';
 GO
-
--- 4.6 Reservas de ejemplo (fechas relativas a la instalación)
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD7K2M9QA')
+IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Kia K7 o similar')
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Kia K7 o similar', N'Kia', N'K7', 2023, N'sedan', N'automatica', N'gasolina', 5, 4, 3, 1, NULL, N'Santo Domingo', N'Oficina Piantini, Av. Abraham Lincoln esq. Gustavo Mejía Ricart', N'Sedán grande y silencioso con cámara de reversa y asientos amplios atrás, cómodo para viajes largos entre la capital y el interior.', N'Seguro básico de colisión con deducible, asistencia 24 horas, kilometraje ilimitado', 4300, 20000, 23, 700, 4500, 4, N'img/publicaciones/kia-k7.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -285, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131778902';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Volvo XC40')
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Volvo XC40', N'Volvo', N'XC40', 2024, N'lujo', N'automatica', N'hibrido', 5, 5, 3, 1, NULL, N'Santo Domingo', N'Aeropuerto Internacional Las Américas (SDQ), mostrador en llegadas', N'SUV compacto premium híbrido, con techo panorámico, asistente de carril y sonido de alta gama. Bajo consumo para recorrer la costa este.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, entrega con tanque lleno', 8200, 40000, 25, NULL, 6000, 2, N'img/publicaciones/volvo-xc40.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -282, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131778902';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Honda CR-V')
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Honda CR-V', N'Honda', N'CR-V Touring', 2025, N'suv', N'automatica', N'gasolina', 5, 5, 4, 1, NULL, N'Punta Cana', N'Aeropuerto Internacional de Punta Cana (PUJ), terminal B', N'SUV familiar con amplio maletero, Apple CarPlay y control de crucero adaptativo. La opción equilibrada para moverse entre los resorts y Higüey.', N'Seguro de colisión con deducible, asistencia 24 horas, kilometraje ilimitado', 5600, 25000, 23, 800, 5000, 6, N'img/publicaciones/honda-crv.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -279, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132667418';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Suzuki Jimny 4x4')
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Suzuki Jimny 4x4', N'Suzuki', N'Jimny 5 puertas', 2025, N'compacto', N'manual', N'gasolina', 4, 5, 2, 1, 250, N'Las Terrenas', N'Oficina Las Terrenas, Calle Duarte frente al Pueblo de los Pescadores', N'Todoterreno compacto con tracción 4x4 y reductora, fácil de estacionar en el pueblo y capaz en los caminos de tierra hacia las playas de la península.', N'Seguro de colisión con deducible, asistencia 24 horas, 250 km diarios', 4100, 20000, 21, 600, 4500, 4, N'img/publicaciones/suzuki-jimny.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -276, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132667418';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Jeep Wrangler Unlimited')
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Jeep Wrangler Unlimited', N'Jeep', N'Wrangler Unlimited Sahara', 2024, N'suv', N'automatica', N'gasolina', 5, 5, 3, 1, 300, N'Punta Cana', N'Aeropuerto Internacional de Punta Cana (PUJ), terminal B', N'Wrangler de cuatro puertas con techo desmontable, ideal para la ruta a Macao, Miches y Montaña Redonda.', N'Seguro de colisión con deducible, asistencia 24 horas, 300 km diarios', 7400, 35000, 25, NULL, 5500, 3, N'img/publicaciones/jeep-wrangler.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -273, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'132667418';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Chevrolet Tahoe')
+    INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
+    SELECT e.id_empresa, N'Chevrolet Tahoe', N'Chevrolet', N'Tahoe High Country', 2024, N'suv', N'automatica', N'gasolina', 8, 5, 6, 1, NULL, N'Puerto Plata', N'Aeropuerto Internacional Gregorio Luperón (POP), mostrador en llegadas', N'SUV de tres filas para ocho pasajeros, con espacio para el equipaje de todo el grupo. Recógela al aterrizar en la costa norte.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, kilometraje ilimitado', 12800, 55000, 25, NULL, 7000, 2, N'img/publicaciones/chevrolet-tahoe.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -270, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.empresas e WHERE e.rnc = N'131778902';
+GO
+-- 4.6 Reservas (fechas relativas al día de la instalación)
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD7K2M9QA')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total,
-         estado, fecha_cancelacion)
-    SELECT 'BRD7K2M9QA', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, 30, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, 33, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 3,
-           'confirmada', NULL
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD7K2M9QA', u.id_usuario, h.id_hotel, DATEADD(DAY, 30, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 33, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 14500, 43500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'cliente@bookingrd.com' AND h.nombre = N'Coralia Grand Resort & Spa';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD4H8T2LX')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD4H8T2LX')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total, estado, fecha_cancelacion)
-    SELECT 'BRD4H8T2LX', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, 12, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2, 'confirmada', NULL
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD4H8T2LX', u.id_usuario, a.id_actividad, DATEADD(DAY, 12, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 2200, 4400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -9, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'cliente@bookingrd.com' AND a.nombre = N'Senderismo al Salto El Limón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD9P3W6ZE')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD9P3W6ZE')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total,
-         estado, fecha_cancelacion)
-    SELECT 'BRD9P3W6ZE', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 2,
-           'confirmada', NULL
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD9P3W6ZE', u.id_usuario, h.id_hotel, DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 9800, 19600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'cliente@bookingrd.com' AND h.nombre = N'Mirador del Mar Luxury Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD2C5N8RV')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD2C5N8RV')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total, estado, fecha_cancelacion)
-    SELECT 'BRD2C5N8RV', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)),
-           3, a.precio_persona, a.precio_persona * 3, 'confirmada', NULL
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD2C5N8RV', u.id_usuario, a.id_actividad, DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, NULL, 1500, 4500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'cliente@bookingrd.com' AND a.nombre = N'Zona Colonial a pie: Catedral Primada y Parque Colón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD5L7Q2MA')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD5L7Q2MA')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total,
-         estado, fecha_cancelacion)
-    SELECT 'BRD5L7Q2MA', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, 18, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, 22, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 4,
-           'confirmada', NULL
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD5L7Q2MA', u.id_usuario, h.id_hotel, DATEADD(DAY, 18, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 22, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 7800, 31200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'luis.fernandez@correo.com' AND h.nombre = N'Samaná Bay Palms Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD8T3V6NB')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD8T3V6NB')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total, estado, fecha_cancelacion)
-    SELECT 'BRD8T3V6NB', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, 19, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2, 'confirmada', NULL
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD8T3V6NB', u.id_usuario, a.id_actividad, DATEADD(DAY, 19, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 3400, 6800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'luis.fernandez@correo.com' AND a.nombre = N'Parque Nacional Los Haitises y cuevas taínas';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD3R9K4PC')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD3R9K4PC')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total, estado, fecha_cancelacion)
-    SELECT 'BRD3R9K4PC', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4, 'confirmada', NULL
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD3R9K4PC', u.id_usuario, a.id_actividad, DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 3200, 12800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'luis.fernandez@correo.com' AND a.nombre = N'Excursión a Playa Rincón y Cabo Cabrón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD6M2X8RD')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD6M2X8RD')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total,
-         estado, fecha_cancelacion)
-    SELECT 'BRD6M2X8RD', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, 25, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, 28, CAST(SYSUTCDATETIME() AS DATE)),
-           4, 1, h.precio_noche, h.precio_noche * 3,
-           'confirmada', NULL
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD6M2X8RD', u.id_usuario, h.id_hotel, DATEADD(DAY, 25, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 28, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, 1, 13200, 39600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'carmen.jimenez@correo.com' AND h.nombre = N'Paraíso Escondido Eco-Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD9N5H2SE')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD9N5H2SE')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total, estado, fecha_cancelacion)
-    SELECT 'BRD9N5H2SE', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, 8, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4, 'confirmada', NULL
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD9N5H2SE', u.id_usuario, a.id_actividad, DATEADD(DAY, 8, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 5900, 23600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'carmen.jimenez@correo.com' AND a.nombre = N'Excursión en catamarán a Isla Saona';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD4P7J3TF')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD4P7J3TF')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total, estado, fecha_cancelacion)
-    SELECT 'BRD4P7J3TF', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -30, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2, 'cancelada', SYSUTCDATETIME()
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD4P7J3TF', u.id_usuario, a.id_actividad, DATEADD(DAY, -30, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 4200, 8400,
+           N'cancelada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), DATEADD(HOUR, 10, CAST(DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'carmen.jimenez@correo.com' AND a.nombre = N'Canopy en la selva de Anamuya';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD2W8F5UG')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD2W8F5UG')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total,
-         estado, fecha_cancelacion)
-    SELECT 'BRD2W8F5UG', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, 40, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, 45, CAST(SYSUTCDATETIME() AS DATE)),
-           3, 1, h.precio_noche, h.precio_noche * 5,
-           'confirmada', NULL
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD2W8F5UG', u.id_usuario, h.id_hotel, DATEADD(DAY, 40, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 45, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, 1, 12800, 64000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'daniel.ortiz@correo.com' AND h.nombre = N'Cayo Azul All-Inclusive Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD7Y4C9VH')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD7Y4C9VH')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total, estado, fecha_cancelacion)
-    SELECT 'BRD7Y4C9VH', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2, 'confirmada', NULL
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD7Y4C9VH', u.id_usuario, a.id_actividad, DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 14500, 29000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'daniel.ortiz@correo.com' AND a.nombre = N'Ascenso al Pico Duarte';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRD5Z6B3WJ')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD5Z6B3WJ')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total, estado, fecha_cancelacion)
-    SELECT 'BRD5Z6B3WJ', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, 5, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2, 'confirmada', NULL
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRD5Z6B3WJ', u.id_usuario, a.id_actividad, DATEADD(DAY, 5, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 1800, 3600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -16, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'daniel.ortiz@correo.com' AND a.nombre = N'Desayuno criollo y Mercado Modelo';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDA7C2K9V')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDA7C2K9V')
     INSERT INTO dbo.reservas
         (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
-         edad_conductor, extras, deposito, personas, precio_unitario, total)
-    SELECT 'BRDA7C2K9V', u.id_usuario, v.id_vehiculo,
-           DATEADD(DAY, 30, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, 33, CAST(SYSUTCDATETIME() AS DATE)),
-           '11:00', '10:00', N'Punta Cana', 34, N'proteccion-total,silla-infantil', v.deposito,
-           1, v.precio_dia, 47250
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDA7C2K9V', u.id_usuario, v.id_vehiculo, DATEADD(DAY, 30, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 33, CAST(SYSUTCDATETIME() AS DATE)),
+           N'11:00', N'10:00', N'Punta Cana', 34, N'proteccion-total,silla-infantil',
+           60000, 1, NULL, 14500, 47250,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'cliente@bookingrd.com' AND v.nombre = N'Cadillac Escalade';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDA3J8M4P')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDA3J8M4P')
     INSERT INTO dbo.reservas
         (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
-         edad_conductor, extras, deposito, personas, precio_unitario, total)
-    SELECT 'BRDA3J8M4P', u.id_usuario, v.id_vehiculo,
-           DATEADD(DAY, 18, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, 22, CAST(SYSUTCDATETIME() AS DATE)),
-           '09:00', '09:00', N'Samaná', 29, N'gps', v.deposito,
-           1, v.precio_dia, 38100
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDA3J8M4P', u.id_usuario, v.id_vehiculo, DATEADD(DAY, 18, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 22, CAST(SYSUTCDATETIME() AS DATE)),
+           N'09:00', N'09:00', N'Samaná', 29, N'gps',
+           35000, 1, NULL, 7800, 38100,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'luis.fernandez@correo.com' AND v.nombre = N'Jeep Gladiator 4x4';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDA9T5Q2R')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDA9T5Q2R')
     INSERT INTO dbo.reservas
         (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
-         edad_conductor, extras, deposito, personas, precio_unitario, total)
-    SELECT 'BRDA9T5Q2R', u.id_usuario, v.id_vehiculo,
-           DATEADD(DAY, 8, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, 13, CAST(SYSUTCDATETIME() AS DATE)),
-           '14:00', '12:00', N'Punta Cana', 23, N'conductor-adicional', v.deposito,
-           1, v.precio_dia, 24250
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDA9T5Q2R', u.id_usuario, v.id_vehiculo, DATEADD(DAY, 8, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 13, CAST(SYSUTCDATETIME() AS DATE)),
+           N'14:00', N'12:00', N'Punta Cana', 23, N'conductor-adicional',
+           15000, 1, NULL, 2900, 24250,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'carmen.jimenez@correo.com' AND v.nombre = N'Toyota Corolla o similar';
 GO
-
--- 4.7 Historial de reservas disfrutadas y sus reseñas
---     Cada reseña se apoya en una reserva confirmada ya terminada. La fecha
---     de la reseña es dos días posterior al final de la reserva.
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0001RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0001RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0001RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -120, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 4
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0001RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -120, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 14500, 58000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -141, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'ana.castillo@correo.com' AND h.nombre = N'Coralia Grand Resort & Spa';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0001RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Nuestra luna de miel perfecta', N'La playa de Bávaro frente a la habitación, el spa y la cena en el restaurante de mariscos fueron de otro nivel. El personal nos preparó una sorpresa por la luna de miel sin que lo pidiéramos.', N'Gracias, Ana Belén. Fue un placer acompañarles en un momento tan especial. Les esperamos en su primer aniversario.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0001RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0002RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0002RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0002RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -75, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)),
-           4, 1, h.precio_noche, h.precio_noche * 5
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0002RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -75, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, 1, 14500, 72500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'roberto.sanchez@correo.com' AND h.nombre = N'Coralia Grand Resort & Spa';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0002RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Ideal para familias', N'Fuimos con dos niños y el club infantil los mantuvo felices todo el día. Las piscinas son enormes y la comida variada. Solo el check-in tardó un poco el día de llegada.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0002RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0003RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0003RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0003RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -30, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -27, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0003RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -30, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -27, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 14500, 43500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'laura.vasquez@correo.com' AND h.nombre = N'Coralia Grand Resort & Spa';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0003RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Repetiría sin pensarlo', N'Habitación amplia con vista al mar, buffet con mucha fruta fresca y un spa excelente. La playa siempre limpia y con camastros disponibles.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0003RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0004RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0004RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0004RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -150, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 4
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0004RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -150, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 12800, 51200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'patricia.nunez@correo.com' AND h.nombre = N'Cayo Azul All-Inclusive Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0004RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Buen todo incluido', N'El agua es tan turquesa como en las fotos. Los restaurantes a la carta requieren reserva temprano, pero la atención fue muy amable en todo momento.', N'Gracias por tu comentario, Patricia. Ya habilitamos la reserva de restaurantes desde la recepción el mismo día de llegada.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0004RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0005RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0005RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0005RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -47, CAST(SYSUTCDATETIME() AS DATE)),
-           3, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0005RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -47, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, 1, 12800, 38400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -71, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'hector.marte@correo.com' AND h.nombre = N'Cayo Azul All-Inclusive Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0005RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Playa espectacular', N'La mejor playa que hemos visitado en Punta Cana. Las habitaciones están renovadas y el personal de animación es muy simpático sin ser invasivo.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0005RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0006RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0006RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0006RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -93, CAST(SYSUTCDATETIME() AS DATE)),
-           1, 1, h.precio_noche, h.precio_noche * 2
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0006RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -93, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 1, 1, 6900, 13800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'miguel.herrera@correo.com' AND h.nombre = N'Azura Caribbean Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0006RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Cómodo para viaje de trabajo', N'Buena ubicación en Santo Domingo, wifi rápido y desayuno temprano. La vista al Malecón desde el piso alto vale la pena.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0006RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0007RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0007RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0007RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -38, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 2
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0007RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -38, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 6900, 13800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'yesenia.paulino@correo.com' AND h.nombre = N'Azura Caribbean Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0007RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Fin de semana en la capital', N'Aprovechamos para recorrer la Zona Colonial y volver a descansar a la piscina. Personal atento y habitación muy limpia.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0007RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRD9P3W6ZE')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Vista al Atlántico inolvidable', N'La suite con piscina privada frente al mar de Cabarete es un sueño. Desayuno servido en la terraza y un servicio impecable de principio a fin.', N'María, gracias por elegirnos. Nos alegra que la terraza haya sido tu lugar favorito. Te esperamos pronto.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRD9P3W6ZE' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0009RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0009RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0009RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -110, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -107, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0009RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -110, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -107, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 9800, 29400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'andres.cabrera@correo.com' AND h.nombre = N'Mirador del Mar Luxury Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0009RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Para desconectar de verdad', N'Tranquilo, elegante y con una vista que no cansa. Perfecto para parejas. Muy cerca de las escuelas de kitesurf de Cabarete.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0009RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0010RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0010RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0010RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -200, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -196, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 4
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0010RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -200, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -196, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 11200, 44800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -221, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'ana.castillo@correo.com' AND h.nombre = N'Solaria Island Beach Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0010RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Excelente base para ir a Saona', N'Desde el hotel organizamos la excursión a Isla Saona. Las instalaciones son modernas y el restaurante italiano nos encantó.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0010RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0011RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0011RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0011RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -57, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0011RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -57, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 11200, 33600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'roberto.sanchez@correo.com' AND h.nombre = N'Solaria Island Beach Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0011RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 7, N'Bien, con detalles por mejorar', N'La playa y las piscinas están muy bien. El aire acondicionado de nuestra habitación hacía ruido y tardaron un día en cambiarnos.', N'Roberto, lamentamos lo del aire acondicionado. Revisamos todas las unidades de ese pabellón. Gracias por avisarnos.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0011RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0012RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0012RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0012RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -130, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -127, CAST(SYSUTCDATETIME() AS DATE)),
-           4, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0012RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -130, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -127, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, 1, 8700, 26100,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -151, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'carmen.jimenez@correo.com' AND h.nombre = N'Bahía Serena Golf & Beach Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0012RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Cerca de la capital', N'A media hora del aeropuerto y con una playa de aguas tranquilas, ideal para los niños. El campo de golf está muy bien cuidado.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0012RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0013RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0013RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0013RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -25, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -23, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 2
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0013RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -25, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -23, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 8700, 17400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'laura.vasquez@correo.com' AND h.nombre = N'Bahía Serena Golf & Beach Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0013RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Escapada perfecta', N'Fuimos un fin de semana largo y descansamos de verdad. El personal de playa siempre pendiente y la comida criolla del restaurante muy buena.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0013RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0014RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0014RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0014RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -180, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -175, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 5
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0014RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -180, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -175, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 9400, 47000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -201, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'miguel.herrera@correo.com' AND h.nombre = N'Costa Dorada Palace Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0014RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Sosúa tiene su encanto', N'Playa de arena dorada, buen snorkel a pocos metros y el pueblo cerca para cenar. El hotel cumple con lo que promete.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0014RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0015RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0015RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0015RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)),
-           3, 1, h.precio_noche, h.precio_noche * 4
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0015RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, 1, 9400, 37600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'hector.marte@correo.com' AND h.nombre = N'Costa Dorada Palace Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0015RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Atención de primera', N'Celebramos el cumpleaños de mi esposa y el equipo decoró la habitación con flores tropicales. Detalles que hacen la diferencia.', N'Héctor, gracias por compartir ese momento con nosotros. Feliz cumpleaños de nuevo a tu esposa.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0015RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0016RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0016RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0016RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -87, CAST(SYSUTCDATETIME() AS DATE)),
-           6, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0016RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -87, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 6, 1, 16500, 49500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'patricia.nunez@correo.com' AND h.nombre = N'Palma Real Haven Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0016RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'La villa ideal para grupos', N'Éramos seis amigas y la villa tenía espacio de sobra, piscina propia y rancho para la barbacoa. Juan Dolio es tranquilo y la playa está a pasos.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0016RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0017RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0017RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0017RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -18, CAST(SYSUTCDATETIME() AS DATE)),
-           4, 1, h.precio_noche, h.precio_noche * 2
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0017RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -18, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, 1, 16500, 33000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'yesenia.paulino@correo.com' AND h.nombre = N'Palma Real Haven Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0017RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Muy recomendable', N'Limpio, bien equipado y con un jardín precioso. Los anfitriones nos recomendaron dónde comer pescado frito en la playa.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0017RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0018RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0018RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0018RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -140, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -136, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 4
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0018RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -140, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -136, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 7800, 31200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -161, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'andres.cabrera@correo.com' AND h.nombre = N'Samaná Bay Palms Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0018RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Temporada de ballenas', N'Fuimos en febrero y desde el hotel salimos a ver ballenas jorobadas. La bahía al amanecer es un espectáculo y el personal muy cálido.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0018RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0019RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0019RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0019RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -42, CAST(SYSUTCDATETIME() AS DATE)),
-           4, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0019RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -42, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, 1, 7800, 23400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'carmen.jimenez@correo.com' AND h.nombre = N'Samaná Bay Palms Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0019RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Buena relación calidad precio', N'Habitaciones amplias con balcón a la bahía. El desayuno podría tener más variedad, pero la ubicación es inmejorable.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0019RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0020RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0020RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0020RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -100, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -97, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0020RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -100, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -97, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 13200, 39600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -121, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'roberto.sanchez@correo.com' AND h.nombre = N'Paraíso Escondido Eco-Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0020RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Un rincón mágico', N'Las villas entre la vegetación, el sonido del mar y la piscina infinita al atardecer. Es el lugar más bonito donde nos hemos hospedado en el país.', N'Gracias, Roberto. Las Galeras guarda muchos secretos. La próxima vez les llevamos a Playa Frontón.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0020RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0021RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0021RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0021RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 2
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0021RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 13200, 26400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'laura.vasquez@correo.com' AND h.nombre = N'Paraíso Escondido Eco-Resort';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0021RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Naturaleza y descanso', N'Perfecto para desconectarse. El camino de llegada es un poco empinado, pero vale cada minuto. Comida casera deliciosa.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0021RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0022RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0022RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0022RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -160, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0022RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -160, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 5900, 23600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -181, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'hector.marte@correo.com' AND a.nombre = N'Excursión en catamarán a Isla Saona';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0022RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'El mejor día del viaje', N'Catamarán con música, la piscina natural con estrellas de mar y almuerzo en la playa. El guía Ramón nos hizo reír todo el camino.', N'Gracias, Héctor. Le pasamos tus saludos a Ramón.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0022RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0023RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0023RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0023RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -55, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0023RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -55, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 5900, 11800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -76, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'patricia.nunez@correo.com' AND a.nombre = N'Excursión en catamarán a Isla Saona';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0023RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Imperdible', N'La isla es preciosa y el regreso en lancha rápida fue emocionante. Lleven protector solar, el sol pega fuerte.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0023RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0024RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0024RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0024RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -15, CAST(SYSUTCDATETIME() AS DATE)),
-           3, a.precio_persona, a.precio_persona * 3
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0024RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -15, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, NULL, 5900, 17700,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -36, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'miguel.herrera@correo.com' AND a.nombre = N'Excursión en catamarán a Isla Saona';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0024RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Muy bien organizada', N'Puntuales en la recogida, equipo de snorkel en buen estado y un almuerzo con pescado fresco. Todo como lo describen.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0024RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRD3R9K4PC')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Playa Rincón es un paraíso', N'El paseo en bote por los acantilados de Cabo Cabrón es impresionante y Playa Rincón casi vacía. El coco frío en la orilla fue el cierre perfecto.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRD3R9K4PC' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0026RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0026RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0026RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -80, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0026RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -80, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 3200, 6400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'yesenia.paulino@correo.com' AND a.nombre = N'Excursión a Playa Rincón y Cabo Cabrón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0026RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Bonita excursión', N'Paisajes increíbles. El mar estaba algo movido de regreso, pero el capitán manejó muy bien.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0026RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0027RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0027RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0027RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -210, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0027RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -210, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 3600, 7200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -231, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'andres.cabrera@correo.com' AND a.nombre = N'Bahía de las Águilas en bote';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0027RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'La playa más bonita del país', N'Arena blanca, agua cristalina y nadie más alrededor. El viaje hasta Pedernales es largo, pero no hay nada igual en el Caribe.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0027RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0028RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0028RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0028RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -65, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0028RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -65, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 3600, 14400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -86, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'carmen.jimenez@correo.com' AND a.nombre = N'Bahía de las Águilas en bote';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0028RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Vale el viaje', N'Los guías conocen muy bien la zona y nos explicaron la importancia del parque Jaragua. Lleven comida y mucha agua.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0028RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0029RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0029RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0029RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -170, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0029RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -170, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 2200, 4400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -191, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'ana.castillo@correo.com' AND a.nombre = N'Senderismo al Salto El Limón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0029RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Cascada impresionante', N'Subimos a caballo y bajamos a pie. Bañarse al pie del salto es una experiencia única. El almuerzo criollo al final estuvo muy rico.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0029RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0030RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0030RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0030RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -28, CAST(SYSUTCDATETIME() AS DATE)),
-           3, a.precio_persona, a.precio_persona * 3
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0030RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -28, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, NULL, 2200, 6600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'hector.marte@correo.com' AND a.nombre = N'Senderismo al Salto El Limón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0030RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Recomendado', N'El sendero tiene partes resbaladizas, mejor ir con zapatos cerrados. Los guías son pacientes y conocen cada planta del camino.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0030RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRD7Y4C9VH')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Llegar a la cima del Caribe', N'Tres días de montaña, noches frías en La Compartición y el amanecer desde la cima. Los guías y los arrieros fueron extraordinarios.', N'Daniel, felicidades por coronar el Pico Duarte. Fue un honor acompañarles.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRD7Y4C9VH' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0032RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0032RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0032RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -240, CAST(SYSUTCDATETIME() AS DATE)),
-           1, a.precio_persona, a.precio_persona * 1
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0032RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -240, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 1, NULL, 14500, 14500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'miguel.herrera@correo.com' AND a.nombre = N'Ascenso al Pico Duarte';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0032RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Exigente pero inolvidable', N'Hay que tener buena condición física. La organización es excelente: comida caliente, mulas para el equipaje y mucha seguridad.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0032RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0033RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0033RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0033RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -85, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0033RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -85, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 2400, 4800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -106, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'laura.vasquez@correo.com' AND a.nombre = N'Valle del Rincón y cascadas de Jarabacoa';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0033RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Jarabacoa enamora', N'Visitamos Salto de Baiguate y Jimenoa en un solo día. El clima fresco de la montaña es un descanso del calor de la costa.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0033RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0034RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0034RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0034RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -115, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0034RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -115, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 2600, 5200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -136, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'roberto.sanchez@correo.com' AND a.nombre = N'Cabalgata a los cafetales de la Cordillera';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0034RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Café recién tostado en la montaña', N'La cabalgata entre pinos y la visita al cafetal familiar fueron lo mejor del viaje. Nos llevamos dos libras de café para la casa.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0034RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0035RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0035RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0035RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -22, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0035RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -22, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 2600, 5200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'patricia.nunez@correo.com' AND a.nombre = N'Cabalgata a los cafetales de la Cordillera';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0035RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Experiencia auténtica', N'Caballos mansos y bien cuidados, ideal para principiantes. La familia productora nos explicó todo el proceso del café.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0035RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0036RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0036RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0036RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -190, CAST(SYSUTCDATETIME() AS DATE)),
-           3, a.precio_persona, a.precio_persona * 3
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0036RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -190, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, NULL, 2300, 6900,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -211, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'yesenia.paulino@correo.com' AND a.nombre = N'Ruta del cacao orgánico';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0036RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Del árbol a la barra de chocolate', N'Aprendimos a fermentar, secar y moler el cacao. Hicimos nuestra propia barra de chocolate. Ideal para ir con niños.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0036RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0037RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0037RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0037RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0037RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 1800, 3600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'daniel.ortiz@correo.com' AND a.nombre = N'Desayuno criollo y Mercado Modelo';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0037RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Mangú como en casa de la abuela', N'Desayuno de mangú con los tres golpes y luego un recorrido por el Mercado Modelo con mucha historia. Guía muy simpática.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0037RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0038RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0038RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0038RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -18, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0038RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -18, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 1800, 3600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -39, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'andres.cabrera@correo.com' AND a.nombre = N'Desayuno criollo y Mercado Modelo';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0038RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Muy bonito', N'Buena forma de conocer el Santo Domingo cotidiano. El mercado puede estar muy lleno, conviene ir temprano como propone el tour.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0038RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0039RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0039RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0039RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -100, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0039RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -100, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 1200, 4800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -121, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'carmen.jimenez@correo.com' AND a.nombre = N'Almuerzo típico: la bandera dominicana';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0039RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Sabor dominicano de verdad', N'Arroz, habichuelas guisadas, pollo y ensalada, con jugo de chinola. La anfitriona nos contó la historia de cada plato.', N'Gracias, Carmen. Ese jugo de chinola es receta de la casa.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0039RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0040RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0040RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0040RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -260, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0040RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -260, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 1500, 3000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -281, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'ana.castillo@correo.com' AND a.nombre = N'Zona Colonial a pie: Catedral Primada y Parque Colón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0040RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Historia viva', N'Caminar por la Calle Las Damas y entrar a la Catedral Primada con un guía que sabe tanto fue fascinante. Terminamos con un helado en el Parque Colón.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0040RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0041RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0041RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0041RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0041RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 1500, 3000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'luis.fernandez@correo.com' AND a.nombre = N'Zona Colonial a pie: Catedral Primada y Parque Colón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0041RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Imprescindible en Santo Domingo', N'Tres horas que pasan volando. El guía adapta el ritmo al grupo y recomienda buenos lugares para comer después.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0041RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0042RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0042RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0042RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -145, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0042RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -145, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 3400, 6800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -166, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'laura.vasquez@correo.com' AND a.nombre = N'Parque Nacional Los Haitises y cuevas taínas';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0042RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Los Haitises superó todo', N'Los mogotes saliendo del agua, los manglares y los petroglifos taínos en las cuevas. Vimos pelícanos y fragatas muy de cerca.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0042RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0043RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0043RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0043RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -12, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0043RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -12, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 3400, 13600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'roberto.sanchez@correo.com' AND a.nombre = N'Parque Nacional Los Haitises y cuevas taínas';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0043RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Paisaje de película', N'La bahía de San Lorenzo es preciosa. El guía explicó muy bien la historia taína de las pinturas en la Cueva de la Línea.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0043RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0044RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0044RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0044RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -125, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0044RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -125, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 3900, 7800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'miguel.herrera@correo.com' AND a.nombre = N'Basílica de Higüey y Altos de Chavón';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0044RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Buen complemento a la playa', N'Altos de Chavón tiene una vista hermosa sobre el río Chavón. La basílica es impresionante por dentro. Un día cultural muy completo.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0044RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0045RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0045RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0045RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0045RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 1700, 3400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'hector.marte@correo.com' AND a.nombre = N'Puerto Plata victoriana y Calle de la Sombrilla';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0045RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Puerto Plata con color', N'Las casas victorianas, la Calle de la Sombrilla y el teleférico al final. Las fotos quedan espectaculares.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0045RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0046RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0046RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0046RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -110, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0046RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -110, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 4200, 8400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'patricia.nunez@correo.com' AND a.nombre = N'Canopy en la selva de Anamuya';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0046RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Adrenalina pura', N'Doce líneas sobre la selva, una más alta que la otra. El equipo de seguridad revisa todo dos veces y te hace sentir muy confiado.', N'Patricia, gracias por volar con nosotros. La línea 12 siempre deja a todos sin palabras.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0046RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0047RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0047RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0047RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)),
-           3, a.precio_persona, a.precio_persona * 3
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0047RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, NULL, 4200, 12600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'andres.cabrera@correo.com' AND a.nombre = N'Canopy en la selva de Anamuya';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0047RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Muy divertido', N'Fuimos con mi hijo de doce años y le encantó. Instructores jóvenes y con mucha energía.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0047RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0048RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0048RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0048RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)),
-           1, a.precio_persona, a.precio_persona * 1
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0048RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 1, NULL, 5500, 5500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'yesenia.paulino@correo.com' AND a.nombre = N'Vuelo en parapente sobre el valle de Constanza';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0048RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Volar sobre el valle', N'Ver los campos de cultivo de Constanza desde el aire es indescriptible. El piloto me dio total confianza.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0048RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0049RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0049RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0049RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0049RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 5200, 10400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'luis.fernandez@correo.com' AND a.nombre = N'Ruta en cuatrimoto por Valle Nuevo';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0049RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Frío y aventura', N'Senderos de tierra entre pinos y la pirámide de Valle Nuevo. Lleven abrigo, la temperatura baja bastante.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0049RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0050RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0050RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0050RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -175, CAST(SYSUTCDATETIME() AS DATE)),
-           3, a.precio_persona, a.precio_persona * 3
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0050RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -175, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, NULL, 4600, 13800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -196, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'carmen.jimenez@correo.com' AND a.nombre = N'Snorkel en los arrecifes de Isla Catalina';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0050RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Agua cristalina', N'Vimos peces de colores, una tortuga y un arrecife muy bien conservado. La comida a bordo, sencilla pero rica.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0050RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0051RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0051RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0051RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -80, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0051RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -80, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 3100, 6200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'ana.castillo@correo.com' AND a.nombre = N'27 Charcos de Damajagua';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0051RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'La aventura más divertida', N'Saltar y deslizarse por los charcos es una experiencia única. Los guías te ayudan en cada salto y hay opción de saltar menos.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0051RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0052RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0052RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0052RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -150, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)),
-           8, 1, h.precio_noche, h.precio_noche * 4
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0052RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -150, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 8, 1, 38500, 154000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'hector.marte@correo.com' AND h.nombre = N'Villa Acantilado Casa de Campo';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0052RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'La mejor villa de nuestra vida', N'Celebramos los 60 años de mi papá con toda la familia. La piscina frente al mar, el mayordomo y la playa privada lo hicieron perfecto.', N'Héctor, gracias por celebrar con nosotros. Felicidades de nuevo a su papá.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0052RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0053RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0053RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0053RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -57, CAST(SYSUTCDATETIME() AS DATE)),
-           6, 1, h.precio_noche, h.precio_noche * 3
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0053RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -57, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 6, 1, 38500, 115500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'laura.vasquez@correo.com' AND h.nombre = N'Villa Acantilado Casa de Campo';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0053RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Espectacular', N'La vista desde la terraza al atardecer es inolvidable. Todo impecable. Está algo lejos del pueblo, conviene alquilar carrito de golf.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0053RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0054RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0054RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0054RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0054RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 7800, 31200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'patricia.nunez@correo.com' AND a.nombre = N'Paseo en yate por la Marina de Casa de Campo';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0054RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Un día de lujo', N'El capitán nos llevó hasta el río Chavón y paramos a nadar en agua cristalina. Las bebidas frías y la música, perfectas.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0054RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0055RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0055RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0055RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -22, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0055RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -22, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 2900, 11600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'andres.cabrera@correo.com' AND a.nombre = N'Día de parque acuático en Punta Cana';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0055RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Los niños no querían irse', N'Los toboganes de espiral son muy divertidos y la zona infantil tiene salvavidas pendientes todo el tiempo. Buen almuerzo.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0055RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0056RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0056RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0056RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -26, CAST(SYSUTCDATETIME() AS DATE)),
-           4, a.precio_persona, a.precio_persona * 4
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0056RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -26, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 3100, 12400,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -47, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'roberto.sanchez@correo.com' AND a.nombre = N'27 Charcos de Damajagua';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0056RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Para toda la familia', N'Hicimos el recorrido de siete charcos con los niños. Agua fresca, cascadas y mucha risa. Lleven zapatos de agua.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0056RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0057RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0057RS')
     INSERT INTO dbo.reservas
         (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
-         edad_conductor, extras, deposito, personas, precio_unitario, total)
-    SELECT 'BRDV0057RS', u.id_usuario, v.id_vehiculo,
-           DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)),
-           '10:00', '10:00', N'Santo Domingo', 32, NULL, v.deposito,
-           1, v.precio_dia, 11600
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0057RS', u.id_usuario, v.id_vehiculo, DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)),
+           N'10:00', N'10:00', N'Santo Domingo', 32, NULL,
+           15000, 1, NULL, 2900, 11600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -71, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'miguel.herrera@correo.com' AND v.nombre = N'Toyota Corolla o similar';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0057RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Rápido y sin sorpresas', N'Me entregaron el auto en diez minutos al salir del aeropuerto. Limpio, con el tanque lleno y el precio igual al de la reserva.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0057RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0058RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0058RS')
     INSERT INTO dbo.reservas
         (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
-         edad_conductor, extras, deposito, personas, precio_unitario, total)
-    SELECT 'BRDV0058RS', u.id_usuario, v.id_vehiculo,
-           DATEADD(DAY, -25, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -22, CAST(SYSUTCDATETIME() AS DATE)),
-           '10:00', '10:00', N'Santo Domingo', 32, NULL, v.deposito,
-           1, v.precio_dia, 8700
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0058RS', u.id_usuario, v.id_vehiculo, DATEADD(DAY, -25, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -22, CAST(SYSUTCDATETIME() AS DATE)),
+           N'10:00', N'10:00', N'Santo Domingo', 32, NULL,
+           15000, 1, NULL, 2900, 8700,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'yesenia.paulino@correo.com' AND v.nombre = N'Toyota Corolla o similar';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0058RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 8, N'Buena opción económica', N'Consume poco y es cómodo para la autopista hacia Punta Cana. La devolución en otra ciudad fue muy fácil.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0058RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0059RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0059RS')
     INSERT INTO dbo.reservas
         (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
-         edad_conductor, extras, deposito, personas, precio_unitario, total)
-    SELECT 'BRDV0059RS', u.id_usuario, v.id_vehiculo,
-           DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -65, CAST(SYSUTCDATETIME() AS DATE)),
-           '10:00', '10:00', N'Punta Cana', 32, NULL, v.deposito,
-           1, v.precio_dia, 72500
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0059RS', u.id_usuario, v.id_vehiculo, DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -65, CAST(SYSUTCDATETIME() AS DATE)),
+           N'10:00', N'10:00', N'Punta Cana', 32, NULL,
+           60000, 1, NULL, 14500, 72500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'hector.marte@correo.com' AND v.nombre = N'Cadillac Escalade';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0059RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Perfecto para la familia', N'Viajamos siete con todo el equipaje sin problemas. El personal de Caribe Rent nos esperó aunque el vuelo llegó tarde.', N'Gracias, Héctor. Siempre monitoreamos los vuelos para esperar a nuestros clientes.', DATEADD(DAY, 1, rs_fecha.fecha), rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0059RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0060RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0060RS')
     INSERT INTO dbo.reservas
         (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
-         edad_conductor, extras, deposito, personas, precio_unitario, total)
-    SELECT 'BRDV0060RS', u.id_usuario, v.id_vehiculo,
-           DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -32, CAST(SYSUTCDATETIME() AS DATE)),
-           '10:00', '10:00', N'Puerto Plata', 32, NULL, v.deposito,
-           1, v.precio_dia, 26700
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0060RS', u.id_usuario, v.id_vehiculo, DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -32, CAST(SYSUTCDATETIME() AS DATE)),
+           N'10:00', N'10:00', N'Puerto Plata', 32, NULL,
+           40000, 1, NULL, 8900, 26700,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'patricia.nunez@correo.com' AND v.nombre = N'Ford Mustang Convertible';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0060RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'La costa norte con la capota abajo', N'Puerto Plata, Sosúa y Cabarete en un convertible fue inolvidable. Auto impecable y entrega puntual.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0060RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0061RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0061RS')
     INSERT INTO dbo.reservas
         (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
-         edad_conductor, extras, deposito, personas, precio_unitario, total)
-    SELECT 'BRDV0061RS', u.id_usuario, v.id_vehiculo,
-           DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -86, CAST(SYSUTCDATETIME() AS DATE)),
-           '10:00', '10:00', N'Las Terrenas', 32, NULL, v.deposito,
-           1, v.precio_dia, 31200
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0061RS', u.id_usuario, v.id_vehiculo, DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -86, CAST(SYSUTCDATETIME() AS DATE)),
+           N'10:00', N'10:00', N'Las Terrenas', 32, NULL,
+           35000, 1, NULL, 7800, 31200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'roberto.sanchez@correo.com' AND v.nombre = N'Jeep Gladiator 4x4';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0061RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'Llegamos a Playa Frontón', N'Sin un 4x4 no hubiéramos llegado a las playas escondidas de Samaná. El límite de 250 km diarios fue más que suficiente.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0061RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0062RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0062RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_actividad, fecha_inicio, personas, precio_unitario, total)
-    SELECT 'BRDV0062RS', u.id_usuario, a.id_actividad,
-           DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)),
-           2, a.precio_persona, a.precio_persona * 2
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0062RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 18500, 37000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.actividades a
     WHERE u.correo = N'luis.fernandez@correo.com' AND a.nombre = N'Golf en Teeth of the Dog, Casa de Campo';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0062RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 10, N'Un campo de otro mundo', N'Los hoyos junto al mar son espectaculares y el caddie conocía cada green. Una experiencia que todo golfista debe vivir.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0062RS' AND r.estado = 'confirmada';
-GO
-IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = 'BRDV0063RS')
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0063RS')
     INSERT INTO dbo.reservas
-        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, personas, habitaciones, precio_unitario, total)
-    SELECT 'BRDV0063RS', u.id_usuario, h.id_hotel,
-           DATEADD(DAY, -28, CAST(SYSUTCDATETIME() AS DATE)),
-           DATEADD(DAY, -26, CAST(SYSUTCDATETIME() AS DATE)),
-           2, 1, h.precio_noche, h.precio_noche * 2
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDV0063RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -28, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -26, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 7400, 14800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
     FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
     WHERE u.correo = N'ana.castillo@correo.com' AND h.nombre = N'Hotel Boutique El Conde';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = 'BRDV0063RS')
-    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, fecha_creacion)
-    SELECT r.id_reserva, 9, N'En el corazón de la Zona Colonial', N'La recepción nos atendió de maravilla y nos recomendó restaurantes cercanos. Habitación con mucho encanto colonial.', NULL, NULL, rs_fecha.fecha
-    FROM dbo.reservas r
-    CROSS APPLY (SELECT CAST(DATEADD(DAY, 2, COALESCE(r.fecha_fin, r.fecha_inicio)) AS DATETIME2(0)) AS fecha) rs_fecha
-    WHERE r.codigo = 'BRDV0063RS' AND r.estado = 'confirmada';
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN2P8K4T')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDN2P8K4T', u.id_usuario, h.id_hotel, DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -36, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 16800, 67200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
+    WHERE u.correo = N'laura.vasquez@correo.com' AND h.nombre = N'Palmar de Bávaro Beach Resort';
 GO
-
--- 4.8 Publicaciones guardadas (favoritos) de ejemplo
-INSERT INTO dbo.favoritos (id_usuario, id_hotel)
-SELECT u.id_usuario, p.id_hotel
-FROM dbo.usuarios u CROSS JOIN dbo.hoteles p
-WHERE u.correo = N'cliente@bookingrd.com' AND p.nombre = N'Paraíso Escondido Eco-Resort'
-  AND NOT EXISTS (SELECT 1 FROM dbo.favoritos x WHERE x.id_usuario = u.id_usuario AND x.id_hotel = p.id_hotel);
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN3Q7M2V')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDN3Q7M2V', u.id_usuario, h.id_hotel, DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, 1, 16800, 84000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
+    WHERE u.correo = N'hector.marte@correo.com' AND h.nombre = N'Palmar de Bávaro Beach Resort';
 GO
-INSERT INTO dbo.favoritos (id_usuario, id_actividad)
-SELECT u.id_usuario, p.id_actividad
-FROM dbo.usuarios u CROSS JOIN dbo.actividades p
-WHERE u.correo = N'cliente@bookingrd.com' AND p.nombre = N'Excursión en catamarán a Isla Saona'
-  AND NOT EXISTS (SELECT 1 FROM dbo.favoritos x WHERE x.id_usuario = u.id_usuario AND x.id_actividad = p.id_actividad);
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN4R6W8X')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_hotel, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDN4R6W8X', u.id_usuario, h.id_hotel, DATEADD(DAY, 58, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 62, CAST(SYSUTCDATETIME() AS DATE)),
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, 1, 16800, 67200,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
+    WHERE u.correo = N'cliente@bookingrd.com' AND h.nombre = N'Palmar de Bávaro Beach Resort';
 GO
-INSERT INTO dbo.favoritos (id_usuario, id_actividad)
-SELECT u.id_usuario, p.id_actividad
-FROM dbo.usuarios u CROSS JOIN dbo.actividades p
-WHERE u.correo = N'cliente@bookingrd.com' AND p.nombre = N'27 Charcos de Damajagua'
-  AND NOT EXISTS (SELECT 1 FROM dbo.favoritos x WHERE x.id_usuario = u.id_usuario AND x.id_actividad = p.id_actividad);
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN5S4Y3Z')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDN5S4Y3Z', u.id_usuario, a.id_actividad, DATEADD(DAY, -22, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 1900, 3800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'patricia.nunez@correo.com' AND a.nombre = N'Noche de tambores y son en la Zona Colonial';
 GO
-INSERT INTO dbo.favoritos (id_usuario, id_hotel)
-SELECT u.id_usuario, p.id_hotel
-FROM dbo.usuarios u CROSS JOIN dbo.hoteles p
-WHERE u.correo = N'cliente@bookingrd.com' AND p.nombre = N'Palma Real Haven Resort'
-  AND NOT EXISTS (SELECT 1 FROM dbo.favoritos x WHERE x.id_usuario = u.id_usuario AND x.id_hotel = p.id_hotel);
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN6T3A9B')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDN6T3A9B', u.id_usuario, a.id_actividad, DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 1900, 7600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -82, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'andres.cabrera@correo.com' AND a.nombre = N'Noche de tambores y son en la Zona Colonial';
 GO
-INSERT INTO dbo.favoritos (id_usuario, id_actividad)
-SELECT u.id_usuario, p.id_actividad
-FROM dbo.usuarios u CROSS JOIN dbo.actividades p
-WHERE u.correo = N'luis.fernandez@correo.com' AND p.nombre = N'Ascenso al Pico Duarte'
-  AND NOT EXISTS (SELECT 1 FROM dbo.favoritos x WHERE x.id_usuario = u.id_usuario AND x.id_actividad = p.id_actividad);
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN7U2C8D')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDN7U2C8D', u.id_usuario, a.id_actividad, DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 3, NULL, 4300, 12900,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -54, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'yesenia.paulino@correo.com' AND a.nombre = N'Tirolesa sobre la península de Samaná';
 GO
-INSERT INTO dbo.favoritos (id_usuario, id_vehiculo)
-SELECT u.id_usuario, p.id_vehiculo
-FROM dbo.usuarios u CROSS JOIN dbo.vehiculos p
-WHERE u.correo = N'cliente@bookingrd.com' AND p.nombre = N'Ford Mustang Convertible'
-  AND NOT EXISTS (SELECT 1 FROM dbo.favoritos x WHERE x.id_usuario = u.id_usuario AND x.id_vehiculo = p.id_vehiculo);
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN8V9E7F')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDN8V9E7F', u.id_usuario, a.id_actividad, DATEADD(DAY, -75, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 4300, 8600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'roberto.sanchez@correo.com' AND a.nombre = N'Tirolesa sobre la península de Samaná';
 GO
-
--- 4.9 Mensajes de contacto de ejemplo
-IF NOT EXISTS (SELECT 1 FROM dbo.mensajes_contacto WHERE correo = N'rosa.almanzar@correo.com')
-    INSERT INTO dbo.mensajes_contacto (nombre, correo, asunto, mensaje, atendido)
-    VALUES (N'Rosa Almánzar', N'rosa.almanzar@correo.com', 'empresa', N'Tenemos un hostal en Constanza y queremos publicarlo. ¿Qué requisitos piden?', 0);
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN9W8G6H')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDN9W8G6H', u.id_usuario, a.id_actividad, DATEADD(DAY, -14, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 1450, 2900,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'daniel.ortiz@correo.com' AND a.nombre = N'Parque Nacional Los Tres Ojos';
 GO
-IF NOT EXISTS (SELECT 1 FROM dbo.mensajes_contacto WHERE correo = N'kevin.mejia@correo.com')
-    INSERT INTO dbo.mensajes_contacto (nombre, correo, asunto, mensaje, atendido)
-    VALUES (N'Kevin Mejía', N'kevin.mejia@correo.com', 'viajero', N'No me llegó el correo de confirmación de la reserva, aunque tengo el código.', 1);
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDP2X7J5K')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDP2X7J5K', u.id_usuario, a.id_actividad, DATEADD(DAY, -280, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 6900, 27600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -301, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'luis.fernandez@correo.com' AND a.nombre = N'Catamarán privado por la bahía de Samaná';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDP3Y6L4M')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDP3Y6L4M', u.id_usuario, a.id_actividad, DATEADD(DAY, -48, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 2, NULL, 9800, 19600,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -69, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'carmen.jimenez@correo.com' AND a.nombre = N'Vuelo en helicóptero sobre Punta Cana';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDP4Z5N3P')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_actividad, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDP4Z5N3P', u.id_usuario, a.id_actividad, DATEADD(DAY, 21, CAST(SYSUTCDATETIME() AS DATE)), NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, 4, NULL, 5200, 20800,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'cliente@bookingrd.com' AND a.nombre = N'Paseo en yate privado desde Boca Chica';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDP5A4Q2R')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDP5A4Q2R', u.id_usuario, v.id_vehiculo, DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)),
+           N'13:00', N'12:00', N'Punta Cana', 29, NULL,
+           25000, 1, NULL, 5600, 28000,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -87, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
+    WHERE u.correo = N'ana.castillo@correo.com' AND v.nombre = N'Honda CR-V';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDP6B3S9T')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDP6B3S9T', u.id_usuario, v.id_vehiculo, DATEADD(DAY, -29, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -26, CAST(SYSUTCDATETIME() AS DATE)),
+           N'09:00', N'09:00', N'Las Terrenas', 24, N'gps',
+           20000, 1, NULL, 4100, 15150,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
+    WHERE u.correo = N'miguel.herrera@correo.com' AND v.nombre = N'Suzuki Jimny 4x4';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDP7C2U8V')
+    INSERT INTO dbo.reservas
+        (codigo, id_usuario, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
+         edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
+         fecha_creacion, fecha_cancelacion)
+    SELECT N'BRDP7C2U8V', u.id_usuario, v.id_vehiculo, DATEADD(DAY, 44, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 49, CAST(SYSUTCDATETIME() AS DATE)),
+           N'15:00', N'15:00', N'Puerto Plata', 38, N'silla-infantil',
+           55000, 1, NULL, 12800, 65500,
+           N'confirmada', NULL,
+           DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL
+    FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
+    WHERE u.correo = N'laura.vasquez@correo.com' AND v.nombre = N'Chevrolet Tahoe';
+GO
+-- 4.7 Reseñas de reservas ya disfrutadas (dos días después de terminar)
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0001RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Nuestra luna de miel perfecta', N'La playa de Bávaro frente a la habitación, el spa y la cena en el restaurante de mariscos fueron de otro nivel. El personal nos preparó una sorpresa por la luna de miel sin que lo pidiéramos.', N'Gracias, Ana Belén. Fue un placer acompañarles en un momento tan especial. Les esperamos en su primer aniversario.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -113, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -114, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0001RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0002RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Ideal para familias', N'Fuimos con dos niños y el club infantil los mantuvo felices todo el día. Las piscinas son enormes y la comida variada. Solo el check-in tardó un poco el día de llegada.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -68, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0002RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0003RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Repetiría sin pensarlo', N'Habitación amplia con vista al mar, buffet con mucha fruta fresca y un spa excelente. La playa siempre limpia y con camastros disponibles.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -25, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0003RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0004RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Buen todo incluido', N'El agua es tan turquesa como en las fotos. Los restaurantes a la carta requieren reserva temprano, pero la atención fue muy amable en todo momento.', N'Gracias por tu comentario, Patricia. Ya habilitamos la reserva de restaurantes desde la recepción el mismo día de llegada.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -143, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -144, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0004RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0005RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Playa espectacular', N'La mejor playa que hemos visitado en Punta Cana. Las habitaciones están renovadas y el personal de animación es muy simpático sin ser invasivo.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0005RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0006RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Cómodo para viaje de trabajo', N'Buena ubicación en Santo Domingo, wifi rápido y desayuno temprano. La vista al Malecón desde el piso alto vale la pena.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0006RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0007RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Fin de semana en la capital', N'Aprovechamos para recorrer la Zona Colonial y volver a descansar a la piscina. Personal atento y habitación muy limpia.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -36, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0007RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRD9P3W6ZE')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Vista al Atlántico inolvidable', N'La suite con piscina privada frente al mar de Cabarete es un sueño. Desayuno servido en la terraza y un servicio impecable de principio a fin.', N'María, gracias por elegirnos. Nos alegra que la terraza haya sido tu lugar favorito. Te esperamos pronto.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRD9P3W6ZE';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0009RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Para desconectar de verdad', N'Tranquilo, elegante y con una vista que no cansa. Perfecto para parejas. Muy cerca de las escuelas de kitesurf de Cabarete.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -105, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0009RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0010RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Excelente base para ir a Saona', N'Desde el hotel organizamos la excursión a Isla Saona. Las instalaciones son modernas y el restaurante italiano nos encantó.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -194, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0010RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0011RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 7, N'Bien, con detalles por mejorar', N'La playa y las piscinas están muy bien. El aire acondicionado de nuestra habitación hacía ruido y tardaron un día en cambiarnos.', N'Roberto, lamentamos lo del aire acondicionado. Revisamos todas las unidades de ese pabellón. Gracias por avisarnos.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -54, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -55, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0011RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0012RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Cerca de la capital', N'A media hora del aeropuerto y con una playa de aguas tranquilas, ideal para los niños. El campo de golf está muy bien cuidado.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -125, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0012RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0013RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Escapada perfecta', N'Fuimos un fin de semana largo y descansamos de verdad. El personal de playa siempre pendiente y la comida criolla del restaurante muy buena.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -21, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0013RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0014RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Sosúa tiene su encanto', N'Playa de arena dorada, buen snorkel a pocos metros y el pueblo cerca para cenar. El hotel cumple con lo que promete.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -173, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0014RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0015RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Atención de primera', N'Celebramos el cumpleaños de mi esposa y el equipo decoró la habitación con flores tropicales. Detalles que hacen la diferencia.', N'Héctor, gracias por compartir ese momento con nosotros. Feliz cumpleaños de nuevo a tu esposa.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -63, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -64, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0015RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0016RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'La villa ideal para grupos', N'Éramos seis amigas y la villa tenía espacio de sobra, piscina propia y rancho para la barbacoa. Juan Dolio es tranquilo y la playa está a pasos.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -85, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0016RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0017RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Muy recomendable', N'Limpio, bien equipado y con un jardín precioso. Los anfitriones nos recomendaron dónde comer pescado frito en la playa.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -16, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0017RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0018RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Temporada de ballenas', N'Fuimos en febrero y desde el hotel salimos a ver ballenas jorobadas. La bahía al amanecer es un espectáculo y el personal muy cálido.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -134, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0018RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0019RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Buena relación calidad precio', N'Habitaciones amplias con balcón a la bahía. El desayuno podría tener más variedad, pero la ubicación es inmejorable.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0019RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0020RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Un rincón mágico', N'Las villas entre la vegetación, el sonido del mar y la piscina infinita al atardecer. Es el lugar más bonito donde nos hemos hospedado en el país.', N'Gracias, Roberto. Las Galeras guarda muchos secretos. La próxima vez les llevamos a Playa Frontón.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -94, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0020RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0021RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Naturaleza y descanso', N'Perfecto para desconectarse. El camino de llegada es un poco empinado, pero vale cada minuto. Comida casera deliciosa.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -31, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0021RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0022RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'El mejor día del viaje', N'Catamarán con música, la piscina natural con estrellas de mar y almuerzo en la playa. El guía Ramón nos hizo reír todo el camino.', N'Gracias, Héctor. Le pasamos tus saludos a Ramón.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -157, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -158, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0022RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0023RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Imperdible', N'La isla es preciosa y el regreso en lancha rápida fue emocionante. Lleven protector solar, el sol pega fuerte.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -53, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0023RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0024RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Muy bien organizada', N'Puntuales en la recogida, equipo de snorkel en buen estado y un almuerzo con pescado fresco. Todo como lo describen.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0024RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRD3R9K4PC')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Playa Rincón es un paraíso', N'El paseo en bote por los acantilados de Cabo Cabrón es impresionante y Playa Rincón casi vacía. El coco frío en la orilla fue el cierre perfecto.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -58, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRD3R9K4PC';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0026RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Bonita excursión', N'Paisajes increíbles. El mar estaba algo movido de regreso, pero el capitán manejó muy bien.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -78, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0026RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0027RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'La playa más bonita del país', N'Arena blanca, agua cristalina y nadie más alrededor. El viaje hasta Pedernales es largo, pero no hay nada igual en el Caribe.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -208, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0027RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0028RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Vale el viaje', N'Los guías conocen muy bien la zona y nos explicaron la importancia del parque Jaragua. Lleven comida y mucha agua.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -63, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0028RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0029RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Cascada impresionante', N'Subimos a caballo y bajamos a pie. Bañarse al pie del salto es una experiencia única. El almuerzo criollo al final estuvo muy rico.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -168, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0029RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0030RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Recomendado', N'El sendero tiene partes resbaladizas, mejor ir con zapatos cerrados. Los guías son pacientes y conocen cada planta del camino.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -26, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0030RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRD7Y4C9VH')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Llegar a la cima del Caribe', N'Tres días de montaña, noches frías en La Compartición y el amanecer desde la cima. Los guías y los arrieros fueron extraordinarios.', N'Daniel, felicidades por coronar el Pico Duarte. Fue un honor acompañarles.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -87, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -88, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRD7Y4C9VH';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0032RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Exigente pero inolvidable', N'Hay que tener buena condición física. La organización es excelente: comida caliente, mulas para el equipaje y mucha seguridad.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -238, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0032RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0033RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Jarabacoa enamora', N'Visitamos Salto de Baiguate y Jimenoa en un solo día. El clima fresco de la montaña es un descanso del calor de la costa.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -83, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0033RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0034RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Café recién tostado en la montaña', N'La cabalgata entre pinos y la visita al cafetal familiar fueron lo mejor del viaje. Nos llevamos dos libras de café para la casa.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -113, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0034RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0035RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Experiencia auténtica', N'Caballos mansos y bien cuidados, ideal para principiantes. La familia productora nos explicó todo el proceso del café.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0035RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0036RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Del árbol a la barra de chocolate', N'Aprendimos a fermentar, secar y moler el cacao. Hicimos nuestra propia barra de chocolate. Ideal para ir con niños.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -188, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0036RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0037RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Mangú como en casa de la abuela', N'Desayuno de mangú con los tres golpes y luego un recorrido por el Mercado Modelo con mucha historia. Guía muy simpática.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -58, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0037RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0038RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Muy bonito', N'Buena forma de conocer el Santo Domingo cotidiano. El mercado puede estar muy lleno, conviene ir temprano como propone el tour.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -16, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0038RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0039RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Sabor dominicano de verdad', N'Arroz, habichuelas guisadas, pollo y ensalada, con jugo de chinola. La anfitriona nos contó la historia de cada plato.', N'Gracias, Carmen. Ese jugo de chinola es receta de la casa.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -97, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -98, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0039RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0040RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Historia viva', N'Caminar por la Calle Las Damas y entrar a la Catedral Primada con un guía que sabe tanto fue fascinante. Terminamos con un helado en el Parque Colón.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -258, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0040RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0041RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Imprescindible en Santo Domingo', N'Tres horas que pasan volando. El guía adapta el ritmo al grupo y recomienda buenos lugares para comer después.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0041RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0042RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Los Haitises superó todo', N'Los mogotes saliendo del agua, los manglares y los petroglifos taínos en las cuevas. Vimos pelícanos y fragatas muy de cerca.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -143, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0042RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0043RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Paisaje de película', N'La bahía de San Lorenzo es preciosa. El guía explicó muy bien la historia taína de las pinturas en la Cueva de la Línea.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -10, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0043RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0044RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Buen complemento a la playa', N'Altos de Chavón tiene una vista hermosa sobre el río Chavón. La basílica es impresionante por dentro. Un día cultural muy completo.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -123, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0044RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0045RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Puerto Plata con color', N'Las casas victorianas, la Calle de la Sombrilla y el teleférico al final. Las fotos quedan espectaculares.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -88, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0045RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0046RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Adrenalina pura', N'Doce líneas sobre la selva, una más alta que la otra. El equipo de seguridad revisa todo dos veces y te hace sentir muy confiado.', N'Patricia, gracias por volar con nosotros. La línea 12 siempre deja a todos sin palabras.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -107, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -108, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0046RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0047RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Muy divertido', N'Fuimos con mi hijo de doce años y le encantó. Instructores jóvenes y con mucha energía.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -38, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0047RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0048RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Volar sobre el valle', N'Ver los campos de cultivo de Constanza desde el aire es indescriptible. El piloto me dio total confianza.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -68, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0048RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0049RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Frío y aventura', N'Senderos de tierra entre pinos y la pirámide de Valle Nuevo. Lleven abrigo, la temperatura baja bastante.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -93, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0049RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0050RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Agua cristalina', N'Vimos peces de colores, una tortuga y un arrecife muy bien conservado. La comida a bordo, sencilla pero rica.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -173, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0050RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0051RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'La aventura más divertida', N'Saltar y deslizarse por los charcos es una experiencia única. Los guías te ayudan en cada salto y hay opción de saltar menos.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -78, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0051RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0052RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'La mejor villa de nuestra vida', N'Celebramos los 60 años de mi papá con toda la familia. La piscina frente al mar, el mayordomo y la playa privada lo hicieron perfecto.', N'Héctor, gracias por celebrar con nosotros. Felicidades de nuevo a su papá.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -143, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -144, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0052RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0053RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Espectacular', N'La vista desde la terraza al atardecer es inolvidable. Todo impecable. Está algo lejos del pueblo, conviene alquilar carrito de golf.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -55, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0053RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0054RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Un día de lujo', N'El capitán nos llevó hasta el río Chavón y paramos a nadar en agua cristalina. Las bebidas frías y la música, perfectas.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -38, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0054RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0055RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Los niños no querían irse', N'Los toboganes de espiral son muy divertidos y la zona infantil tiene salvavidas pendientes todo el tiempo. Buen almuerzo.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0055RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0056RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Para toda la familia', N'Hicimos el recorrido de siete charcos con los niños. Agua fresca, cascadas y mucha risa. Lleven zapatos de agua.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -24, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0056RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0057RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Rápido y sin sorpresas', N'Me entregaron el auto en diez minutos al salir del aeropuerto. Limpio, con el tanque lleno y el precio igual al de la reserva.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -44, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0057RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0058RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Buena opción económica', N'Consume poco y es cómodo para la autopista hacia Punta Cana. La devolución en otra ciudad fue muy fácil.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0058RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0059RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Perfecto para la familia', N'Viajamos siete con todo el equipaje sin problemas. El personal de Caribe Rent nos esperó aunque el vuelo llegó tarde.', N'Gracias, Héctor. Siempre monitoreamos los vuelos para esperar a nuestros clientes.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -62, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -63, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0059RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0060RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'La costa norte con la capota abajo', N'Puerto Plata, Sosúa y Cabarete en un convertible fue inolvidable. Auto impecable y entrega puntual.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -30, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0060RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0061RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Llegamos a Playa Frontón', N'Sin un 4x4 no hubiéramos llegado a las playas escondidas de Samaná. El límite de 250 km diarios fue más que suficiente.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -84, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0061RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0062RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Un campo de otro mundo', N'Los hoyos junto al mar son espectaculares y el caddie conocía cada green. Una experiencia que todo golfista debe vivir.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0062RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0063RS')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'En el corazón de la Zona Colonial', N'La recepción nos atendió de maravilla y nos recomendó restaurantes cercanos. Habitación con mucho encanto colonial.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -24, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDV0063RS';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDN2P8K4T')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Las piscinas con puentes son preciosas', N'Pasamos cuatro días entre la playa y las piscinas. La comida del restaurante criollo fue lo mejor, y el personal siempre atento con una sonrisa.', N'Gracias, Laura. Le contaremos al equipo del restaurante criollo.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -34, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDN2P8K4T';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDN3Q7M2V')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Ideal para ir con niños', N'La habitación familiar tenía espacio de sobra y la playa es tranquila. Recomiendo reservar el restaurante de mariscos al llegar porque se llena.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -88, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDN3Q7M2V';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDN5S4Y3Z')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'La mejor noche del viaje', N'Caminar por la Zona Colonial iluminada y terminar bailando son con los músicos fue mágico. El guía nos enseñó los pasos básicos con mucha paciencia.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDN5S4Y3Z';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDN6T3A9B')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Música de verdad', N'Nada de espectáculo para turistas: músicos del barrio tocando tambores y güira. Fuimos cuatro amigos y repetiríamos sin dudarlo.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -59, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDN6T3A9B';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDN7U2C8D')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Vista increíble de la bahía', N'La última línea, sobre el bosque y con la bahía de fondo, vale el viaje. Los guías revisan el equipo en cada plataforma y te hacen sentir seguro.', N'Gracias, Yesenia. Esa última línea es la favorita del equipo también.',
+           DATEADD(HOUR, 10, CAST(DATEADD(DAY, -30, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -31, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDN7U2C8D';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDN8V9E7F')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Adrenalina en familia', N'Mi hijo de diez años la disfrutó tanto como nosotros. Llevamos zapatos cerrados como recomiendan y agua; el transporte salió puntual.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -73, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDN8V9E7F';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDN9W8G6H')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 8, N'Un oasis en la ciudad', N'Cuesta creer que esas lagunas estén en plena capital. La bajada tiene muchos escalones, así que conviene ir con calzado cómodo.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -12, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDN9W8G6H';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDP2X7J5K')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Vimos ballenas a pocos metros', N'Fuimos en febrero y vimos tres grupos de ballenas jorobadas. El capitán apagó los motores para no molestarlas. Almuerzo rico en Cayo Levantado.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -278, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDP2X7J5K';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDP3Y6L4M')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 10, N'Punta Cana desde el aire', N'Veinte minutos que se sienten como un sueño: el agua turquesa y la línea de playa infinita. Nos recogieron en el hotel a la hora exacta.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDP3Y6L4M';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDP5A4Q2R')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Cómoda y económica', N'La CR-V consumió poco y cupieron todas las maletas. La entrega en el aeropuerto fue rápida y el vehículo estaba impecable.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -59, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDP5A4Q2R';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDP6B3S9T')
+    INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
+    SELECT r.id_reserva, 9, N'Perfecta para los caminos de Samaná', N'Con el Jimny llegamos a Playa Frontón y a Playa Moróns sin problema. Es pequeño, pero para dos personas con mochilas sobra espacio.', NULL,
+           NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -24, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.reservas r WHERE r.codigo = N'BRDP6B3S9T';
+GO
+-- 4.8 Publicaciones guardadas por los viajeros
+IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_usuario = f.id_usuario
+               INNER JOIN dbo.hoteles h ON h.id_hotel = f.id_hotel
+               WHERE u.correo = N'cliente@bookingrd.com' AND h.nombre = N'Paraíso Escondido Eco-Resort')
+    INSERT INTO dbo.favoritos (id_usuario, id_hotel, fecha_creacion)
+    SELECT u.id_usuario, h.id_hotel, DATEADD(HOUR, 18, CAST(DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
+    WHERE u.correo = N'cliente@bookingrd.com' AND h.nombre = N'Paraíso Escondido Eco-Resort';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_usuario = f.id_usuario
+               INNER JOIN dbo.actividades a ON a.id_actividad = f.id_actividad
+               WHERE u.correo = N'cliente@bookingrd.com' AND a.nombre = N'Excursión en catamarán a Isla Saona')
+    INSERT INTO dbo.favoritos (id_usuario, id_actividad, fecha_creacion)
+    SELECT u.id_usuario, a.id_actividad, DATEADD(HOUR, 18, CAST(DATEADD(DAY, -19, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'cliente@bookingrd.com' AND a.nombre = N'Excursión en catamarán a Isla Saona';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_usuario = f.id_usuario
+               INNER JOIN dbo.actividades a ON a.id_actividad = f.id_actividad
+               WHERE u.correo = N'cliente@bookingrd.com' AND a.nombre = N'27 Charcos de Damajagua')
+    INSERT INTO dbo.favoritos (id_usuario, id_actividad, fecha_creacion)
+    SELECT u.id_usuario, a.id_actividad, DATEADD(HOUR, 18, CAST(DATEADD(DAY, -18, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'cliente@bookingrd.com' AND a.nombre = N'27 Charcos de Damajagua';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_usuario = f.id_usuario
+               INNER JOIN dbo.hoteles h ON h.id_hotel = f.id_hotel
+               WHERE u.correo = N'cliente@bookingrd.com' AND h.nombre = N'Palma Real Haven Resort')
+    INSERT INTO dbo.favoritos (id_usuario, id_hotel, fecha_creacion)
+    SELECT u.id_usuario, h.id_hotel, DATEADD(HOUR, 18, CAST(DATEADD(DAY, -17, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.usuarios u CROSS JOIN dbo.hoteles h
+    WHERE u.correo = N'cliente@bookingrd.com' AND h.nombre = N'Palma Real Haven Resort';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_usuario = f.id_usuario
+               INNER JOIN dbo.actividades a ON a.id_actividad = f.id_actividad
+               WHERE u.correo = N'luis.fernandez@correo.com' AND a.nombre = N'Ascenso al Pico Duarte')
+    INSERT INTO dbo.favoritos (id_usuario, id_actividad, fecha_creacion)
+    SELECT u.id_usuario, a.id_actividad, DATEADD(HOUR, 18, CAST(DATEADD(DAY, -16, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.usuarios u CROSS JOIN dbo.actividades a
+    WHERE u.correo = N'luis.fernandez@correo.com' AND a.nombre = N'Ascenso al Pico Duarte';
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_usuario = f.id_usuario
+               INNER JOIN dbo.vehiculos v ON v.id_vehiculo = f.id_vehiculo
+               WHERE u.correo = N'cliente@bookingrd.com' AND v.nombre = N'Ford Mustang Convertible')
+    INSERT INTO dbo.favoritos (id_usuario, id_vehiculo, fecha_creacion)
+    SELECT u.id_usuario, v.id_vehiculo, DATEADD(HOUR, 18, CAST(DATEADD(DAY, -15, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
+    WHERE u.correo = N'cliente@bookingrd.com' AND v.nombre = N'Ford Mustang Convertible';
+GO
+-- 4.9 Mensajes del formulario de contacto
+IF NOT EXISTS (SELECT 1 FROM dbo.mensajes_contacto WHERE correo = N'rosa.almanzar@correo.com' AND asunto = N'empresa')
+    INSERT INTO dbo.mensajes_contacto (nombre, correo, asunto, mensaje, atendido, fecha_envio)
+    VALUES (N'Rosa Almánzar', N'rosa.almanzar@correo.com', N'empresa', N'Tenemos un hostal en Constanza y queremos publicarlo. ¿Qué requisitos piden?', 0, DATEADD(HOUR, 16, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))));
+GO
+IF NOT EXISTS (SELECT 1 FROM dbo.mensajes_contacto WHERE correo = N'kevin.mejia@correo.com' AND asunto = N'viajero')
+    INSERT INTO dbo.mensajes_contacto (nombre, correo, asunto, mensaje, atendido, fecha_envio)
+    VALUES (N'Kevin Mejía', N'kevin.mejia@correo.com', N'viajero', N'No me llegó el correo de confirmación de la reserva, aunque tengo el código.', 1, DATEADD(HOUR, 16, CAST(DATEADD(DAY, -5, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))));
 GO
 
 PRINT N'Instalación de BookingRD completada.';

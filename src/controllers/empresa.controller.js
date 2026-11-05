@@ -7,11 +7,7 @@
  *   puede leer ni modificar datos de otra.
  */
 
-const cuentasRepo = require('../repositories/cuentas.repo');
-const publicacionesRepo = require('../repositories/publicaciones.repo');
-const reservasRepo = require('../repositories/reservas.repo');
-const imagenesRepo = require('../repositories/imagenes.repo');
-const resenasRepo = require('../repositories/resenas.repo');
+const { cuentasRepo, publicacionesRepo, reservasRepo, imagenesRepo, resenasRepo } = require('../repositories');
 const { validarPublicacion } = require('../validators/publicaciones.validator');
 const { validarPerfilEmpresa } = require('../validators/empresa.validator');
 const { validarRespuesta } = require('../validators/resenas.validator');

@@ -309,7 +309,7 @@ async function listarFavoritas(tipo, idUsuario) {
 
 /**
  * Indicadores de la página de inicio: publicaciones activas por tipo, por
- * categoría y por destino, ciudades con publicaciones, empresas registradas
+ * categoría y por destino (también por destino y tipo), ciudades con publicaciones, empresas registradas
  * y valoración media de las reseñas visibles. Las
  * publicaciones de empresas suspendidas por la administración no se cuentan.
  */
@@ -339,6 +339,7 @@ async function estadisticas() {
     const [grupos, empresas, valoracion] = resultado.recordsets;
     const porCategoria = {};
     const porCiudad = {};
+    const porCiudadTipo = {};
     const ciudades = new Set();
     let totalHoteles = 0;
     let totalActividades = 0;
@@ -346,6 +347,8 @@ async function estadisticas() {
     for (const fila of grupos) {
         porCategoria[fila.categoria] = (porCategoria[fila.categoria] || 0) + fila.total;
         porCiudad[fila.ciudad] = (porCiudad[fila.ciudad] || 0) + fila.total;
+        porCiudadTipo[fila.ciudad] = porCiudadTipo[fila.ciudad] || { hotel: 0, actividad: 0, vehiculo: 0 };
+        porCiudadTipo[fila.ciudad][fila.tipo] += fila.total;
         ciudades.add(fila.ciudad);
         if (fila.tipo === 'hotel') totalHoteles += fila.total;
         else if (fila.tipo === 'actividad') totalActividades += fila.total;
@@ -359,6 +362,7 @@ async function estadisticas() {
         ciudades: [...ciudades].sort((a, b) => a.localeCompare(b, 'es')),
         porCategoria,
         porCiudad,
+        porCiudadTipo,
         puntuacionMedia: valoracion[0].promedio === null ? null : Number(valoracion[0].promedio),
         totalResenas: valoracion[0].total
     };
@@ -518,6 +522,7 @@ async function eliminar(tipo, id, idEmpresa) {
 module.exports = {
     TIPOS,
     ORDENES,
+    aPublicacion,
     listar,
     obtener,
     listarFavoritas,

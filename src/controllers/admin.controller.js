@@ -5,9 +5,7 @@
  *   publicaciones, consulta de reservas y atención de mensajes de contacto.
  */
 
-const adminRepo = require('../repositories/admin.repo');
-const publicacionesRepo = require('../repositories/publicaciones.repo');
-const resenasRepo = require('../repositories/resenas.repo');
+const { adminRepo, publicacionesRepo, resenasRepo } = require('../repositories');
 const { solicitudInvalida, noEncontrado } = require('../utils/errores');
 const { aEnteroPositivo, textoLimpio } = require('../utils/validacion');
 const { hoy } = require('../utils/fechas');

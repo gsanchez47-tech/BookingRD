@@ -32,14 +32,14 @@ const PATRON_SITIO_WEB = /^https?:\/\/\S+\.\S+$/i;
 /** Contenido del panel fotográfico y textos del formulario por tipo de cuenta. */
 const PRESENTACION = {
     cliente: {
-        foto: 'img/registro/viajero.jpg',
+        foto: 'img/paginas/registro-viajero.jpg',
         titulo: 'El Caribe dominicano, a un clic',
         texto: 'Crea tu cuenta en menos de un minuto: reserva, guarda tus favoritos y cuenta cómo te fue.',
         tituloPaso1: 'Tus datos',
         etiquetaNombre: 'Nombre completo'
     },
     empresa: {
-        foto: 'img/registro/empresa.jpg',
+        foto: 'img/paginas/registro-empresa.jpg',
         titulo: 'Lleva tu negocio a toda la isla',
         texto: 'Registra tu empresa con su RNC, publica habitaciones, tours y actividades y responde a las reseñas de tus clientes.',
         tituloPaso1: 'Datos del representante',
@@ -297,9 +297,9 @@ async function enviarRegistro() {
         const respuesta = await apiFetch('/auth/registro', { method: 'POST', body: datos });
         guardarSesion(respuesta.token, respuesta.usuario);
         programarAviso(respuesta.usuario.rol === 'empresa'
-            ? `Empresa ${respuesta.usuario.nombreEmpresa} registrada. La publicación de servicios estará disponible en la siguiente fase.`
+            ? `Empresa ${respuesta.usuario.nombreEmpresa} registrada. Ya puedes publicar tus servicios desde este panel.`
             : `Cuenta creada. Bienvenido a BookingRD, ${respuesta.usuario.nombre.split(' ')[0]}.`);
-        window.location.href = 'index.html';
+        window.location.href = respuesta.usuario.rol === 'empresa' ? 'panel-empresa.html' : 'index.html';
     } catch (errorServidor) {
         botonNormal(boton, textoBoton);
         // El backend indica el campo con error: se vuelve al paso que lo contiene.

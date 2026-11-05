@@ -19,9 +19,8 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const { conTransaccion } = require('../config/db');
+const { conTransaccion, cuentasRepo } = require('../repositories');
 const correoService = require('../services/correo.service');
-const cuentasRepo = require('../repositories/cuentas.repo');
 const { esCorreoValido, esTextoNoVacio, aEnteroPositivo, textoLimpio } = require('../utils/validacion');
 const { TIPOS_SERVICIO, TIPOS_ALOJAMIENTO, CATEGORIAS_ACTIVIDAD, PROVINCIAS } = require('../utils/catalogos');
 

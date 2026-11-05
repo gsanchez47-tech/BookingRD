@@ -37,10 +37,8 @@
 
 const crypto = require('crypto');
 
-const { conTransaccion } = require('../config/db');
-const reservasRepo = require('../repositories/reservas.repo');
-const cuentasRepo = require('../repositories/cuentas.repo');
 const correoService = require('./correo.service');
+const { conTransaccion, reservasRepo, cuentasRepo } = require('../repositories');
 const { solicitudInvalida, noEncontrado, conflicto, prohibido } = require('../utils/errores');
 const { hoy, esFechaValida, diferenciaDias, sumarDias } = require('../utils/fechas');
 const { aEnteroPositivo, textoLimpio } = require('../utils/validacion');

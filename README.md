@@ -1,266 +1,249 @@
 # BookingRD
 
-Plataforma web de alojamiento, tours, actividades de aventura y alquiler de autos en República Dominicana. Las empresas turísticas publican sus hoteles, villas, excursiones y su flota de vehículos; los viajeros las encuentran, consultan la disponibilidad en tiempo real y reservan. Proyecto académico.
+Plataforma web de alojamiento, excursiones, actividades y alquiler de autos en República Dominicana. Las empresas turísticas publican sus hoteles, villas, tours y su flota de vehículos; los viajeros los encuentran, consultan la disponibilidad real y reservan. Proyecto académico.
 
 | Capa | Tecnología |
 |---|---|
-| Backend | Node.js 18+ y Express 4, arquitectura por capas (rutas, controladores, servicios, validadores y repositorios) |
-| Base de datos | Azure SQL Database (base compartida por el equipo, oferta gratuita) o SQL Server 2019+ local, mediante `mssql` |
-| Frontend | HTML, CSS y JavaScript sin frameworks ni herramientas de compilación |
+| Backend | Node.js 18+ y Express 4, por capas (rutas, controladores, servicios, validadores y repositorios) |
+| Base de datos | Azure SQL Database o SQL Server 2019+ mediante `mssql`; **modo de demostración en memoria** sin instalar nada |
+| Frontend | HTML, CSS y JavaScript sin frameworks; una hoja de estilos por página |
 | Seguridad | bcrypt, JWT, helmet, límite de intentos de acceso, consultas parametrizadas |
-
-## Funcionalidades
-
-| Módulo | Descripción |
-|---|---|
-| Inicio | **Presentación de fotografías** a pantalla completa (fundido con acercamiento lento, indicadores con barra de progreso) y destino que cambia en el título sin mover la página; buscador con pestañas *Alojamiento*, *Actividades* y **Autos**, autocompletado de destinos (sin importar tildes), fechas de llegada y salida, de la actividad o de **recogida y devolución con hora**, y personas; **cinta de destinos** en movimiento; indicadores con la valoración media; destinos con su número de publicaciones; **mosaico de destinos** con fotografía; *Vistos recientemente*; vitrina por categoría (con **golf** y **alquiler de autos**); carrusel de destacados; **mapa de la isla** con el precio de cada publicación; **opiniones verificadas**; *Sobre nosotros* con paralaje; llamado a empresas; *Contacto*. |
-| Alquiler de autos (`autos.html`) | Portada con buscador de autos (lugar, fecha y hora de recogida y devolución), **tipos de auto** con su número de modelos, autos mejor valorados, cómo funciona en tres pasos, lo que incluye el precio, requisitos para recoger y **preguntas frecuentes**. |
-| Explorar | **Panel de filtros a la izquierda** (en móvil se abre con el botón *Filtros*) por texto, destino, personas (pasajeros en autos), **transmisión** (autos), **rango de precio con control deslizante de dos extremos sobre el histograma de precios** y **valoración mínima**, con etiquetas de los filtros aplicados que se quitan con un clic; categorías arriba; orden por destacados, **mejor valorados**, **más reservados**, recientes, precio o nombre; **vista de mapa**; las fechas elegidas en el buscador viajan hasta el formulario de reserva. Todo queda en la URL para compartir la búsqueda. |
-| Tarjetas | En autos: año, pasajeros, transmisión, maletas, kilometraje y precio por día. Nota de 1 a 10 con su calificación (*Fantástico*, *Muy bueno*...) y número de reseñas, o *Nuevo en BookingRD*; insignias *Destacado*, *Muy reservado* o *Favorito de viajeros*; corazón para guardar; política de cancelación. |
-| Detalle | Valoración, **Guardar** y **Compartir** en la portada; barra de secciones fija; lo más destacado; descripción, detalles y servicios; **mapa de la zona** y enlace *Cómo llegar*; **reseñas** con nota media, distribución por tramos, orden y respuesta de la empresa; *Lo que debes saber* (cancelación, pago, documentos); datos de la empresa; relacionadas; tarjeta de reserva con disponibilidad, aviso de *últimas plazas* y total en tiempo real. |
-| Alquiler de autos | Ficha con características (pasajeros, puertas, maletas, transmisión, combustible, aire y kilometraje), **requisitos** (licencia, edad mínima, tarjeta de crédito para el depósito y documento), políticas del sector (combustible lleno a lleno, depósito reembolsable, seguro incluido, horario del mostrador) y formulario con **fecha y hora** de recogida y devolución, **ciudad de devolución**, **edad del conductor** y **extras** (protección total, conductor adicional, silla infantil, GPS, Wi-Fi, entrega en el hotel). El servidor cobra por bloques de 24 horas con una hora de cortesía, suma el **cargo por conductor joven** (menores de 25), el de **devolución en otra ciudad** y los extras, y muestra el desglose; el depósito se informa aparte. La disponibilidad se calcula por unidades de la flota en cada día del alquiler. |
-| Favoritos | Los viajeros guardan hoteles, actividades y autos con el corazón; el header muestra cuántos tienen y la pestaña *Guardados* los reúne. Se guardan en la base (`dbo.favoritos`), así que aparecen en cualquier equipo. |
-| Reseñas | Solo el titular de una reserva confirmada y terminada puede reseñarla, una vez (puntuación de 1 a 10, título y comentario). La empresa responde desde su panel y la administración puede ocultar reseñas que incumplan las normas. |
-| Reservas | Hoteles: entrada, salida, habitaciones y personas. Actividades: fecha y personas. Autos: recogida y devolución con hora (de 6:00 a. m. a 10:00 p. m., de 1 a 30 días), edad del conductor, ciudad de devolución y extras. El servidor bloquea la publicación durante la transacción, por lo que dos viajeros no pueden tomar el último cupo a la vez. Cada reserva recibe un código único (p. ej. `BRD7K2M9QA`). |
-| Mis reservas | Próximas, pasadas y canceladas, con lugar y hora de recogida, devolución, extras y depósito en los alquileres; cancelación hasta un día antes; *Guardados*; *Reseñas* con las reservas pendientes de reseñar y un aviso para escribirlas. |
-| Panel de empresa | *Resumen* con indicadores, ingresos por mes, publicaciones con más reservas y próximas llegadas; crear, editar, ocultar o eliminar publicaciones con fotografía; reservas recibidas con búsqueda, filtro y exportación a CSV (Excel); **reseñas** con su valoración media y respuesta pública; perfil público editable. Una empresa de *Alojamiento* solo publica hospedaje, una de *Actividades* solo actividades, una *Mixta* ambas cosas y una de **Alquiler de vehículos** publica cada modelo de su flota (unidades, lugar de recogida, depósito, edad mínima, kilometraje y cargos). |
-| Administración (equipo de desarrollo) | Centro de control en `admin.html`: indicadores globales y gráficos; empresas con sus ingresos y opción de suspender o reactivar la cuenta; usuarios; moderación de cualquier publicación, también de autos (ocultar o destacar en la página de inicio); moderación de reseñas; todas las reservas; mensajes del formulario de contacto (pendientes y atendidos). Una cuenta suspendida no puede iniciar sesión, su sesión abierta se cierra y, si es una empresa, sus publicaciones salen del catálogo. |
-| Registro | Sencillo para viajeros (nombre, correo y contraseña) y en tres pasos para empresas (representante, datos legales y servicios, incluido *Alquiler de vehículos*). |
-| Inicio de sesión | Fotografías en transición, *Recordarme* y regreso automático a la página que pedía la sesión. |
-| Correos | **Bienvenida** al registrarse (distinta para viajero y para empresa, con los primeros pasos según su servicio) y **confirmación de cada reserva** con el código, las fechas, el total y, en los autos, el depósito y lo que hay que llevar. Se envían por SMTP (Gmail, Outlook u otro); sin configurarlo se guardan como HTML en `correos-enviados/`. Un fallo del correo nunca impide registrarse ni reservar (sección 4). |
-
-Las fotografías que suben las empresas se guardan en la base de datos (`dbo.imagenes`), de modo que todos los integrantes del equipo ven las mismas imágenes sin compartir archivos. Las fotografías del sitio y de los datos de demostración no se repiten: cada imagen de `public/img/` se usa en un solo lugar.
-
-Documentación adicional:
-- [`docs/RESUMEN.md`](docs/RESUMEN.md): estado del proyecto en una página.
-- [`docs/DOCUMENTACION.md`](docs/DOCUMENTACION.md): arquitectura, API, base de datos, frontend y pruebas.
+| Servicios externos | Clima de [Open-Meteo](https://open-meteo.com) y tasas de cambio de [ExchangeRate-API](https://www.exchangerate-api.com), ambos gratuitos y sin clave |
 
 ---
 
-## Capturas
+## 1. Ponerlo a funcionar en tu PC (Windows)
 
-Cada captura lleva el nombre del archivo HTML que muestra (escritorio, 1440 px). En `docs/capturas/movil/` están las mismas páginas a 375 px.
+### 1.1 Requisitos
 
-| Página | Captura |
-|---|---|
-| Inicio · `public/index.html` | ![Inicio](docs/capturas/index.jpg) |
-| Alquiler de autos · `public/autos.html` | ![Alquiler de autos](docs/capturas/autos.jpg) |
-| Correos de bienvenida y de reserva | ![Correos](docs/capturas/correos.jpg) |
-| Explorar · `public/explorar.html` | ![Explorar](docs/capturas/explorar.jpg) |
-| Explorar, vista de mapa · `public/explorar.html?vista=mapa` | ![Mapa de resultados](docs/capturas/explorar-mapa.jpg) |
-| Detalle y reserva · `public/detalle.html` | ![Detalle](docs/capturas/detalle.jpg) |
-| Explorar autos · `public/explorar.html?tipo=vehiculo` | ![Autos en Explorar](docs/capturas/explorar-autos.jpg) |
-| Detalle de un auto · `public/detalle.html?tipo=vehiculo` | ![Detalle de auto](docs/capturas/detalle-auto.jpg) |
-| Reserva confirmada · `public/detalle.html` | ![Confirmación](docs/capturas/detalle-confirmacion.jpg) |
-| Mis reservas · `public/mis-reservas.html` | ![Mis reservas](docs/capturas/mis-reservas.jpg) |
-| Mis reservas, guardados · `public/mis-reservas.html?vista=guardados` | ![Guardados](docs/capturas/mis-reservas-guardados.jpg) |
-| Mis reservas, reseñas · `public/mis-reservas.html?vista=resenas` | ![Reseñas del viajero](docs/capturas/mis-reservas-resenas.jpg) |
-| Escribir una reseña · `public/mis-reservas.html` | ![Formulario de reseña](docs/capturas/mis-reservas-formulario-resena.jpg) |
-| Panel de empresa · `public/panel-empresa.html` | ![Panel de empresa](docs/capturas/panel-empresa.jpg) |
-| Panel de empresa, reseñas · `public/panel-empresa.html` | ![Reseñas de la empresa](docs/capturas/panel-empresa-resenas.jpg) |
-| Panel de empresa, perfil · `public/panel-empresa.html` | ![Perfil de empresa](docs/capturas/panel-empresa-perfil.jpg) |
-| Administración · `public/admin.html` | ![Administración](docs/capturas/admin.jpg) |
-| Administración, reseñas · `public/admin.html` | ![Moderación de reseñas](docs/capturas/admin-resenas.jpg) |
-| Administración, empresas · `public/admin.html` | ![Empresas](docs/capturas/admin-empresas.jpg) |
-| Administración, publicaciones · `public/admin.html` | ![Moderación](docs/capturas/admin-publicaciones.jpg) |
-| Administración, mensajes · `public/admin.html` | ![Mensajes](docs/capturas/admin-mensajes.jpg) |
-| Registro de viajero · `public/registro.html` | ![Registro](docs/capturas/registro.jpg) |
-| Registro de empresa · `public/registro.html?tipo=empresa` | ![Registro de empresa](docs/capturas/registro-empresa.jpg) |
-| Inicio de sesión · `public/login.html` | ![Inicio de sesión](docs/capturas/login.jpg) |
+- **Node.js 18 o superior** (versión LTS): <https://nodejs.org>. Durante la instalación deja marcadas las opciones por defecto. Para comprobarlo, abre *Símbolo del sistema* o *PowerShell* y escribe `node -v`.
+- Nada más para la demostración. SQL Server o Azure solo hacen falta para guardar los datos de forma permanente (sección 3).
 
----
+### 1.2 Obtener el proyecto
 
-## 1. Requisitos
+Con el `.zip`: haz clic derecho sobre él, **Extraer todo**, y entra a la carpeta extraída (la que contiene `package.json`).
 
-- [Node.js](https://nodejs.org) 18 o superior (LTS recomendada).
-- [Git](https://git-scm.com).
-- Acceso a la base de datos: la base compartida en Azure (sección 3.A) o un SQL Server local (sección 3.B).
-
-No se requieren herramientas de compilación: `bcrypt` 6 incluye binarios para Windows, macOS y Linux.
-
-## 2. Obtener el proyecto
+Con Git:
 
 ```bash
 git clone https://github.com/gsanchez47-tech/BookingRD.git
 cd BookingRD
-npm install
 ```
 
-## 3. Base de datos
+### 1.3 Instalar y arrancar
 
-### 3.A Base compartida en Azure SQL Database (recomendado)
+En la carpeta del proyecto, abre una terminal (en el Explorador de archivos, escribe `cmd` en la barra de direcciones y pulsa Enter) y ejecuta:
 
-Una sola base para todo el equipo: lo que publica o reserva un integrante lo ven los demás de inmediato.
+```bash
+npm install
+npm start
+```
 
-Azure SQL Database tiene una oferta gratuita permanente: por cada base, 100.000 vCore-segundos de cómputo y 32 GB de almacenamiento al mes, hasta 10 bases por suscripción. Con la opción de pausa automática no se generan cargos. La suscripción *Azure for Students Starter* no es compatible con esta oferta; sí lo son *Azure for Students* y la cuenta gratuita de Azure.
+Abre <http://localhost:3000> en el navegador. Para detener el servidor, pulsa `Ctrl + C` en la terminal.
 
-**Creación (una sola vez, un integrante):**
+Sin archivo `.env`, el servidor arranca en **modo de demostración**: carga en memoria los datos de `database/datos-demo.js` (20 cuentas, 7 empresas, 60 publicaciones, 90 reservas y 74 reseñas) y todo el sitio funciona: registrarse, reservar, cancelar, reseñar, publicar desde el panel de empresa y moderar desde la administración. Los cambios se pierden al detener el servidor. La consola lo indica al arrancar.
 
-1. Ingresar a <https://portal.azure.com>, buscar **SQL databases** y seleccionar **Create**. En el aviso superior del formulario, seleccionar **Apply offer** (oferta gratuita).
-2. Pestaña *Basics*:
-   - *Resource group*: crear uno nuevo, p. ej. `bookingrd-rg`.
-   - *Database name*: `BookingRD`.
-   - *Server*: *Create new*. Nombre único, región cercana (p. ej. *East US 2*) y *Authentication method*: **Use SQL authentication**. Anotar el usuario y la contraseña de administrador.
-   - *Behavior when free limit reached*: **Auto-pause the database until next month**.
-3. Pestaña *Networking*: *Connectivity method*: **Public endpoint**; activar **Add current client IP address**.
-4. *Review + create* > *Create*.
-5. En la carpeta del proyecto, ejecutar el asistente y responder con los datos del servidor:
+| Comando | Para qué |
+|---|---|
+| `npm start` | Arranca el servidor (demostración si no hay base configurada) |
+| `npm run demo` | Fuerza el modo de demostración aunque `.env` tenga una base |
+| `npm run dev` | Igual que `start`, con reinicio automático al guardar cambios |
+| `npm run probar` | Pruebas automáticas de la API (24 casos) |
+| `npm run construir` | Regenera `public/*.html` y `public/css/` desde `frontend/` (sección 6) |
+
+### 1.4 Cuentas de demostración
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| Viajero | cliente@bookingrd.com | Cliente123! |
+| Empresa mixta (Bahía Caribe Tours) | empresa@bookingrd.com | Empresa123! |
+| Empresa de alojamiento (Coralia Hotels & Resorts) | hoteles@bookingrd.com | Empresa123! |
+| Alquiler de autos (Caribe Rent a Car) | autos@bookingrd.com | Empresa123! |
+| Administración | admin@bookingrd.com | Admin123! |
+
+Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@correo.com`) usan `Cliente123!`; las demás empresas (`aventura@`, `montana@`, `cultura@`, `rentacar@bookingrd.com`) usan `Empresa123!`. En la página de inicio de sesión, los botones de *Cuentas de demostración* completan el formulario con un clic.
+
+**Recorrido sugerido**
+
+1. En el inicio, toca un destino del mapa: la ficha muestra cuántos alojamientos, actividades y autos tiene y el clima actual.
+2. Entra como `cliente@bookingrd.com`, busca en *Explorar* con los filtros del panel izquierdo y reserva un hotel o una actividad.
+3. Abre *Mis reservas > Reseñas* y reseña la reserva terminada que está pendiente.
+4. En *Autos*, abre un vehículo, cambia la edad del conductor a 23, elige devolverlo en otra ciudad, marca un extra y mira cómo cambia el desglose.
+5. Entra como `empresa@bookingrd.com`: crea una publicación con fotografía, mira la reserva recibida y responde la reseña.
+6. Entra como `admin@bookingrd.com`: suspende una empresa y comprueba que sus publicaciones salen del catálogo; reactívala.
+7. Cambia el idioma a inglés y la moneda a dólares con el botón *ES / RD$* del encabezado.
+
+---
+
+## 2. Qué incluye
+
+| Página | Contenido |
+|---|---|
+| Inicio | **Mapa de la isla** con los 15 destinos: al elegir uno, una ficha muestra sus alojamientos, actividades y autos, y el clima del momento. Buscador de alojamiento, actividades o autos con autocompletado. Postales de 10 destinos con su fotografía, categorías, recomendados por tipo, lo visto recientemente, opiniones verificadas, *Nosotros*, llamado a empresas y contacto. |
+| Explorar | **Todos los filtros en un panel a la izquierda** (cajón en móvil): qué buscas, categoría con su conteo, destino, palabra clave, personas o pasajeros, transmisión, rango de precio sobre un histograma, valoración y fechas del viaje. Etiquetas de filtros aplicados, siete órdenes, vista de lista o de mapa, clima del destino elegido y búsqueda compartible por URL. |
+| Detalle | Valoración, guardar y compartir, lo más destacado, descripción, características, ubicación con clima y pronóstico, reseñas con distribución y respuesta de la empresa, lo que debes saber, relacionadas y reserva con disponibilidad y total en tiempo real. |
+| Autos | Buscador con fecha y hora de recogida y devolución, tipos de auto, flota mejor valorada, cómo reservar, precio y requisitos, otras formas de moverse y preguntas frecuentes. |
+| Mis reservas | Próximas, pasadas y canceladas; cancelación hasta un día antes; guardados; reseñas pendientes y publicadas. |
+| Panel de empresa | Resumen con indicadores y gráficos, publicaciones con fotografía (alojamiento, actividad o vehículo), reservas recibidas con búsqueda y CSV, reseñas con respuesta pública y perfil. |
+| Administración | Indicadores globales, empresas y usuarios (suspender y reactivar), moderación de publicaciones y reseñas, todas las reservas y mensajes de contacto. |
+| Registro e inicio de sesión | Registro sencillo de viajero y por pasos de empresa; *Recordarme*; cada rol llega a su espacio. |
+
+**Idioma y moneda.** El sitio está en español y se puede ver en inglés. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia); el pago siempre es en pesos y la reserva lo indica. Los textos escritos por usuarios y empresas no se traducen.
+
+**Diseño.** Fondo papel, tipografías Fraunces y Nunito (incluidas en `public/fonts/`, sin depender de Google Fonts), paleta de la bandera y del Caribe, y una sola animación: los puntos del mapa al cargar. Sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (94) se usa en un solo lugar del sitio.
+
+**Correos.** Bienvenida al registrarse y confirmación de cada reserva por SMTP. Sin `SMTP_HOST` en `.env`, cada correo se guarda como HTML en `correos-enviados/`.
+
+## Capturas
+
+| Página | Escritorio | Móvil |
+|---|---|---|
+| Inicio | ![Inicio](docs/capturas/index.jpg) | ![Inicio en móvil](docs/capturas/movil/index.jpg) |
+| Explorar | ![Explorar](docs/capturas/explorar.jpg) | ![Explorar en móvil](docs/capturas/movil/explorar.jpg) |
+| Explorar autos | ![Explorar autos](docs/capturas/explorar-autos.jpg) | |
+| Explorar, vista de mapa | ![Vista de mapa](docs/capturas/explorar-mapa.jpg) | |
+| Detalle de alojamiento | ![Detalle](docs/capturas/detalle.jpg) | ![Detalle en móvil](docs/capturas/movil/detalle.jpg) |
+| Detalle de un auto | ![Detalle de auto](docs/capturas/detalle-auto.jpg) | |
+| Alquiler de autos | ![Autos](docs/capturas/autos.jpg) | ![Autos en móvil](docs/capturas/movil/autos.jpg) |
+| Mis reservas | ![Mis reservas](docs/capturas/mis-reservas.jpg) | |
+| Panel de empresa | ![Panel de empresa](docs/capturas/panel-empresa.jpg) | |
+| Administración | ![Administración](docs/capturas/admin.jpg) | |
+| Inicio de sesión | ![Inicio de sesión](docs/capturas/login.jpg) | |
+| Registro de viajero | ![Registro](docs/capturas/registro.jpg) | |
+| Registro de empresa | ![Registro de empresa](docs/capturas/registro-empresa.jpg) | |
+| Correos | ![Correos](docs/capturas/correos.jpg) | |
+
+---
+
+## 3. Base de datos permanente
+
+### 3.A Azure SQL Database (recomendado para el equipo)
+
+Una sola base compartida: lo que publica o reserva un integrante lo ven los demás. Azure SQL Database tiene una oferta gratuita (100.000 vCore-segundos y 32 GB al mes por base) con pausa automática al agotarla; es compatible con *Azure for Students* y con la cuenta gratuita de Azure.
+
+**Crear la base (una vez, un integrante):**
+
+1. En <https://portal.azure.com>, busca **SQL databases > Create** y selecciona **Apply offer** en el aviso de la oferta gratuita.
+2. *Basics*: grupo de recursos nuevo (p. ej. `bookingrd-rg`), base `BookingRD`, servidor nuevo con **SQL authentication** (anota usuario y contraseña) y *Behavior when free limit reached*: **Auto-pause the database until next month**.
+3. *Networking*: **Public endpoint** y **Add current client IP address**.
+4. *Review + create > Create*.
+5. En la carpeta del proyecto:
 
    ```bash
    npm run configurar
    ```
 
-   El asistente genera `.env`, prueba la conexión (indica la IP a autorizar si el firewall la rechaza) y crea las tablas con los datos de demostración.
+   El asistente pide el servidor, el usuario y la contraseña, genera `.env`, prueba la conexión (si el firewall la rechaza, indica la IP que debes autorizar) y crea las tablas con los datos de demostración.
 
-6. Compartir el archivo `.env` con el equipo por un canal privado. **El archivo `.env` no se sube al repositorio.**
+6. Comparte el `.env` con el equipo por un canal privado. **Nunca lo subas al repositorio.**
 
-**Resto del equipo:**
+**Resto del equipo:** copia el `.env` en la raíz del proyecto, autoriza tu IP (*SQL server > Security > Networking > Add your client IPv4 address > Save*) y verifica con `npm run bd:probar`.
 
-1. Copiar en la raíz del proyecto el `.env` recibido.
-2. Autorizar su IP pública: *portal de Azure > SQL server > Security > Networking > Firewall rules > Add your client IPv4 address > Save*. Cada integrante y cada red (casa, universidad) necesita su propia regla.
-3. Verificar la conexión:
+Con la pausa automática, la primera conexión tras un rato sin uso puede tardar hasta un minuto. Basta con reintentar.
 
-   ```bash
-   npm run bd:probar
-   ```
+**Instalar a mano:** también puedes abrir `database/instalacion-azure.sql` en SSMS, en Azure Data Studio o en el *Query editor* del portal, conectado a la base `BookingRD`, y ejecutarlo completo.
 
-Con la pausa automática, la primera conexión después de un tiempo sin uso puede tardar hasta un minuto y responder "El servicio no está disponible". Basta con reintentar. Para ahorrar cómputo, cerrar SSMS o el editor de consultas del portal al terminar.
+### 3.B SQL Server local
 
-**Reinstalar o actualizar:** `npm run bd:instalar` vuelve a ejecutar el script. Es idempotente: no duplica los datos de demostración y conserva lo que el equipo haya creado (cuentas, publicaciones con fotografía propia, reservas). Si la base ya tenía los datos de demostración de una versión anterior, los actualiza: retira las publicaciones de ejemplo que ya no existen (o las oculta si tienen reservas), renombra las que cambiaron y actualiza sus fotografías. Solo si detecta tablas con una estructura anterior, las reemplaza.
-
-### 3.B SQL Server local (alternativa)
-
-1. Instalar SQL Server (Express o Developer) y SQL Server Management Studio.
-2. Abrir `database/instalacion-completa.sql` en SSMS con un login administrador y ejecutar (F5). Crea la base `BookingRD`, el login `bookingrd_app`, las tablas y los datos de demostración.
-3. Crear el archivo de configuración:
+1. Instala SQL Server Express o Developer y SQL Server Management Studio.
+2. Abre `database/instalacion-completa.sql` en SSMS con un usuario administrador y ejecútalo (F5). Crea la base `BookingRD`, el login `bookingrd_app` (contraseña `BookingRD#2026!`), las tablas y los datos.
+3. Copia la plantilla de configuración y complétala con los valores de SQL Server local que trae comentados:
 
    ```bash
-   cp .env.example .env        # Windows (cmd): copy .env.example .env
+   copy .env.example .env
    ```
 
-En esta modalidad cada integrante tiene su propia base y los datos no se comparten.
+   Genera un `JWT_SECRET` con `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`.
 
-## 4. Ejecución
+### 3.C Comandos de base de datos
 
-```bash
-npm start          # ejecución normal
-npm run dev        # desarrollo, con reinicio automático (nodemon)
-```
-
-Abrir <http://localhost:3000>. Es preferible abrir el sitio así y no con doble clic en un HTML (`file://`): con el servidor encendido ambas formas funcionan, pero solo la primera es la que verán los usuarios.
-
-### Correo electrónico
-
-Para que los correos lleguen de verdad, completar en `.env` (la plantilla está en `.env.example`):
-
-| Proveedor | Variables |
+| Comando | Qué hace |
 |---|---|
-| Gmail | `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USUARIO=tucuenta@gmail.com`, `SMTP_CLAVE=` una *contraseña de aplicación* (requiere la verificación en dos pasos: <https://myaccount.google.com/apppasswords>) |
-| Outlook / Hotmail | `SMTP_HOST=smtp-mail.outlook.com`, `SMTP_PORT=587`, usuario y contraseña de la cuenta |
-| Otro (SendGrid, Brevo, Mailgun...) | Los datos SMTP que entrega el servicio |
+| `npm run bd:probar` | Prueba la conexión y cuenta los registros de cada tabla |
+| `npm run bd:instalar` | Crea lo que falte y carga los datos de demostración. Idempotente: no duplica datos ni borra lo creado por el equipo |
+| `npm run bd:reiniciar` | Elimina las tablas de BookingRD y las vuelve a instalar (pide confirmación). Úsalo si la base tiene tablas de una versión anterior |
+| `npm run bd:generar` | Regenera los dos scripts SQL a partir de `database/esquema.sql` y `database/datos-demo.js` |
 
-`CORREO_REMITENTE` es el nombre y correo que ve el destinatario y `URL_SITIO` la dirección pública del sitio (para los botones del correo). Sin `SMTP_HOST`, cada correo se guarda como página HTML en `correos-enviados/` (fuera del repositorio) y la consola indica la ruta. Los envíos son en segundo plano: si el servidor de correo falla, la cuenta o la reserva se crean igual y el error queda en la consola.
+Las fechas de las reservas de ejemplo se calculan al instalar, así que siempre hay reservas próximas y un historial con reseñas.
 
-> Si el proyecto se descargó como `.zip`, extraerlo primero (*Extraer todo*). Abrir un HTML directamente desde dentro del `.zip` impide que el navegador encuentre la carpeta `css/`.
+> El script SQL se validó automáticamente (cada inserción resuelve sus claves y los conteos coinciden), pero esta versión aún no se ha ejecutado contra un SQL Server o una base de Azure reales. Ejecuta `npm run bd:instalar` y `npm run bd:probar` la primera vez y revisa la salida.
 
-### Datos de demostración
+---
 
-El script crea 7 empresas (dos de alquiler de autos), 14 alojamientos, 24 actividades (incluido golf), 5 autos de alquiler (económico, lujo, convertible, SUV y pickup 4x4), 12 viajeros, 76 reservas (próximas, realizadas y una cancelada; tres de ellas alquileres próximos), 63 reseñas con respuestas de las empresas, 6 favoritos y 2 mensajes de contacto. Las fechas se calculan a partir del día de la instalación, así que siempre hay reservas próximas y un historial con reseñas. La cuenta `cliente@bookingrd.com` tiene una reserva terminada sin reseñar, para probar el formulario.
+## 4. Configuración (`.env`)
 
-| Cuenta | Correo | Contraseña |
-|---|---|---|
-| Administración (equipo de desarrollo) | admin@bookingrd.com | Admin123! |
-| Viajero | cliente@bookingrd.com | Cliente123! |
-| Otros viajeros | luis.fernandez@correo.com, carmen.jimenez@correo.com, daniel.ortiz@correo.com y los demás autores de reseñas (ana.castillo, roberto.sanchez, patricia.nunez, miguel.herrera, yesenia.paulino, andres.cabrera, laura.vasquez, hector.marte, todos @correo.com) | Cliente123! |
-| Empresa mixta (Bahía Caribe Tours) | empresa@bookingrd.com | Empresa123! |
-| Empresa de alojamiento (Coralia Hotels & Resorts) | hoteles@bookingrd.com | Empresa123! |
-| Empresa de actividades (Aventura Quisqueya) | aventura@bookingrd.com | Empresa123! |
-| Empresa de actividades (Montaña Verde Ecotours) | montana@bookingrd.com | Empresa123! |
-| Empresa de actividades (Raíces Dominicanas Tours) | cultura@bookingrd.com | Empresa123! |
-| Alquiler de vehículos (Caribe Rent a Car) | autos@bookingrd.com | Empresa123! |
-| Alquiler de vehículos (Ozama Rent a Car) | rentacar@bookingrd.com | Empresa123! |
+La plantilla comentada está en `.env.example`. Variables principales:
 
-**Recorrido sugerido:**
-
-1. Entrar como `empresa@bookingrd.com`: se abre *Mi panel*. Crear una publicación con fotografía.
-2. Cerrar sesión, entrar como `cliente@bookingrd.com`, buscarla en *Explorar* y reservarla.
-3. Volver a la cuenta de empresa y verla en *Reservas recibidas* y en el *Resumen*.
-4. Como `cliente@bookingrd.com`, abrir *Mis reservas > Reseñas* y reseñar la visita a la Zona Colonial; guardar un par de publicaciones con el corazón.
-5. Como `empresa@bookingrd.com`, responder esa reseña en *Mi panel > Reseñas* y verla publicada en el detalle.
-6. Como `cliente@bookingrd.com`, en *Inicio > Autos* buscar un auto con recogida y devolución, abrir el Toyota Corolla, cambiar la edad del conductor a 23, elegir devolverlo en Punta Cana, marcar un extra y ver cómo cambia el desglose; reservarlo.
-7. Entrar como `autos@bookingrd.com`: publicar un modelo nuevo de la flota y ver el alquiler recibido con la hora de recogida y la ciudad de devolución.
-8. Entrar como `admin@bookingrd.com`: se abre *Administración*. Suspender una empresa y comprobar que sus publicaciones desaparecen del catálogo; reactivarla. Ocultar una reseña en *Reseñas*.
-
-Cada rol llega a su espacio al iniciar sesión: la administración a `admin.html`, las empresas a `panel-empresa.html` y los viajeros a la página de inicio.
-
-**Cambiar la contraseña de administración:** la cuenta `admin@bookingrd.com` es de demostración. En un entorno real, generar un hash nuevo con `node -e "console.log(require('bcrypt').hashSync('NuevaClave', 10))"` y actualizar `password_hash` en `dbo.usuarios` desde el editor de consultas de Azure. Las cuentas con rol `admin` no pueden crearse desde el registro público.
+| Variable | Uso |
+|---|---|
+| `DB_SERVER`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `DB_INSTANCE`, `DB_TRUST_CERT` | Conexión a la base. Sin `DB_SERVER`, modo de demostración |
+| `DB_MODO=demo` | Fuerza el modo de demostración |
+| `JWT_SECRET`, `JWT_EXPIRES_IN` | Firma y duración de las sesiones |
+| `PORT` | Puerto del servidor (3000) |
+| `LIMITE_INTENTOS_AUTH` | Intentos de inicio de sesión por IP cada 10 minutos |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USUARIO`, `SMTP_CLAVE`, `CORREO_REMITENTE`, `URL_SITIO` | Envío de correos (Gmail: contraseña de aplicación en <https://myaccount.google.com/apppasswords>; Outlook: `smtp-mail.outlook.com`, puerto 587) |
 
 ## 5. Trabajo en equipo con GitHub
 
-Repositorio: <https://github.com/gsanchez47-tech/BookingRD>. Para dar acceso: *Settings > Collaborators > Add people*.
+Repositorio: <https://github.com/gsanchez47-tech/BookingRD>.
 
 ```bash
-git pull                        # traer los cambios del equipo antes de trabajar
-git checkout -b nombre-de-rama  # rama por tarea (recomendado)
+git pull
+git checkout -b nombre-de-rama
 git add .
 git commit -m "Descripción del cambio"
-git push -u origin nombre-de-rama   # y abrir un Pull Request en GitHub
+git push -u origin nombre-de-rama   # y abrir un Pull Request
 ```
 
-Excluidos del repositorio (`.gitignore`): `node_modules/`, `.env`, registros y archivos del editor.
+Fuera del repositorio (`.gitignore`): `node_modules/`, `.env`, `correos-enviados/` y registros.
 
 ## 6. Estructura
 
 ```
 BookingRD/
-├── public/                          Frontend (archivos estáticos servidos por Express)
-│   ├── index.html                   Inicio
-│   ├── autos.html                   Alquiler de autos
-│   ├── explorar.html                Catálogo con filtros
-│   ├── detalle.html                 Detalle y reserva de una publicación
-│   ├── mis-reservas.html            Reservas del viajero
-│   ├── panel-empresa.html           Panel de empresa
-│   ├── admin.html                   Administración de la plataforma
-│   ├── registro.html                Registro de viajero o de empresa
-│   ├── login.html                   Inicio de sesión
-│   ├── css/                         Una hoja de estilos por página (mismo nombre que el HTML)
-│   ├── js/
-│   │   ├── comun.js                 Cliente de la API, sesión, header, catálogos, tarjetas, modales,
-│   │   │                            favoritos, valoraciones y vistos recientemente
-│   │   ├── buscador.js              Buscador del inicio y de autos (autocompletado, fechas y horas)
-│   │   ├── mapa.js                  Mapas de la isla (Leaflet) con el contorno del país
-│   │   └── <página>.js              Lógica de cada página
-│   ├── vendor/leaflet/              Leaflet 1.9.4 (BSD-2), incluido para no depender de una CDN
-│   └── img/                         publicaciones/, servicios/, registro/ y fotografías generales
+├── frontend/                 Fuente de las páginas
+│   ├── paginas/*.html        Contenido de cada página
+│   ├── partes/               Cabeza, encabezado y pie comunes
+│   └── estilos/              base.css, una hoja por página y compartidos/
+├── public/                   Sitio servido por Express (generado + recursos)
+│   ├── *.html, css/          Generados con npm run construir: no editar a mano
+│   ├── js/                   comun.js, preferencias.js (idioma y moneda),
+│   │                         idioma-en.js, isla.js (mapa SVG), clima.js,
+│   │                         buscador.js, mapa.js y uno por página
+│   ├── img/                  destinos/, paginas/, publicaciones/, servicios/
+│   ├── fonts/                Fraunces y Nunito (licencia OFL)
+│   └── vendor/leaflet/       Mapa de resultados (Leaflet 1.9.4)
 ├── src/
-│   ├── server.js                    Express: seguridad, rutas, estáticos y manejo de errores
-│   ├── config/db.js                 Pool de conexiones y transacciones
-│   ├── config/correo.js             Transporte de correo (SMTP o carpeta de desarrollo)
-│   ├── correos/plantillas.js        HTML y texto de los correos (bienvenida y reserva)
-│   ├── routes/                      Endpoints
-│   ├── middleware/autenticacion.js  JWT y roles
-│   ├── controllers/                 Entrada y salida HTTP
-│   ├── services/                    Reglas de reserva, disponibilidad, precio del alquiler y envío de correos
-│   ├── validators/                  Validación de publicaciones, perfil y reseñas
-│   ├── repositories/                Todo el SQL del proyecto
-│   └── utils/                       Catálogos, fechas, validaciones y errores
-├── database/instalacion-completa.sql  Esquema y datos de demostración (idempotente)
-├── scripts/                         Asistente de Azure y comandos bd:instalar / bd:probar
-├── docs/                            Documentación y capturas
-├── .env.example                     Plantilla de configuración
-└── package.json
+│   ├── server.js             Express: seguridad, rutas, estáticos y errores
+│   ├── config/               Conexión SQL, modo de demostración y correo
+│   ├── routes/ controllers/ services/ validators/ middleware/ utils/
+│   └── repositories/         SQL (*.repo.js) y memoria/ (modo de demostración)
+├── database/
+│   ├── esquema.sql           Tablas e índices
+│   ├── datos-demo.js         Datos de ejemplo (fuente única)
+│   ├── instalacion-completa.sql   SQL Server local (crea base y login)
+│   └── instalacion-azure.sql      Azure SQL Database
+├── scripts/                  configurar, bd, demo, generar-sql, construir-frontend
+├── pruebas/api.test.js       Pruebas de la API
+└── docs/                     Documentación técnica, resumen y capturas
 ```
+
+Para cambiar el diseño, edita `frontend/` y ejecuta `npm run construir`. Los cambios en `public/js/` no necesitan ese paso.
+
+Documentación técnica: [`docs/DOCUMENTACION.md`](docs/DOCUMENTACION.md). Guía paso a paso de Azure: [`docs/GUIA-AZURE.md`](docs/GUIA-AZURE.md). Resumen en una página: [`docs/RESUMEN.md`](docs/RESUMEN.md).
 
 ## 7. Solución de problemas
 
-| Síntoma | Causa probable | Acción |
+| Síntoma | Causa probable | Qué hacer |
 |---|---|---|
-| `Falta JWT_SECRET` al iniciar | No existe `.env` | Ejecutar `npm run configurar` o copiar `.env.example` a `.env` |
-| Página sin estilos | HTML abierto desde dentro del `.zip` | Extraer el `.zip` y abrir <http://localhost:3000> con el servidor en ejecución |
-| Aviso "El servidor de BookingRD no está en ejecución", catálogo vacío o "No se pudieron cargar las publicaciones" | Se abrió el HTML desde la carpeta (`C:/Users/...`) sin `npm start` | Ejecutar `npm start` en la carpeta del proyecto y entrar a <http://localhost:3000> |
-| "No se pudo conectar con el servidor" | El backend no está en ejecución | Ejecutar `npm start` |
-| "El servicio no está disponible en este momento" | Sin conexión con la base de datos, o base de Azure reanudándose | Reintentar en un minuto; si persiste, `npm run bd:probar` |
-| `Cannot open server ... requested by the login` (Azure) | IP no autorizada en el firewall | Agregar la IP en *Networking > Firewall rules* |
-| `Login failed for user` | Usuario o contraseña incorrectos | Revisar `DB_USER` y `DB_PASSWORD` en `.env` |
-| "Demasiados intentos" al iniciar sesión | Límite de intentos por IP | Esperar 10 minutos o subir `LIMITE_INTENTOS_AUTH` en `.env` |
-| `Failed to connect to localhost:1433` (local) | TCP/IP deshabilitado en SQL Server Express | *SQL Server Configuration Manager > Protocolos > TCP/IP: habilitado*, o usar `DB_INSTANCE=SQLEXPRESS` con `DB_PORT` vacío |
+| `'npm' no se reconoce como un comando` | Node.js no está instalado o la terminal se abrió antes de instalarlo | Instala Node.js LTS y abre una terminal nueva |
+| `Error: listen EADDRINUSE :::3000` | Ya hay un servidor en el puerto 3000 | Cierra la otra terminal o pon `PORT=3001` en `.env` |
+| Aviso "El servidor de BookingRD no está en ejecución" | Se abrió un HTML con doble clic | Ejecuta `npm start` y entra a <http://localhost:3000> |
+| Página sin estilos | HTML abierto desde dentro del `.zip` | Extrae el `.zip` primero |
+| Clima sin datos o moneda con tasa de referencia | Sin conexión a internet o servicio externo caído | El sitio sigue funcionando; se actualiza cuando vuelva la conexión |
+| "El servicio no está disponible en este momento" | Sin conexión con la base, o Azure reanudándose | Reintenta en un minuto; si sigue, `npm run bd:probar` |
+| `Cannot open server ... requested by the login` | Tu IP no está autorizada en Azure | Agrégala en *Networking > Firewall rules* |
+| `Login failed for user` | Usuario o contraseña incorrectos | Revisa `DB_USER` y `DB_PASSWORD` |
+| `Invalid column name` tras instalar | La base tiene tablas de una versión anterior | `npm run bd:reiniciar` |
+| `Failed to connect to localhost:1433` | TCP/IP deshabilitado en SQL Server Express | Habilítalo en *SQL Server Configuration Manager*, o usa `DB_INSTANCE=SQLEXPRESS` con `DB_PORT` vacío |
+| "Demasiados intentos" | Límite de inicios de sesión por IP | Espera 10 minutos o sube `LIMITE_INTENTOS_AUTH` |

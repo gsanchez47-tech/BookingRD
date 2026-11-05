@@ -1,0 +1,890 @@
+/* Detalle de una publicación: portada, información, ubicación y clima,
+   reseñas, políticas y tarjeta de reserva. */
+
+/* @incluir mapa.css */
+
+/* ----------------------------------------------------------------------------
+   Portada
+   ------------------------------------------------------------------------- */
+
+.portada-detalle {
+    padding: var(--e-5) 0 var(--e-5);
+}
+
+.migas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: var(--e-4);
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.migas a {
+    color: var(--tinta-3);
+}
+
+.portada-cabecera {
+    display: grid;
+    gap: var(--e-4);
+    align-items: end;
+    margin-bottom: var(--e-5);
+}
+
+.portada-categoria {
+    margin-bottom: var(--e-2);
+    color: var(--rojo);
+    font-size: var(--t-s);
+    font-weight: 800;
+}
+
+.portada-cabecera h1 {
+    max-width: 22ch;
+    font-size: var(--t-3xl);
+}
+
+.esqueleto-titulo {
+    display: block;
+    width: min(420px, 80%);
+    height: 0.9em;
+}
+
+.portada-datos {
+    margin-top: var(--e-3);
+    color: var(--tinta-2);
+}
+
+.portada-pie {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e-4);
+}
+
+.portada-valoracion {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-2);
+    color: var(--tinta);
+    text-decoration: none;
+}
+
+.portada-valoracion span:last-child {
+    color: var(--tinta-3);
+    font-size: var(--t-s);
+}
+
+.portada-acciones {
+    display: flex;
+    gap: var(--e-2);
+}
+
+.boton-compartir svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+}
+
+@media (min-width: 900px) {
+    .portada-cabecera {
+        grid-template-columns: 1fr auto;
+    }
+}
+
+.portada-media {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    max-height: 560px;
+    width: 100%;
+    border-radius: var(--r-l);
+    overflow: hidden;
+    background: var(--superficie-suave);
+}
+
+.portada-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.portada-media.sin-foto img {
+    display: none;
+}
+
+.portada-sin-foto {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: var(--f-display);
+    font-size: var(--t-2xl);
+    color: var(--azul);
+    background: var(--azul-tenue);
+}
+
+.portada-media.sin-foto .portada-sin-foto {
+    display: grid !important;
+}
+
+@media (min-width: 900px) {
+    .portada-media {
+        aspect-ratio: 21 / 9;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   Barra de secciones
+   ------------------------------------------------------------------------- */
+
+.nav-secciones {
+    position: sticky;
+    top: var(--alto-header);
+    z-index: 50;
+    margin-top: var(--e-4);
+    background: var(--papel);
+    border-bottom: 1px solid var(--linea);
+}
+
+.nav-secciones-contenido {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--e-5);
+}
+
+.nav-secciones a {
+    padding: 14px 0 12px;
+    border-bottom: 2px solid transparent;
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.nav-secciones a.activo {
+    border-color: var(--azul);
+    color: var(--azul);
+}
+
+@media (max-width: 720px) {
+    .nav-secciones {
+        display: none;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   Distribución
+   ------------------------------------------------------------------------- */
+
+.detalle-layout {
+    display: grid;
+    gap: var(--e-7);
+    padding-top: var(--e-6);
+}
+
+@media (min-width: 1040px) {
+    .detalle-layout {
+        grid-template-columns: minmax(0, 1fr) 390px;
+        align-items: start;
+    }
+}
+
+.detalle-info {
+    min-width: 0;
+}
+
+.ventajas {
+    display: grid;
+    gap: var(--e-4);
+    margin: 0 0 var(--e-4);
+    padding: 0;
+    list-style: none;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+}
+
+.ventajas li {
+    display: flex;
+    gap: var(--e-3);
+}
+
+.ventaja-marca {
+    width: 10px;
+    height: 10px;
+    margin-top: 7px;
+    flex-shrink: 0;
+    border-radius: 2px;
+    background: var(--jungle-light);
+}
+
+.ventajas li span:last-child {
+    display: grid;
+    gap: 2px;
+}
+
+.ventajas small {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.bloque-detalle {
+    padding: var(--e-6) 0;
+    border-top: 1px solid var(--linea);
+}
+
+.bloque-detalle h2 {
+    margin-bottom: var(--e-4);
+    font-size: var(--t-xl);
+}
+
+#detalle-descripcion {
+    max-width: 68ch;
+    color: var(--tinta-2);
+    font-size: var(--t-l);
+    line-height: 1.6;
+}
+
+.datos-clave,
+.politicas,
+.empresa-datos {
+    display: grid;
+    gap: var(--e-4) var(--e-6);
+    margin: 0;
+}
+
+.datos-clave {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.datos-clave dt,
+.politicas dt,
+.empresa-datos dt {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.datos-clave dd,
+.politicas dd,
+.empresa-datos dd {
+    margin: 2px 0 0;
+}
+
+.politicas {
+    grid-template-columns: 1fr;
+}
+
+.politicas > div {
+    display: grid;
+    gap: 4px;
+    padding-bottom: var(--e-4);
+    border-bottom: 1px dashed var(--linea);
+}
+
+@media (min-width: 720px) {
+    .politicas > div {
+        grid-template-columns: 200px 1fr;
+        gap: var(--e-5);
+    }
+}
+
+.specs-vehiculo {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--e-3);
+    margin: 0 0 var(--e-5);
+    padding: 0;
+    list-style: none;
+}
+
+.specs-vehiculo li {
+    display: grid;
+    gap: 2px;
+    padding: var(--e-3) var(--e-4);
+    border: 1px solid var(--linea);
+    border-radius: var(--r-s);
+    background: var(--superficie);
+}
+
+.specs-vehiculo strong {
+    font-family: var(--f-display);
+    font-size: var(--t-l);
+    font-weight: 600;
+}
+
+.specs-vehiculo span {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.lista-requisitos,
+.lista-servicios {
+    display: grid;
+    gap: var(--e-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.lista-servicios {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.lista-requisitos li,
+.lista-servicios li {
+    position: relative;
+    padding-left: 26px;
+}
+
+.lista-requisitos li::before,
+.lista-servicios li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 5px;
+    width: 12px;
+    height: 7px;
+    border-left: 2px solid var(--jungle);
+    border-bottom: 2px solid var(--jungle);
+    transform: rotate(-45deg);
+}
+
+/* Ubicación y clima */
+.ubicacion-texto {
+    margin-bottom: var(--e-4);
+    color: var(--tinta-2);
+}
+
+.ubicacion-rejilla {
+    display: grid;
+    gap: var(--e-4);
+}
+
+.mapa-detalle {
+    height: 320px;
+    border-radius: var(--r-m);
+    overflow: hidden;
+    background: #CFEAF1;
+}
+
+.clima-detalle {
+    padding: var(--e-5);
+    border: 1px solid var(--linea);
+    border-radius: var(--r-m);
+    background: var(--superficie);
+}
+
+.clima-detalle .clima-pronostico {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+@media (min-width: 900px) {
+    .ubicacion-rejilla {
+        grid-template-columns: 1.3fr 1fr;
+    }
+}
+
+.enlace-como-llegar {
+    display: inline-block;
+    margin-top: var(--e-4);
+    font-weight: 800;
+}
+
+/* Reseñas */
+.resenas-encabezado {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--e-3);
+}
+
+.resenas-orden {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-2);
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.resenas-orden select {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--linea-fuerte);
+    border-radius: var(--r-s);
+    background: var(--superficie);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.resenas-resumen {
+    display: grid;
+    gap: var(--e-5);
+    margin-bottom: var(--e-5);
+}
+
+.resenas-resumen:empty {
+    display: none;
+}
+
+.resenas-puntaje {
+    display: flex;
+    align-items: center;
+    gap: var(--e-4);
+}
+
+.resenas-puntaje div {
+    display: grid;
+}
+
+.resenas-puntaje strong {
+    font-family: var(--f-display);
+    font-size: var(--t-xl);
+    font-weight: 600;
+}
+
+.resenas-puntaje span:not(.nota) {
+    color: var(--tinta-3);
+    font-size: var(--t-s);
+}
+
+.resenas-distribucion {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--t-xs);
+}
+
+.resenas-distribucion li {
+    display: grid;
+    grid-template-columns: 120px 1fr 28px;
+    align-items: center;
+    gap: var(--e-3);
+}
+
+.distribucion-pista {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--superficie-suave);
+    overflow: hidden;
+}
+
+.distribucion-pista span {
+    display: block;
+    height: 100%;
+    background: var(--azul);
+}
+
+@media (min-width: 760px) {
+    .resenas-resumen {
+        grid-template-columns: 260px 1fr;
+        align-items: center;
+    }
+}
+
+.lista-resenas {
+    display: grid;
+    gap: var(--e-4);
+}
+
+.resena {
+    padding: var(--e-5);
+    border: 1px solid var(--linea);
+    border-radius: var(--r-m);
+    background: var(--superficie);
+}
+
+.resena header {
+    display: flex;
+    align-items: center;
+    gap: var(--e-3);
+    margin-bottom: var(--e-3);
+}
+
+.resena header div {
+    display: grid;
+    flex: 1;
+}
+
+.resena header small {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.resena h3 {
+    margin-bottom: 6px;
+    font-size: var(--t-l);
+}
+
+.resena > p {
+    color: var(--tinta-2);
+}
+
+.resena-respuesta {
+    margin-top: var(--e-4);
+    padding: var(--e-3) var(--e-4);
+    border-left: 3px solid var(--caribe-deep);
+    background: var(--superficie-suave);
+    font-size: var(--t-s);
+}
+
+.resena-esqueleto {
+    height: 140px;
+    border: 0;
+}
+
+.resenas-vacio,
+.resenas-nota {
+    color: var(--tinta-3);
+    font-size: var(--t-s);
+}
+
+#boton-mas-resenas {
+    margin-top: var(--e-4);
+}
+
+.resenas-nota {
+    margin-top: var(--e-4);
+}
+
+/* Empresa */
+.tarjeta-empresa-etiqueta {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.tarjeta-empresa h2 {
+    margin: 4px 0 var(--e-3);
+}
+
+.tarjeta-empresa > p {
+    max-width: 62ch;
+    margin-bottom: var(--e-4);
+    color: var(--tinta-2);
+}
+
+.empresa-datos {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+/* ----------------------------------------------------------------------------
+   Tarjeta de reserva
+   ------------------------------------------------------------------------- */
+
+.tarjeta-reserva {
+    padding: var(--e-5);
+    border: 1px solid var(--linea);
+    border-radius: var(--r-l);
+    background: var(--superficie);
+    box-shadow: 0 30px 60px -40px rgba(5, 19, 43, 0.45);
+}
+
+@media (min-width: 1040px) {
+    .tarjeta-reserva {
+        position: sticky;
+        top: calc(var(--alto-header) + 64px);
+    }
+}
+
+.reserva-cabecera {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--e-3);
+}
+
+.reserva-precio {
+    display: grid;
+}
+
+.reserva-precio span {
+    font-family: var(--f-display);
+    font-size: var(--t-2xl);
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.reserva-precio small {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.reserva-valoracion {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.reserva-garantia {
+    margin: var(--e-3) 0 var(--e-4);
+    padding-bottom: var(--e-4);
+    border-bottom: 1px solid var(--linea);
+    color: var(--exito);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+#form-reserva {
+    display: grid;
+    gap: var(--e-4);
+}
+
+.fila-campos.dos {
+    grid-template-columns: 1fr 1fr;
+}
+
+.fila-cantidades {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-4);
+}
+
+.fecha-hora {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: var(--e-2);
+}
+
+.fecha-hora input,
+.fecha-hora select {
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid var(--linea-fuerte);
+    border-radius: var(--r-s);
+    background: var(--superficie);
+    font-size: var(--t-s);
+}
+
+.opcional {
+    color: var(--tinta-3);
+    font-weight: 600;
+}
+
+.extras-alquiler {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.extras-alquiler legend {
+    margin-bottom: var(--e-2);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    color: var(--tinta-2);
+}
+
+.extras-lista {
+    display: grid;
+    gap: 6px;
+}
+
+.extra-opcion {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--e-3);
+    padding: 10px 12px;
+    border: 1px solid var(--linea);
+    border-radius: var(--r-s);
+    cursor: pointer;
+}
+
+.extra-opcion:has(input:checked) {
+    border-color: var(--azul);
+    background: var(--azul-tenue);
+}
+
+.extra-opcion input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--azul);
+}
+
+.extra-texto {
+    display: grid;
+    font-size: var(--t-xs);
+}
+
+.extra-texto small {
+    color: var(--tinta-3);
+}
+
+.extra-precio {
+    display: grid;
+    font-size: var(--t-xs);
+    font-weight: 800;
+    text-align: right;
+}
+
+.extra-precio small {
+    color: var(--tinta-3);
+    font-weight: 600;
+}
+
+.reserva-resumen {
+    display: grid;
+    gap: 6px;
+    padding: var(--e-4);
+    border-radius: var(--r-s);
+    background: var(--superficie-suave);
+    font-size: var(--t-s);
+}
+
+.reserva-resumen:empty {
+    display: none;
+}
+
+.resumen-cargando {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-2);
+    color: var(--tinta-3);
+}
+
+.resumen-linea,
+.resumen-total {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e-3);
+}
+
+.resumen-linea span:first-child {
+    color: var(--tinta-2);
+}
+
+.resumen-total {
+    margin-top: 4px;
+    padding-top: var(--e-2);
+    border-top: 1px solid var(--linea-fuerte);
+    font-weight: 800;
+}
+
+.resumen-total strong {
+    font-size: var(--t-l);
+}
+
+.resumen-nota {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.resumen-estado {
+    margin-top: 4px;
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.resumen-estado.es-disponible { color: var(--exito); }
+.resumen-estado.es-ultimas { color: #A04A00; }
+.resumen-estado.es-agotado { color: var(--rojo); }
+
+.nota-reserva {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    text-align: center;
+}
+
+/* Barra inferior en móvil */
+.barra-reserva-movil {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+    padding: var(--e-3) var(--margen);
+    border-top: 1px solid var(--linea);
+    background: var(--superficie);
+    transition: transform 0.2s;
+}
+
+.barra-reserva-movil div {
+    display: grid;
+}
+
+.barra-reserva-movil small {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.barra-reserva-movil.oculta {
+    transform: translateY(110%);
+}
+
+@media (min-width: 1040px) {
+    .barra-reserva-movil {
+        display: none;
+    }
+}
+
+/* Confirmación */
+.confirmacion {
+    display: grid;
+    justify-items: center;
+    gap: var(--e-3);
+    padding: var(--e-6) var(--e-5) var(--e-5);
+    text-align: center;
+}
+
+.confirmacion-icono {
+    width: 72px;
+    height: 72px;
+    fill: none;
+    stroke: var(--exito);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.confirmacion-icono path {
+    stroke-dasharray: 60;
+    animation: trazo 0.5s 0.15s ease-out both;
+}
+
+@keyframes trazo {
+    from { stroke-dashoffset: 60; }
+}
+
+.confirmacion-codigo {
+    padding: var(--e-2) var(--e-5);
+    border: 2px dashed var(--azul);
+    border-radius: var(--r-s);
+    color: var(--azul);
+    font-size: var(--t-xl);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+}
+
+.confirmacion .modal-acciones {
+    justify-content: center;
+    padding: var(--e-3) 0 0;
+}
+
+.relacionadas h2 {
+    margin-bottom: var(--e-5);
+    font-size: var(--t-2xl);
+}
+
+.pagina-detalle .pie {
+    margin-top: 0;
+    padding-bottom: 90px;
+}
+
+@media (min-width: 1040px) {
+    .pagina-detalle .pie {
+        padding-bottom: var(--e-5);
+    }
+}

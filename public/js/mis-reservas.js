@@ -206,8 +206,8 @@ function pintarResenas(lista) {
                     <small>${escaparHtml(r.ciudad)}. Publicada el ${formatearFecha(String(r.fecha).slice(0, 10))}${r.visible ? '' : '. Oculta por la administración'}</small>
                 </div>
             </header>
-            <h3>${escaparHtml(r.titulo)}</h3>
-            <p>${escaparHtml(r.comentario)}</p>
+            <h3 translate="no">${escaparHtml(r.titulo)}</h3>
+            <p translate="no">${escaparHtml(r.comentario)}</p>
             ${r.respuesta ? `<div class="resena-respuesta"><strong>Respuesta de la empresa</strong><p>${escaparHtml(r.respuesta)}</p></div>` : ''}
         </article>`).join('');
 
@@ -223,7 +223,7 @@ function pintarResenas(lista) {
         ${propiasHtml ? `<h2 class="titulo-grupo">Tus reseñas</h2><div class="lista-resenas">${propiasHtml}</div>` : ''}`;
 }
 
-function crearTarjetaReserva(reserva, indice) {
+function crearTarjetaReserva(reserva) {
     const esHotel = reserva.tipo === 'hotel';
     const esAuto = reserva.tipo === 'vehiculo';
     const grupo = grupoDe(reserva);
@@ -245,16 +245,16 @@ function crearTarjetaReserva(reserva, indice) {
     else if (resena) accion = `<span class="reserva-resenada"><span class="nota">${resena.puntuacion}</span> Tu reseña: ${escaparHtml(etiquetaPuntuacion(resena.puntuacion))}</span>`;
 
     return `
-        <article class="reserva es-${grupo}" style="animation-delay:${Math.min(indice, 8) * 60}ms">
+        <article class="reserva es-${grupo}">
             <a class="reserva-media${reserva.imagen ? '' : ' sin-foto'}" href="${enlaceDetalle({ tipo: reserva.tipo, id: reserva.idPublicacion })}" tabindex="-1" aria-hidden="true">
                 ${media}
             </a>
             <div class="reserva-cuerpo">
                 <div class="reserva-encabezado">
                     <span class="reserva-estado">${etiquetas[grupo]}</span>
-                    <span class="reserva-codigo">${escaparHtml(reserva.codigo)}</span>
+                    <span class="reserva-codigo" translate="no">${escaparHtml(reserva.codigo)}</span>
                 </div>
-                <h3><a href="${enlaceDetalle({ tipo: reserva.tipo, id: reserva.idPublicacion })}">${escaparHtml(reserva.publicacion)}</a></h3>
+                <h3 translate="no"><a href="${enlaceDetalle({ tipo: reserva.tipo, id: reserva.idPublicacion })}">${escaparHtml(reserva.publicacion)}</a></h3>
                 <p class="reserva-datos">${escaparHtml(reserva.ciudad)}, con ${escaparHtml(reserva.proveedor)}</p>
                 <ul class="reserva-detalles">
                     <li><span>${esHotel ? 'Estancia' : esAuto ? 'Alquiler' : 'Fecha'}</span>${escaparHtml(fechas)}</li>

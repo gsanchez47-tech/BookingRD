@@ -58,9 +58,9 @@ async function cargarPublicacion() {
     pintarPoliticas();
     document.getElementById('detalle-contenido').hidden = false;
     document.getElementById('nav-secciones').hidden = false;
-    iniciarRevelado();
     iniciarNavegacionSecciones();
     pintarUbicacion();
+    pintarClima(document.getElementById('clima-detalle'), publicacion.ciudad);
     actualizarResumen();
     cargarResenas(true);
     cargarRelacionadas();
@@ -102,7 +102,7 @@ function pintarPortada() {
     document.getElementById('portada-sin-foto').textContent = categoria.nombre;
     document.getElementById('portada-categoria').textContent = categoria.nombre;
     document.getElementById('portada-titulo').textContent = publicacion.nombre;
-    document.getElementById('portada-datos').textContent = `${publicacion.ciudad}, ofrecido por ${publicacion.proveedor}`;
+    document.getElementById('portada-datos').innerHTML = `${escaparHtml(publicacion.ciudad)}, ${escaparHtml(CATALOGOS.provincias[publicacion.ciudad] || '')}. Ofrecido por <span translate="no">${escaparHtml(publicacion.proveedor)}</span>`;
 
     // Valoración, guardar y compartir.
     const valoracion = document.getElementById('portada-valoracion');
@@ -181,7 +181,7 @@ function pintarInformacion() {
     }
     document.getElementById('empresa-datos').innerHTML = html;
 
-    document.getElementById('reserva-precio').textContent = formatoMoneda.format(publicacion.precio);
+    document.getElementById('reserva-precio').textContent = formatearPrecio(publicacion.precio);
     document.getElementById('reserva-unidad').textContent = unidadPrecio(TIPO);
 
     prepararBarraMovil();
@@ -232,7 +232,7 @@ function pintarFichaVehiculo() {
 /** Barra inferior en móvil: se oculta cuando la tarjeta de reserva es visible. */
 function prepararBarraMovil() {
     const barra = document.getElementById('barra-reserva-movil');
-    document.getElementById('barra-precio').textContent = formatoMoneda.format(publicacion.precio);
+    document.getElementById('barra-precio').textContent = formatearPrecio(publicacion.precio);
     document.getElementById('barra-unidad').textContent = unidadPrecio(TIPO);
     barra.hidden = false;
     if (!('IntersectionObserver' in window)) return;
@@ -366,7 +366,7 @@ function prepararFormularioAuto() {
         <label class="extra-opcion">
             <input type="checkbox" name="extras" value="${codigo}"${elegidos.includes(codigo) ? ' checked' : ''}>
             <span class="extra-texto"><strong>${escaparHtml(extra.nombre)}</strong><small>${escaparHtml(extra.detalle)}</small></span>
-            <span class="extra-precio">${formatoMoneda.format(extra.precio)}<small>${extra.porDia ? 'por día' : 'por alquiler'}</small></span>
+            <span class="extra-precio">${formatearPrecio(extra.precio)}<small>${extra.porDia ? 'por día' : 'por alquiler'}</small></span>
         </label>`).join('');
     document.getElementById('reserva-garantia').textContent = 'Cancelación gratuita hasta un día antes de la recogida. Sin pagos por adelantado.';
     document.getElementById('reserva-comentario').placeholder = 'Número de vuelo, hora estimada de llegada, silla para bebé...';
@@ -423,11 +423,12 @@ async function actualizarResumen() {
             return;
         }
         const detalle = TIPO === 'hotel'
-            ? `${formatoMoneda.format(publicacion.precio)} x ${evaluacion.noches} ${evaluacion.noches === 1 ? 'noche' : 'noches'} x ${solicitud.habitaciones} ${solicitud.habitaciones === 1 ? 'habitación' : 'habitaciones'}`
-            : `${formatoMoneda.format(publicacion.precio)} x ${solicitud.personas} ${solicitud.personas === 1 ? 'persona' : 'personas'}`;
+            ? `${formatearPrecio(publicacion.precio)} x ${evaluacion.noches} ${evaluacion.noches === 1 ? 'noche' : 'noches'} x ${solicitud.habitaciones} ${solicitud.habitaciones === 1 ? 'habitación' : 'habitaciones'}`
+            : `${formatearPrecio(publicacion.precio)} x ${solicitud.personas} ${solicitud.personas === 1 ? 'persona' : 'personas'}`;
         resumen.innerHTML = `
-            <div class="resumen-linea"><span>${detalle}</span><span>${formatoMoneda.format(evaluacion.total)}</span></div>
-            <div class="resumen-total"><span>Total</span><strong>${formatoMoneda.format(evaluacion.total)}</strong></div>
+            <div class="resumen-linea"><span>${detalle}</span><span>${formatearPrecio(evaluacion.total)}</span></div>
+            <div class="resumen-total"><span>Total</span><strong>${formatearPrecio(evaluacion.total)}</strong></div>
+            ${notaMonedaPago(evaluacion.total)}
             <p class="resumen-estado ${evaluacion.disponible ? (evaluacion.libres <= 3 ? 'es-ultimas' : 'es-disponible') : 'es-agotado'}">
                 ${evaluacion.disponible ? textoDisponibilidad(evaluacion.libres) : escaparHtml(evaluacion.mensaje)}
             </p>`;
@@ -440,7 +441,7 @@ async function actualizarResumen() {
 /** Desglose del alquiler tal como lo calcula el servidor, con el depósito aparte. */
 function resumenAlquiler(evaluacion) {
     const lineas = evaluacion.desglose.map((linea) => `
-        <div class="resumen-linea"><span>${escaparHtml(linea.concepto)}</span><span>${formatoMoneda.format(linea.importe)}</span></div>`).join('');
+        <div class="resumen-linea"><span>${escaparHtml(linea.concepto)}</span><span>${formatearPrecio(linea.importe)}</span></div>`).join('');
     const estadoClase = evaluacion.disponible ? (evaluacion.libres <= 2 ? 'es-ultimas' : 'es-disponible') : 'es-agotado';
     const estadoTexto = evaluacion.disponible
         ? (evaluacion.libres <= 2
@@ -449,7 +450,8 @@ function resumenAlquiler(evaluacion) {
         : escaparHtml(evaluacion.mensaje);
     return `
         ${lineas}
-        <div class="resumen-total"><span>Total (${evaluacion.dias} ${evaluacion.dias === 1 ? 'día' : 'días'})</span><strong>${formatoMoneda.format(evaluacion.total)}</strong></div>
+        <div class="resumen-total"><span>Total (${evaluacion.dias} ${evaluacion.dias === 1 ? 'día' : 'días'})</span><strong>${formatearPrecio(evaluacion.total)}</strong></div>
+        ${notaMonedaPago(evaluacion.total)}
         <p class="resumen-nota">Depósito reembolsable al recoger: ${formatoMoneda.format(evaluacion.deposito)} en tarjeta de crédito. No se suma al total.</p>
         <p class="resumen-estado ${estadoClase}">${estadoTexto}</p>`;
 }
@@ -467,7 +469,7 @@ function textoDisponibilidad(libres) {
 async function reservar(evento) {
     evento.preventDefault();
     const mensaje = document.getElementById('mensaje-error');
-    mensaje.classList.remove('visible');
+    mensaje.hidden = true;
     if (!haySesionActiva()) {
         irAlLogin();
         return;
@@ -492,9 +494,7 @@ async function reservar(evento) {
         actualizarResumen();
     } catch (error) {
         mensaje.textContent = error.message;
-        mensaje.classList.remove('visible');
-        void mensaje.offsetWidth;   // reinicia la animación
-        mensaje.classList.add('visible');
+        mensaje.hidden = false;
         if (error.campo) marcarCampo(error.campo);
     } finally {
         botonNormal(boton, 'Reservar ahora');
@@ -595,7 +595,7 @@ function iniciarNavegacionSecciones() {
    RESEÑAS
    ---------------------------------------------------------------------------- */
 
-const formatoFechaResena = new Intl.DateTimeFormat('es-DO', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+const formatoFechaResena = new Intl.DateTimeFormat(LOCALE, { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
 /** Carga el resumen y la primera página (reiniciar) o la página siguiente. */
 async function cargarResenas(reiniciar) {
@@ -665,8 +665,8 @@ function crearResena(resena) {
     const grupo = resena.tipo === 'vehiculo' ? '' : `, ${resena.estancia.personas} ${resena.estancia.personas === 1 ? 'persona' : 'personas'}`;
     const respuesta = resena.respuesta ? `
         <div class="resena-respuesta">
-            <strong>Respuesta de ${escaparHtml(publicacion.proveedor)}</strong>
-            <p>${escaparHtml(resena.respuesta)}</p>
+            <strong>Respuesta de <span translate="no">${escaparHtml(publicacion.proveedor)}</span></strong>
+            <p translate="no">${escaparHtml(resena.respuesta)}</p>
         </div>` : '';
     return `
         <article class="resena">
@@ -678,8 +678,8 @@ function crearResena(resena) {
                 </div>
                 <span class="nota" aria-label="Puntuación ${resena.puntuacion} de 10">${resena.puntuacion}</span>
             </header>
-            <h3>${escaparHtml(resena.titulo)}</h3>
-            <p>${escaparHtml(resena.comentario)}</p>
+            <h3 translate="no">${escaparHtml(resena.titulo)}</h3>
+            <p translate="no">${escaparHtml(resena.comentario)}</p>
             ${respuesta}
         </article>`;
 }

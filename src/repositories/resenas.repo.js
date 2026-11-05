@@ -337,6 +337,7 @@ async function resumenEmpresa(idEmpresa) {
 module.exports = {
     ORDENES,
     nombrePublico,
+    aResena,
     resumenPublicacion,
     listarPorPublicacion,
     destacadas,

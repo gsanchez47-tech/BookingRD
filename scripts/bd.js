@@ -9,6 +9,8 @@
  *   npm run bd:instalar  Ejecuta database/instalacion-completa.sql desde el marcador
  *                        "@inicio-esquema" (tablas, índices y datos de demostración).
  *                        Idempotente: puede ejecutarse varias veces.
+ *   npm run bd:reiniciar Elimina las tablas de BookingRD (y sus datos) y vuelve a
+ *                        instalar. Pide confirmación escribiendo el nombre de la base.
  */
 
 const path = require('path');
@@ -20,7 +22,10 @@ const { obtenerPool, configuracionDB } = require('../src/config/db');
 
 const ARCHIVO_SQL = path.join(__dirname, '..', 'database', 'instalacion-completa.sql');
 const MARCADOR = '-- @inicio-esquema';
-const TABLAS = ['usuarios', 'empresas', 'imagenes', 'hoteles', 'actividades', 'reservas', 'mensajes_contacto'];
+const TABLAS = ['usuarios', 'empresas', 'imagenes', 'hoteles', 'actividades', 'vehiculos', 'reservas', 'resenas', 'favoritos', 'mensajes_contacto'];
+
+/** Orden de eliminación: primero las tablas que referencian a otras. */
+const ORDEN_ELIMINACION = ['resenas', 'favoritos', 'reservas', 'hoteles', 'actividades', 'vehiculos', 'imagenes', 'empresas', 'mensajes_contacto', 'usuarios'];
 
 /**
  * Extrae los lotes (batches) a ejecutar: contenido posterior al marcador,
@@ -80,11 +85,38 @@ async function probar() {
     }
 }
 
-const COMANDOS = { instalar, probar };
+/** Pide al usuario que escriba el nombre de la base para confirmar. */
+function confirmar(texto) {
+    const readline = require('readline');
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    return new Promise((resolver) => rl.question(texto, (respuesta) => {
+        rl.close();
+        resolver(respuesta.trim());
+    }));
+}
+
+/** Elimina todas las tablas de BookingRD y reinstala el esquema con los datos de demostración. */
+async function reiniciar() {
+    const base = configuracionDB.database;
+    console.log(`Se eliminarán TODAS las tablas y datos de BookingRD en ${configuracionDB.server} / ${base}.`);
+    const respuesta = process.argv.includes('--si') ? base : await confirmar(`Escribe el nombre de la base (${base}) para continuar: `);
+    if (respuesta !== base) {
+        console.log('Operación cancelada.');
+        return;
+    }
+    const pool = await obtenerPool();
+    for (const tabla of ORDEN_ELIMINACION) {
+        await pool.request().batch(`IF OBJECT_ID(N'dbo.${tabla}', N'U') IS NOT NULL DROP TABLE dbo.${tabla};`);
+    }
+    console.log('Tablas eliminadas.');
+    await instalar();
+}
+
+const COMANDOS = { instalar, probar, reiniciar };
 const comando = COMANDOS[process.argv[2]];
 
 if (!comando) {
-    console.error('Uso: node scripts/bd.js <instalar|probar>');
+    console.error('Uso: node scripts/bd.js <instalar|probar|reiniciar>');
     process.exit(1);
 }
 

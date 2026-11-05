@@ -4,9 +4,7 @@
  *   publicaciones guardadas (favoritos) y reseñas de reservas disfrutadas.
  */
 
-const publicacionesRepo = require('../repositories/publicaciones.repo');
-const favoritosRepo = require('../repositories/favoritos.repo');
-const resenasRepo = require('../repositories/resenas.repo');
+const { publicacionesRepo, favoritosRepo, resenasRepo } = require('../repositories');
 const { validarResena } = require('../validators/resenas.validator');
 const { noEncontrado, conflicto, prohibido } = require('../utils/errores');
 const { aEnteroPositivo } = require('../utils/validacion');

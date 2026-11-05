@@ -4,9 +4,7 @@
  *   listado y detalle de publicaciones, disponibilidad e imágenes.
  */
 
-const publicacionesRepo = require('../repositories/publicaciones.repo');
-const imagenesRepo = require('../repositories/imagenes.repo');
-const resenasRepo = require('../repositories/resenas.repo');
+const { publicacionesRepo, imagenesRepo, resenasRepo } = require('../repositories');
 const reservasService = require('../services/reservas.service');
 const catalogos = require('../utils/catalogos');
 const { solicitudInvalida, noEncontrado } = require('../utils/errores');
@@ -24,6 +22,7 @@ async function obtenerEstadisticas(req, res) {
 function obtenerCatalogos(req, res) {
     res.json({
         destinos: Object.keys(catalogos.DESTINOS),
+        coordenadas: catalogos.COORDENADAS_DESTINOS,
         categoriasAlojamiento: catalogos.CATEGORIAS_ALOJAMIENTO,
         categoriasActividad: catalogos.CATEGORIAS_ACTIVIDAD,
         categoriasVehiculo: catalogos.CATEGORIAS_VEHICULO,

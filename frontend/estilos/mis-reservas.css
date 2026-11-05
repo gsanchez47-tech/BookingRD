@@ -1,0 +1,364 @@
+/* Mis reservas: próximas, pasadas, canceladas, guardados y reseñas. */
+
+/* @incluir cuenta.css */
+
+.cabecera-cuenta-foto {
+    display: none;
+    margin: 0;
+    border-radius: var(--r-l);
+    overflow: hidden;
+}
+
+.cabecera-cuenta-foto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@media (min-width: 1040px) {
+    .cabecera-cuenta-contenido {
+        grid-template-columns: 1.2fr 1fr;
+        grid-template-areas:
+            'texto foto'
+            'cifras foto';
+    }
+
+    .cabecera-cuenta-texto { grid-area: texto; }
+    .cifras-cuenta { grid-area: cifras; }
+
+    .cabecera-cuenta-foto {
+        display: block;
+        grid-area: foto;
+        height: 260px;
+    }
+}
+
+.seccion-reservas {
+    padding-bottom: var(--e-8);
+}
+
+.aviso-resenas {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+    margin-top: var(--e-5);
+    padding: var(--e-4) var(--e-5);
+    border-left: 4px solid var(--sand);
+    border-radius: var(--r-s);
+    background: var(--sand-light);
+}
+
+.aviso-resenas div {
+    display: grid;
+}
+
+.aviso-resenas span {
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+}
+
+.lista-reservas {
+    display: grid;
+    gap: var(--e-4);
+    margin-top: var(--e-5);
+}
+
+.lista-reservas.es-rejilla {
+    gap: var(--e-6) var(--e-5);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+
+.reserva {
+    display: grid;
+    border: 1px solid var(--linea);
+    border-radius: var(--r-m);
+    background: var(--superficie);
+    overflow: hidden;
+}
+
+.reserva-media {
+    display: block;
+    aspect-ratio: 16 / 9;
+    background: var(--superficie-suave);
+}
+
+.reserva-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.reserva-media.sin-foto img {
+    display: none;
+}
+
+.reserva-cuerpo {
+    display: grid;
+    gap: var(--e-2);
+    padding: var(--e-5);
+}
+
+.reserva-encabezado {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-2);
+}
+
+.reserva-estado {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--exito-tenue);
+    color: var(--exito);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.reserva.es-pasadas .reserva-estado {
+    background: var(--superficie-suave);
+    color: var(--tinta-2);
+}
+
+.reserva.es-canceladas .reserva-estado {
+    background: var(--rojo-tenue);
+    color: #8E0B1A;
+}
+
+.reserva-codigo {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+}
+
+.reserva h3 {
+    font-size: var(--t-xl);
+}
+
+.reserva h3 a {
+    color: var(--tinta);
+    text-decoration: none;
+}
+
+.reserva h3 a:hover {
+    color: var(--azul);
+}
+
+.reserva-datos {
+    color: var(--tinta-3);
+    font-size: var(--t-s);
+}
+
+.reserva-detalles {
+    display: grid;
+    gap: var(--e-3);
+    margin: var(--e-3) 0;
+    padding: var(--e-3) 0 0;
+    border-top: 1px solid var(--linea);
+    list-style: none;
+    font-size: var(--t-s);
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.reserva-detalles li span {
+    display: block;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.boton-cancelar {
+    justify-self: start;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--rojo);
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.reserva-resenada {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-2);
+    font-size: var(--t-s);
+    font-weight: 700;
+}
+
+.reserva .btn-primario {
+    justify-self: start;
+}
+
+.reserva.es-canceladas {
+    opacity: 0.85;
+}
+
+.reserva-esqueleto {
+    height: 180px;
+    border: 0;
+}
+
+@media (min-width: 760px) {
+    .reserva {
+        grid-template-columns: 260px 1fr;
+    }
+
+    .reserva-media {
+        aspect-ratio: auto;
+        height: 100%;
+        min-height: 200px;
+    }
+}
+
+/* Reseñas del viajero */
+.titulo-grupo {
+    margin: var(--e-4) 0 var(--e-2);
+    font-size: var(--t-xl);
+}
+
+.resena-pendiente {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+    padding: var(--e-4) var(--e-5);
+    border: 1px dashed var(--sand);
+    border-radius: var(--r-m);
+    background: var(--superficie);
+}
+
+.resena-pendiente h3 {
+    margin: 6px 0 2px;
+}
+
+.resena-pendiente h3 a {
+    color: var(--tinta);
+}
+
+.resena-pendiente p {
+    color: var(--tinta-3);
+    font-size: var(--t-s);
+}
+
+.resena-pendiente .reserva-estado {
+    background: var(--sand-light);
+    color: #7A3F0C;
+}
+
+.lista-resenas {
+    display: grid;
+    gap: var(--e-4);
+}
+
+.resena {
+    padding: var(--e-5);
+    border: 1px solid var(--linea);
+    border-radius: var(--r-m);
+    background: var(--superficie);
+}
+
+.resena header {
+    display: flex;
+    align-items: center;
+    gap: var(--e-3);
+    margin-bottom: var(--e-3);
+}
+
+.resena header div {
+    display: grid;
+}
+
+.resena header small {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.resena h3 {
+    margin-bottom: 6px;
+}
+
+.resena > p {
+    color: var(--tinta-2);
+}
+
+.resena-respuesta {
+    margin-top: var(--e-3);
+    padding: var(--e-3) var(--e-4);
+    border-left: 3px solid var(--caribe-deep);
+    background: var(--superficie-suave);
+    font-size: var(--t-s);
+}
+
+/* Formulario de reseña: puntuación del 1 al 10 */
+.resena-publicacion {
+    font-weight: 800;
+}
+
+.selector-puntuacion {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.selector-puntuacion legend {
+    margin-bottom: var(--e-2);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    color: var(--tinta-2);
+}
+
+.selector-puntuacion label {
+    position: relative;
+    cursor: pointer;
+}
+
+.selector-puntuacion input {
+    position: absolute;
+    opacity: 0;
+}
+
+.selector-puntuacion span {
+    display: grid;
+    place-items: center;
+    height: 42px;
+    border: 1px solid var(--linea-fuerte);
+    border-radius: var(--r-s);
+    font-weight: 800;
+}
+
+.selector-puntuacion input:checked + span {
+    border-color: var(--azul);
+    background: var(--azul);
+    color: #fff;
+}
+
+.selector-puntuacion input:focus-visible + span {
+    box-shadow: var(--enfoque);
+}
+
+@media (min-width: 520px) {
+    .selector-puntuacion {
+        grid-template-columns: repeat(10, 1fr);
+    }
+}
+
+.puntuacion-elegida {
+    min-height: 1.4em;
+    color: var(--azul);
+    font-size: var(--t-s);
+    font-weight: 800;
+}
+
+.contador-caracteres {
+    align-self: flex-end;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}

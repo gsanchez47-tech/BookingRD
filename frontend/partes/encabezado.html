@@ -1,0 +1,62 @@
+    <!-- Encabezado común. Los elementos con data-sesion se muestran según la
+         sesión activa (comun.js: aplicarEstadoSesion). -->
+    <header class="header-principal">
+        <div class="contenedor header-fila">
+            <a href="index.html" class="marca" aria-label="BookingRD, página de inicio">
+                <span class="marca-sello" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                <span>Booking<b>RD</b></span>
+            </a>
+
+            <nav class="nav-principal" aria-label="Principal">
+                <a href="explorar.html?tipo=hotel" data-nav="alojamiento">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad" data-nav="actividades">Actividades</a>
+                <a href="autos.html" data-nav="autos">Autos</a>
+                <a href="index.html#destinos" data-nav="destinos">Destinos</a>
+                <a href="registro.html?tipo=empresa" data-nav="empresas">Para empresas</a>
+            </nav>
+
+            <div class="header-acciones">
+                <div class="preferencias" data-preferencias></div>
+
+                <div class="acciones-escritorio" data-sesion="invitado">
+                    <a href="login.html" class="enlace-header">Iniciar sesión</a>
+                    <a href="registro.html" class="btn-primario btn-chico">Crear cuenta</a>
+                </div>
+                <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <a href="mis-reservas.html?vista=guardados" class="enlace-header enlace-guardados" data-sesion="cliente" hidden aria-label="Guardados">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6s-7.6-4.6-9.4-9.3C1.4 8 3.4 4.6 6.9 4.6c2 0 3.6 1.1 4.6 2.7h1c1-1.6 2.6-2.7 4.6-2.7 3.5 0 5.5 3.4 4.3 6.7-1.8 4.7-9.4 9.3-9.4 9.3z"/></svg>
+                        <span class="contador-favoritos" data-contador-favoritos hidden>0</span>
+                    </a>
+                    <a href="mis-reservas.html" class="enlace-header" data-sesion="cliente" hidden>Mis reservas</a>
+                    <a href="panel-empresa.html" class="enlace-header" data-sesion="empresa" hidden>Mi panel</a>
+                    <a href="admin.html" class="enlace-header" data-sesion="admin" hidden>Administración</a>
+                    <span class="usuario-chip">
+                        <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                        <span data-nombre-usuario></span>
+                    </span>
+                    <button type="button" class="boton-enlace" data-accion="cerrar-sesion">Salir</button>
+                </div>
+
+                <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-expanded="false" aria-controls="menu-movil" aria-label="Abrir menú">
+                    <span aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-movil" id="menu-movil">
+            <nav aria-label="Menú móvil">
+                <a href="explorar.html?tipo=hotel">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <a href="index.html#destinos">Destinos</a>
+                <a href="registro.html?tipo=empresa">Para empresas</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </nav>
+        </div>
+    </header>

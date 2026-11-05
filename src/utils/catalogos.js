@@ -41,7 +41,7 @@ const CATEGORIAS_ACTIVIDAD = {
     'tour-montana': 'Tours de montaña',
     'tour-gastronomico': 'Tours gastronómicos',
     cultural: 'Tours culturales e históricos',
-    'zip-line': 'Zip line y parapente',
+    'zip-line': 'Tirolesa y aventura aérea',
     motocross: 'Motocross y buggies',
     acuaticas: 'Actividades acuáticas',
     golf: 'Golf'
@@ -114,6 +114,25 @@ const DESTINOS = {
     'Pedernales': 'Pedernales'
 };
 
+/** Coordenadas (latitud, longitud) de cada destino: mapa de la isla y consulta del clima. */
+const COORDENADAS_DESTINOS = {
+    'Santo Domingo': [18.4861, -69.9312],
+    'Punta Cana': [18.5601, -68.3725],
+    'Puerto Plata': [19.7934, -70.6884],
+    'Las Terrenas': [19.3110, -69.5428],
+    'Samaná': [19.2056, -69.3366],
+    'Las Galeras': [19.2850, -69.1960],
+    'La Romana': [18.4273, -68.9728],
+    'Sosúa': [19.7520, -70.5170],
+    'Cabarete': [19.7490, -70.4100],
+    'Jarabacoa': [19.1180, -70.6380],
+    'Constanza': [18.9090, -70.7450],
+    'Juan Dolio': [18.4270, -69.4290],
+    'Boca Chica': [18.4500, -69.6060],
+    'Río San Juan': [19.6420, -70.0760],
+    'Pedernales': [18.0380, -71.7440]
+};
+
 /** Provincias de República Dominicana y Distrito Nacional (registro de empresas). */
 const PROVINCIAS = [
     'Azua', 'Bahoruco', 'Barahona', 'Dajabón', 'Distrito Nacional', 'Duarte',
@@ -148,6 +167,7 @@ module.exports = {
     HORARIO_ALQUILER,
     SERVICIOS_HOTEL,
     DESTINOS,
+    COORDENADAS_DESTINOS,
     PROVINCIAS,
     ASUNTOS_CONTACTO,
     enCatalogo

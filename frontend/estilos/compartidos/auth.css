@@ -1,0 +1,137 @@
+/* Pantallas de acceso (login.html y registro.html): fotografía a un lado y
+   formulario al otro. */
+
+.auth-split {
+    display: grid;
+    min-height: calc(100vh - var(--alto-header));
+}
+
+.auth-foto {
+    position: relative;
+    display: none;
+    overflow: hidden;
+    background: var(--night-mid);
+    color: #fff;
+}
+
+.auth-foto-imagen {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.25s;
+}
+
+.auth-foto::after {
+    content: '';
+    position: absolute;
+    inset: 45% 0 0;
+    background: linear-gradient(180deg, rgba(5, 19, 43, 0) 0%, rgba(5, 19, 43, 0.85) 100%);
+}
+
+.auth-foto-texto {
+    position: absolute;
+    left: var(--e-7);
+    right: var(--e-7);
+    bottom: var(--e-7);
+    z-index: 1;
+}
+
+.auth-foto-texto h2 {
+    max-width: 16ch;
+    font-size: var(--t-2xl);
+}
+
+.auth-foto-texto p {
+    max-width: 44ch;
+    margin-top: var(--e-3);
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.auth-formulario {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--e-7) var(--margen);
+}
+
+.auth-formulario-contenido {
+    width: 100%;
+    max-width: 520px;
+}
+
+.auth-formulario h1 {
+    font-size: var(--t-3xl);
+}
+
+.auth-subtitulo {
+    margin: var(--e-3) 0 var(--e-5);
+    color: var(--tinta-2);
+}
+
+.formulario-auth,
+#form-registro {
+    display: grid;
+    gap: var(--e-4);
+}
+
+.campo-password {
+    position: relative;
+}
+
+.campo-password input {
+    padding-right: 92px;
+}
+
+.boton-mostrar {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: var(--superficie-suave);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.pie-formulario {
+    margin-top: var(--e-5);
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+}
+
+.sesion-existente {
+    display: grid;
+    gap: var(--e-4);
+}
+
+.sesion-existente-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-3);
+}
+
+@media (min-width: 960px) {
+    .auth-split {
+        grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    }
+
+    .auth-foto {
+        display: block;
+        position: sticky;
+        top: var(--alto-header);
+        height: calc(100vh - var(--alto-header));
+    }
+
+    .auth-formulario {
+        padding-top: var(--e-8);
+    }
+}
+
+.pagina-login .pie,
+.pagina-registro .pie {
+    margin-top: 0;
+}

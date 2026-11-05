@@ -1,0 +1,225 @@
+<!-- @pagina titulo="Administración | BookingRD" descripcion="Centro de control de la plataforma: indicadores, empresas, usuarios, publicaciones, reseñas, reservas y mensajes." css="admin" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <!-- ENCABEZADO
+             Solo para cuentas con rol "admin" (equipo de desarrollo). -->
+        <section class="cabecera-cuenta cabecera-admin">
+            <div class="contenedor cabecera-cuenta-contenido">
+                <div class="cabecera-cuenta-texto">
+                    <p class="cabecera-cuenta-etiqueta">Administración de la plataforma</p>
+                    <h1>Centro de control de BookingRD</h1>
+                    <p>Supervisa la actividad, modera publicaciones, gestiona cuentas y atiende los mensajes de contacto.</p>
+                </div>
+                <dl class="cifras-cuenta">
+                    <div><dt>Ingresos</dt><dd id="cifra-ingresos">RD$0</dd></div>
+                    <div><dt>Reservas</dt><dd id="cifra-reservas">0</dd></div>
+                    <div><dt>Cuentas</dt><dd id="cifra-cuentas">0</dd></div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="seccion-panel">
+            <div class="contenedor">
+                <div class="pestanas pestanas-admin" role="tablist" aria-label="Secciones de la administración">
+                    <button type="button" class="pestana activo" data-seccion="resumen" role="tab" aria-selected="true">Resumen</button>
+                    <button type="button" class="pestana" data-seccion="empresas" role="tab" aria-selected="false">Empresas</button>
+                    <button type="button" class="pestana" data-seccion="usuarios" role="tab" aria-selected="false">Usuarios</button>
+                    <button type="button" class="pestana" data-seccion="publicaciones" role="tab" aria-selected="false">Publicaciones</button>
+                    <button type="button" class="pestana" data-seccion="reservas" role="tab" aria-selected="false">Reservas</button>
+                    <button type="button" class="pestana" data-seccion="resenas" role="tab" aria-selected="false">Reseñas</button>
+                    <button type="button" class="pestana" data-seccion="mensajes" role="tab" aria-selected="false">Mensajes <span class="pestana-conteo" id="conteo-mensajes">0</span></button>
+                </div>
+
+                <!-- RESUMEN · GET /api/admin/resumen -->
+                <div class="panel-seccion" id="seccion-resumen">
+                    <dl class="indicadores" id="indicadores-admin"></dl>
+                    <div class="tablero">
+                        <section class="tarjeta-tablero">
+                            <h3>Ingresos por mes de servicio</h3>
+                            <p>Reservas confirmadas de toda la plataforma.</p>
+                            <div id="grafico-meses"></div>
+                        </section>
+                        <section class="tarjeta-tablero">
+                            <h3>Reservas por categoría</h3>
+                            <p>Reservas confirmadas.</p>
+                            <div id="grafico-categorias"></div>
+                        </section>
+                        <section class="tarjeta-tablero">
+                            <h3>Empresas con más ingresos</h3>
+                            <p>Las cinco primeras por reservas confirmadas.</p>
+                            <div id="grafico-empresas"></div>
+                        </section>
+                        <section class="tarjeta-tablero">
+                            <h3>Mensajes pendientes</h3>
+                            <p>Formulario de contacto sin atender.</p>
+                            <ul class="lista-breve" id="lista-mensajes-pendientes"></ul>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- EMPRESAS · GET /api/admin/empresas · PATCH /api/admin/usuarios/:id/estado -->
+                <div class="panel-seccion" id="seccion-empresas" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtro-tabla">
+                            <label for="buscar-empresas" class="visualmente-oculto">Buscar empresas</label>
+                            <input type="search" id="buscar-empresas" placeholder="Buscar por nombre, RNC o representante">
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="estado-empresas" class="visualmente-oculto">Estado</label>
+                            <select id="estado-empresas">
+                                <option value="">Todas</option>
+                                <option value="activa">Activas</option>
+                                <option value="suspendida">Suspendidas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tabla-envoltura">
+                        <table class="tabla-datos">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Empresa</th>
+                                    <th scope="col">Representante</th>
+                                    <th scope="col">Servicio</th>
+                                    <th scope="col">Publicaciones</th>
+                                    <th scope="col">Reservas</th>
+                                    <th scope="col">Ingresos</th>
+                                    <th scope="col">Cuenta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-empresas"></tbody>
+                        </table>
+                    </div>
+                    <div id="empresas-vacio"></div>
+                </div>
+
+                <!-- USUARIOS · GET /api/admin/usuarios · PATCH /api/admin/usuarios/:id/estado -->
+                <div class="panel-seccion" id="seccion-usuarios" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtro-tabla">
+                            <label for="buscar-usuarios" class="visualmente-oculto">Buscar usuarios</label>
+                            <input type="search" id="buscar-usuarios" placeholder="Buscar por nombre, correo o empresa">
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="rol-usuarios" class="visualmente-oculto">Tipo de cuenta</label>
+                            <select id="rol-usuarios">
+                                <option value="">Todas las cuentas</option>
+                                <option value="cliente">Viajeros</option>
+                                <option value="empresa">Empresas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tabla-envoltura">
+                        <table class="tabla-datos">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Usuario</th>
+                                    <th scope="col">Tipo</th>
+                                    <th scope="col">Teléfono</th>
+                                    <th scope="col">Reservas</th>
+                                    <th scope="col">Registro</th>
+                                    <th scope="col">Cuenta</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-usuarios"></tbody>
+                        </table>
+                    </div>
+                    <div id="usuarios-vacio"></div>
+                </div>
+
+                <!-- PUBLICACIONES · GET /api/admin/publicaciones · PATCH /api/admin/publicaciones/:tipo/:id -->
+                <div class="panel-seccion" id="seccion-publicaciones" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtros-tipo" id="filtros-tipo-admin" role="group" aria-label="Tipo de publicación">
+                            <button type="button" class="tipo-boton activo" data-tipo="hotel">Alojamiento</button>
+                            <button type="button" class="tipo-boton" data-tipo="actividad">Actividades</button>
+                            <button type="button" class="tipo-boton" data-tipo="vehiculo">Autos</button>
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="buscar-publicaciones" class="visualmente-oculto">Buscar publicaciones</label>
+                            <input type="search" id="buscar-publicaciones" placeholder="Buscar por nombre o destino">
+                        </div>
+                    </div>
+                    <div class="lista-panel" id="lista-publicaciones-admin" aria-live="polite"></div>
+                </div>
+
+                <!-- RESERVAS · GET /api/admin/reservas -->
+                <div class="panel-seccion" id="seccion-reservas" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtro-tabla">
+                            <label for="buscar-reservas-admin" class="visualmente-oculto">Buscar reservas</label>
+                            <input type="search" id="buscar-reservas-admin" placeholder="Buscar por código, cliente, empresa o publicación">
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="estado-reservas-admin" class="visualmente-oculto">Estado</label>
+                            <select id="estado-reservas-admin">
+                                <option value="">Todos los estados</option>
+                                <option value="confirmada">Confirmadas</option>
+                                <option value="cancelada">Canceladas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="tabla-envoltura">
+                        <table class="tabla-datos">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Código</th>
+                                    <th scope="col">Publicación</th>
+                                    <th scope="col">Cliente</th>
+                                    <th scope="col">Fechas</th>
+                                    <th scope="col">Total</th>
+                                    <th scope="col">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-reservas-admin"></tbody>
+                        </table>
+                    </div>
+                    <div id="reservas-admin-vacio"></div>
+                </div>
+
+                <!-- RESEÑAS · GET /api/admin/resenas?visible= · PATCH /api/admin/resenas/:id -->
+                <div class="panel-seccion" id="seccion-resenas" hidden>
+                    <div class="resenas-panel-cabecera">
+                        <div class="resenas-panel-nota" id="resenas-admin-nota"></div>
+                        <div class="filtros-tipo" role="group" aria-label="Filtrar reseñas">
+                            <button type="button" class="tipo-boton activo" data-filtro-resenas="todas" aria-pressed="true">Todas</button>
+                            <button type="button" class="tipo-boton" data-filtro-resenas="bajas" aria-pressed="false">Puntuación baja</button>
+                            <button type="button" class="tipo-boton" data-filtro-resenas="ocultas" aria-pressed="false">Ocultas</button>
+                        </div>
+                    </div>
+                    <div class="lista-resenas" id="lista-resenas-admin" aria-live="polite"></div>
+                    <div class="resultados-mas-admin">
+                        <button type="button" class="btn-outline" id="boton-mas-resenas-admin" hidden>Mostrar más reseñas</button>
+                    </div>
+                </div>
+
+                <!-- MENSAJES · GET /api/admin/mensajes · PATCH /api/admin/mensajes/:id -->
+                <div class="panel-seccion" id="seccion-mensajes" hidden>
+                    <div class="lista-mensajes" id="lista-mensajes"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+
+    <!-- Confirmación de suspensión o reactivación de una cuenta -->
+    <dialog class="modal" id="modal-cuenta" aria-labelledby="cuenta-titulo">
+        <div class="modal-encabezado">
+            <h2 id="cuenta-titulo">Suspender cuenta</h2>
+            <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-cuerpo">
+            <p id="cuenta-texto"></p>
+            <div id="cuenta-error" class="mensaje-error" role="alert"></div>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Cancelar</button>
+                <button type="button" class="btn-rojo" id="boton-confirmar-cuenta">Suspender</button>
+            </div>
+        </div>
+    </dialog>
+
+<!-- @pie -->
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/admin.js"></script>

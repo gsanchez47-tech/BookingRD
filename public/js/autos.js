@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     iniciarBuscador();
     cargarConteos();
     cargarAutos();
-    iniciarCarrusel('carrusel-autos', 'grid-autos');
 });
 
 async function cargarConteos() {
@@ -19,11 +18,9 @@ async function cargarConteos() {
         const datos = await apiFetch('/estadisticas');
         publicacionesPorDestino = datos.porCiudad || {};
         estadisticasCargadas = true;
-        document.querySelectorAll('.categoria-auto').forEach((tarjeta) => {
-            const conteo = tarjeta.querySelector('[data-conteo-categoria]');
+        document.querySelectorAll('[data-conteo-categoria]').forEach((conteo) => {
             const total = datos.porCategoria[conteo.dataset.conteoCategoria] || 0;
             conteo.textContent = total ? `${total} ${total === 1 ? 'modelo' : 'modelos'}` : 'Próximamente';
-            tarjeta.classList.toggle('sin-autos', !total);
         });
     } catch (_) {
         /* Las tarjetas se muestran sin conteo. */
@@ -34,7 +31,7 @@ async function cargarAutos() {
     const pista = document.getElementById('grid-autos');
     pista.innerHTML = tarjetasEsqueleto(3);
     try {
-        const { publicaciones } = await apiFetch('/publicaciones?tipo=vehiculo&orden=valoracion&porPagina=9');
+        const { publicaciones } = await apiFetch('/publicaciones?tipo=vehiculo&orden=valoracion&porPagina=8');
         pista.innerHTML = publicaciones.length
             ? publicaciones.map(crearTarjetaPublicacion).join('')
             : crearEstado({ titulo: 'Aún no hay autos publicados', texto: 'Las empresas de alquiler pronto publicarán su flota.' });
@@ -42,5 +39,4 @@ async function cargarAutos() {
     } catch (error) {
         pista.innerHTML = crearEstado({ titulo: 'No se pudieron cargar los autos', texto: error.message, esError: true });
     }
-    actualizarBotonesCarrusel('carrusel-autos', 'grid-autos');
 }

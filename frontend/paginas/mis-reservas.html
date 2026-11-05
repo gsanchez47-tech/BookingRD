@@ -1,0 +1,97 @@
+<!-- @pagina titulo="Mis reservas | BookingRD" descripcion="Tus reservas próximas, pasadas y canceladas, tus guardados y tus reseñas." css="mis-reservas" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <!-- Encabezado de la cuenta -->
+        <section class="cabecera-cuenta">
+            <div class="contenedor cabecera-cuenta-contenido">
+                <div class="cabecera-cuenta-texto">
+                    <p class="cabecera-cuenta-etiqueta">Cuenta de viajero</p>
+                    <h1>Hola, <span data-nombre-usuario translate="no"></span></h1>
+                    <p>Consulta tus próximas experiencias, guarda las que te gustan y cuenta cómo te fue en las que ya viviste.</p>
+                </div>
+                <dl class="cifras-cuenta">
+                    <div><dt>Próximas</dt><dd id="cifra-proximas">0</dd></div>
+                    <div><dt>Realizadas</dt><dd id="cifra-pasadas">0</dd></div>
+                    <div><dt>Invertido</dt><dd id="cifra-total">RD$0</dd></div>
+                </dl>
+                <figure class="cabecera-cuenta-foto">
+                    <img src="img/paginas/mis-reservas.jpg" alt="Dos viajeros con un mapa en una playa con la bandera dominicana">
+                </figure>
+            </div>
+        </section>
+
+        <!-- Listado
+             GET   /api/reservas
+             PATCH /api/reservas/:id/cancelar
+             GET   /api/favoritos              (Guardados)
+             GET   /api/resenas, POST /api/resenas   (Reseñas) -->
+        <section class="seccion-reservas">
+            <div class="contenedor">
+                <div class="pestanas" role="tablist" aria-label="Estado de las reservas">
+                    <button type="button" class="pestana activo" data-filtro="proximas" role="tab" aria-selected="true">Próximas <span class="pestana-conteo" data-conteo="proximas">0</span></button>
+                    <button type="button" class="pestana" data-filtro="pasadas" role="tab" aria-selected="false">Pasadas <span class="pestana-conteo" data-conteo="pasadas">0</span></button>
+                    <button type="button" class="pestana" data-filtro="canceladas" role="tab" aria-selected="false">Canceladas <span class="pestana-conteo" data-conteo="canceladas">0</span></button>
+                    <button type="button" class="pestana" data-filtro="guardados" role="tab" aria-selected="false">Guardados <span class="pestana-conteo" data-conteo="guardados">0</span></button>
+                    <button type="button" class="pestana" data-filtro="resenas" role="tab" aria-selected="false">Reseñas <span class="pestana-conteo pestana-alerta" data-conteo="resenas" title="Reseñas pendientes">0</span></button>
+                </div>
+
+                <div class="aviso-resenas" id="aviso-resenas" hidden></div>
+                <div class="lista-reservas" id="lista-reservas" aria-live="polite"></div>
+            </div>
+        </section>
+    </main>
+
+
+    <!-- Confirmación de cancelación -->
+    <dialog class="modal" id="modal-cancelar" aria-labelledby="cancelar-titulo">
+        <div class="modal-encabezado">
+            <h2 id="cancelar-titulo">Cancelar reserva</h2>
+            <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-cuerpo">
+            <p>Vas a cancelar la reserva <strong id="cancelar-codigo"></strong> de <strong id="cancelar-nombre"></strong>. Esta acción no se puede deshacer y libera el cupo para otros viajeros.</p>
+            <div id="cancelar-error" class="mensaje-error" role="alert"></div>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Conservar reserva</button>
+                <button type="button" class="btn-rojo" id="boton-confirmar-cancelar">Sí, cancelar</button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Escribir una reseña -->
+    <dialog class="modal" id="modal-resena" aria-labelledby="resena-titulo-modal">
+        <div class="modal-encabezado">
+            <h2 id="resena-titulo-modal">Cuéntanos cómo te fue</h2>
+            <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+        </div>
+        <form class="modal-cuerpo" id="form-resena" novalidate>
+            <p class="resena-publicacion" id="resena-publicacion"></p>
+            <div class="campo">
+                <fieldset class="selector-puntuacion" id="resena-puntuacion">
+                    <legend>Puntuación general, del 1 al 10</legend>
+                </fieldset>
+                <p class="puntuacion-elegida" id="puntuacion-elegida" aria-live="polite"></p>
+            </div>
+            <div class="campo">
+                <label for="resena-titulo">Título</label>
+                <input type="text" id="resena-titulo" maxlength="120" placeholder="Resume tu experiencia en una frase">
+            </div>
+            <div class="campo">
+                <label for="resena-comentario">Tu reseña</label>
+                <textarea id="resena-comentario" maxlength="1500" rows="5" placeholder="¿Qué te gustó? ¿Qué podría mejorar? Tu opinión ayuda a otros viajeros."></textarea>
+                <small class="contador-caracteres" id="resena-contador">0 / 1500</small>
+            </div>
+            <div id="resena-error" class="mensaje-error" role="alert"></div>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Ahora no</button>
+                <button type="submit" class="btn-primario" id="boton-publicar-resena">Publicar reseña</button>
+            </div>
+        </form>
+    </dialog>
+
+<!-- @pie -->
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/mis-reservas.js"></script>

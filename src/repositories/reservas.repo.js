@@ -310,6 +310,7 @@ async function resumenEmpresa(idEmpresa, desde) {
 }
 
 module.exports = {
+    aReserva,
     bloquearPublicacion,
     reservasHotelEnRango,
     reservasVehiculoEnRango,

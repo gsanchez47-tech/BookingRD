@@ -1,0 +1,159 @@
+<!-- @pagina titulo="Explorar | BookingRD" descripcion="Busca alojamiento, actividades y autos de alquiler en República Dominicana con filtros por destino, precio, valoración y más." css="explorar" nav="alojamiento" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <div class="contenedor">
+            <header class="explorar-cabecera">
+                <nav class="migas" aria-label="Ruta de navegación">
+                    <a href="index.html">Inicio</a>
+                    <span aria-hidden="true">/</span>
+                    <span id="migas-actual">Explorar</span>
+                </nav>
+                <h1 id="banner-titulo">Explora República Dominicana</h1>
+                <p id="banner-texto">Alojamiento, tours, aventura y alquiler de autos publicados por empresas dominicanas.</p>
+            </header>
+
+            <!-- Panel de filtros (izquierda) y resultados.
+                 GET /api/publicaciones?tipo=&categoria=&ciudad=&personas=&transmision=&precioMin=&precioMax=&puntuacionMin=&q=&orden=
+                 Todos los filtros se reflejan en la URL para compartir la búsqueda.
+                 En pantallas angostas el panel se abre con el botón "Filtros". -->
+            <div class="explorar-layout">
+                <aside class="panel-filtros" id="panel-filtros" aria-labelledby="panel-filtros-titulo">
+                    <div class="panel-filtros-cabecera">
+                        <h2 id="panel-filtros-titulo">Filtros</h2>
+                        <button type="button" class="boton-enlace" id="boton-limpiar" hidden>Limpiar todo</button>
+                        <button type="button" class="panel-filtros-cerrar" id="boton-cerrar-filtros" aria-label="Cerrar filtros">&times;</button>
+                    </div>
+
+                    <form class="panel-filtros-cuerpo" id="form-filtros" role="search" aria-label="Filtros de búsqueda">
+                        <fieldset class="grupo-filtro">
+                            <legend>Qué buscas</legend>
+                            <div class="filtro-tipos">
+                                <label><input type="radio" name="filtro-tipo" value="hotel"><span>Alojamiento</span></label>
+                                <label><input type="radio" name="filtro-tipo" value="actividad"><span>Actividades</span></label>
+                                <label><input type="radio" name="filtro-tipo" value="vehiculo"><span>Autos</span></label>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="grupo-filtro">
+                            <legend id="titulo-categorias">Categoría</legend>
+                            <div class="lista-opciones" id="filtro-categorias"></div>
+                        </fieldset>
+
+                        <div class="grupo-filtro">
+                            <label class="grupo-filtro-titulo" for="filtro-ciudad" id="etiqueta-ciudad">Destino</label>
+                            <select id="filtro-ciudad" class="control">
+                                <option value="">Todos los destinos</option>
+                            </select>
+                        </div>
+
+                        <div class="grupo-filtro">
+                            <label class="grupo-filtro-titulo" for="filtro-texto">Palabra clave</label>
+                            <input type="search" id="filtro-texto" class="control" maxlength="100" placeholder="Nombre, playa, servicio...">
+                        </div>
+
+                        <div class="grupo-filtro">
+                            <label class="grupo-filtro-titulo" for="filtro-personas" id="etiqueta-personas">Personas</label>
+                            <input type="number" id="filtro-personas" class="control" min="1" max="60" placeholder="Cualquier cantidad" inputmode="numeric">
+                        </div>
+
+                        <fieldset class="grupo-filtro" data-filtro-tipo="vehiculo" hidden>
+                            <legend>Transmisión</legend>
+                            <div class="lista-opciones">
+                                <label class="opcion-filtro"><input type="radio" name="transmision" value="" checked><span>Cualquiera</span></label>
+                                <label class="opcion-filtro"><input type="radio" name="transmision" value="automatica"><span>Automática</span></label>
+                                <label class="opcion-filtro"><input type="radio" name="transmision" value="manual"><span>Manual</span></label>
+                            </div>
+                        </fieldset>
+
+                        <!-- Precio: control deslizante de dos extremos sobre el histograma de
+                             precios (GET /api/publicaciones/precios). -->
+                        <fieldset class="grupo-filtro filtro-precio" id="filtro-precio">
+                            <legend>Precio <small id="unidad-precio">por noche</small></legend>
+                            <div class="histograma-precio" id="histograma-precio" aria-hidden="true"></div>
+                            <div class="rango-doble" id="rango-precio">
+                                <div class="rango-pista" aria-hidden="true"><span class="rango-relleno" id="rango-relleno"></span></div>
+                                <input type="range" id="precio-min" aria-label="Precio mínimo" min="0" max="100" step="1" value="0">
+                                <input type="range" id="precio-max" aria-label="Precio máximo" min="0" max="100" step="1" value="100">
+                            </div>
+                            <div class="precio-valores">
+                                <span><small>Desde</small><strong id="precio-min-texto">-</strong></span>
+                                <span><small>Hasta</small><strong id="precio-max-texto">-</strong></span>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="grupo-filtro">
+                            <legend>Valoración de viajeros</legend>
+                            <div class="lista-opciones">
+                                <label class="opcion-filtro"><input type="radio" name="puntuacionMin" value="" checked><span>Cualquiera</span></label>
+                                <label class="opcion-filtro"><input type="radio" name="puntuacionMin" value="9"><span><b class="nota-mini">9+</b> Fantástico</span></label>
+                                <label class="opcion-filtro"><input type="radio" name="puntuacionMin" value="8"><span><b class="nota-mini">8+</b> Muy bueno</span></label>
+                                <label class="opcion-filtro"><input type="radio" name="puntuacionMin" value="7"><span><b class="nota-mini">7+</b> Bueno</span></label>
+                            </div>
+                        </fieldset>
+
+                        <p class="filtro-garantias" id="texto-garantias">Cancelación gratuita hasta un día antes y confirmación inmediata.</p>
+                    </form>
+
+                    <div class="panel-filtros-pie">
+                        <button type="button" class="btn-primario btn-bloque" id="boton-ver-resultados">Ver resultados</button>
+                    </div>
+                </aside>
+                <div class="fondo-filtros" id="fondo-filtros" hidden></div>
+
+                <section class="explorar-resultados" aria-labelledby="resultados-total">
+                    <div class="contexto-viaje" id="contexto-viaje" hidden>
+                        <span id="contexto-viaje-texto"></span>
+                        <button type="button" class="boton-enlace" id="boton-quitar-fechas">Quitar fechas</button>
+                    </div>
+
+                    <div class="resultados-encabezado">
+                        <h2 class="resultados-total" id="resultados-total" aria-live="polite">Buscando...</h2>
+                        <div class="resultados-acciones">
+                            <button type="button" class="btn-outline btn-chico boton-abrir-filtros" id="boton-abrir-filtros" aria-controls="panel-filtros" aria-expanded="false">
+                                Filtros <span class="contador-filtros" id="contador-filtros" hidden>0</span>
+                            </button>
+                            <label class="selector-orden">
+                                <span>Ordenar por</span>
+                                <select id="filtro-orden">
+                                    <option value="destacados">Destacados</option>
+                                    <option value="valoracion">Mejor valorados</option>
+                                    <option value="populares">Más reservados</option>
+                                    <option value="recientes">Más recientes</option>
+                                    <option value="precio-asc">Precio: menor a mayor</option>
+                                    <option value="precio-desc">Precio: mayor a menor</option>
+                                    <option value="nombre">Nombre</option>
+                                </select>
+                            </label>
+                            <div class="selector-vista" role="group" aria-label="Vista de resultados">
+                                <button type="button" class="vista-boton" data-vista="lista" aria-pressed="true">Lista</button>
+                                <button type="button" class="vista-boton" data-vista="mapa" aria-pressed="false">Mapa</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="filtros-activos" id="filtros-activos" aria-label="Filtros aplicados"></div>
+                    <div class="clima-destino" id="clima-destino" hidden></div>
+
+                    <div class="mapa-resultados" id="mapa-resultados" hidden>
+                        <div class="mapa-contenedor-explorar" id="mapa-explorar" role="region" aria-label="Mapa de resultados"></div>
+                        <p class="mapa-nota">Ubicación aproximada por destino. Toca un precio para ver la publicación.</p>
+                    </div>
+
+                    <div class="rejilla-tarjetas" id="grid-resultados"></div>
+                    <div class="resultados-mas">
+                        <button type="button" class="btn-outline" id="boton-mas" hidden>Mostrar más</button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+<!-- @pie -->
+
+    <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/clima.js"></script>
+    <script src="js/mapa.js"></script>
+    <script src="js/explorar.js"></script>

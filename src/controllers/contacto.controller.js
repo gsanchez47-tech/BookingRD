@@ -5,7 +5,7 @@
  *   atención por el equipo de BookingRD.
  */
 
-const contactoRepo = require('../repositories/contacto.repo');
+const { contactoRepo } = require('../repositories');
 const { esCorreoValido, textoLimpio } = require('../utils/validacion');
 const { ASUNTOS_CONTACTO } = require('../utils/catalogos');
 

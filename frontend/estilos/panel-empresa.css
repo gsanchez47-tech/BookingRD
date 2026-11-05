@@ -1,0 +1,53 @@
+/* Panel de empresa: resumen, publicaciones, reservas recibidas, reseñas y perfil. */
+
+/* @incluir panel.css */
+
+.perfil-layout {
+    display: grid;
+    gap: var(--e-4);
+    align-items: start;
+}
+
+.tarjeta-perfil {
+    display: grid;
+    gap: var(--e-4);
+    padding: var(--e-5);
+    border: 1px solid var(--linea);
+    border-radius: var(--r-m);
+    background: var(--superficie);
+}
+
+.tarjeta-perfil h3 {
+    font-size: var(--t-l);
+}
+
+.datos-perfil {
+    display: grid;
+    gap: var(--e-3);
+    margin: 0;
+}
+
+.datos-perfil dt {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.datos-perfil dd {
+    margin: 2px 0 0;
+}
+
+.nota-perfil {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+#form-perfil .btn-primario {
+    justify-self: start;
+}
+
+@media (min-width: 960px) {
+    .perfil-layout {
+        grid-template-columns: 340px 1fr;
+    }
+}

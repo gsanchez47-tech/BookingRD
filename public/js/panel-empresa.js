@@ -273,7 +273,7 @@ function crearFilaPublicacion(publicacion, indice) {
         : `${formatearDuracion(publicacion.duracionHoras)}, cupo ${publicacion.cupoDiario} por día`;
 
     return `
-        <article class="fila-publicacion${publicacion.activo ? '' : ' es-oculta'}" data-id="${publicacion.id}" style="animation-delay:${Math.min(indice, 8) * 50}ms">
+        <article class="fila-publicacion${publicacion.activo ? '' : ' es-oculta'}" data-id="${publicacion.id}">
             <div class="fila-media${publicacion.imagen ? '' : ' sin-foto'}">${media}</div>
             <div class="fila-info">
                 <span class="fila-categoria">${escaparHtml(categoria ? categoria.nombre : '')}</span>

@@ -1,0 +1,255 @@
+<!-- @pagina titulo="Detalle | BookingRD" descripcion="Fotografía, descripción, reseñas verificadas, clima del destino y reserva con disponibilidad en tiempo real." css="detalle" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <!-- Portada: categoría, nombre, valoración y fotografía.
+             GET /api/publicaciones/:tipo/:id (js/detalle.js) -->
+        <section class="portada-detalle" id="portada">
+            <div class="contenedor">
+                <nav class="migas" aria-label="Ruta de navegación">
+                    <a href="index.html">Inicio</a>
+                    <span aria-hidden="true">/</span>
+                    <a href="explorar.html" id="migas-categoria">Explorar</a>
+                </nav>
+                <div class="portada-cabecera">
+                    <div>
+                        <p class="portada-categoria" id="portada-categoria">Cargando</p>
+                        <h1 id="portada-titulo" translate="no"><span class="esqueleto esqueleto-titulo"></span></h1>
+                        <p class="portada-datos" id="portada-datos"></p>
+                    </div>
+                    <div class="portada-pie" id="portada-pie" hidden>
+                        <a class="portada-valoracion" id="portada-valoracion" href="#resenas"></a>
+                        <div class="portada-acciones">
+                            <span id="portada-favorito"></span>
+                            <button type="button" class="btn-outline boton-compartir" id="boton-compartir">
+                                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>
+                                Compartir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="portada-media" id="portada-media">
+                    <img id="portada-foto" alt="">
+                    <span class="portada-sin-foto" id="portada-sin-foto" hidden></span>
+                </div>
+            </div>
+        </section>
+
+        <div class="contenedor" id="detalle-error"></div>
+
+        <!-- Navegación por secciones; queda fija bajo el encabezado. -->
+        <nav class="nav-secciones" id="nav-secciones" aria-label="Secciones de la publicación" hidden>
+            <div class="contenedor nav-secciones-contenido">
+                <a href="#seccion-descripcion" class="activo">Descripción</a>
+                <a href="#seccion-detalles" id="nav-detalles">Detalles</a>
+                <a href="#seccion-ubicacion">Ubicación y clima</a>
+                <a href="#resenas">Reseñas <span id="nav-conteo-resenas"></span></a>
+                <a href="#seccion-politicas">Lo que debes saber</a>
+            </div>
+        </nav>
+
+        <div class="contenedor detalle-layout" id="detalle-contenido" hidden>
+            <article class="detalle-info">
+                <ul class="ventajas" id="detalle-ventajas" aria-label="Lo más destacado"></ul>
+
+                <section class="bloque-detalle" id="seccion-descripcion">
+                    <h2>Descripción</h2>
+                    <p id="detalle-descripcion" translate="no"></p>
+                </section>
+
+                <section class="bloque-detalle" id="seccion-detalles">
+                    <h2 id="titulo-detalles">Detalles</h2>
+                    <ul class="specs-vehiculo" id="detalle-specs" aria-label="Características del vehículo" hidden></ul>
+                    <dl class="datos-clave" id="detalle-datos"></dl>
+                </section>
+
+                <!-- Requisitos del alquiler (solo autos). -->
+                <section class="bloque-detalle" id="bloque-requisitos" hidden>
+                    <h2>Requisitos para alquilar</h2>
+                    <ul class="lista-requisitos" id="detalle-requisitos"></ul>
+                </section>
+
+                <section class="bloque-detalle" id="bloque-servicios" hidden>
+                    <h2 id="titulo-servicios">Servicios</h2>
+                    <ul class="lista-servicios" id="detalle-servicios"></ul>
+                </section>
+
+                <!-- Ubicación aproximada (centro del destino, js/mapa.js) y clima (js/clima.js). -->
+                <section class="bloque-detalle" id="seccion-ubicacion">
+                    <h2>Ubicación y clima</h2>
+                    <p class="ubicacion-texto" id="ubicacion-texto"></p>
+                    <div class="ubicacion-rejilla">
+                        <div class="mapa-detalle" id="mapa-detalle" role="region" aria-label="Mapa de la ubicación"></div>
+                        <div class="clima-detalle" id="clima-detalle" hidden></div>
+                    </div>
+                    <a class="enlace-como-llegar" id="enlace-como-llegar" target="_blank" rel="noopener noreferrer">Cómo llegar en Google Maps</a>
+                </section>
+
+                <!-- Reseñas: GET /api/publicaciones/:tipo/:id/resenas -->
+                <section class="bloque-detalle" id="resenas">
+                    <div class="resenas-encabezado">
+                        <h2>Reseñas de viajeros</h2>
+                        <label class="resenas-orden">
+                            <span>Ordenar</span>
+                            <select id="resenas-orden">
+                                <option value="recientes">Más recientes</option>
+                                <option value="mejor-valoradas">Mejor puntuación</option>
+                                <option value="peor-valoradas">Peor puntuación</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="resenas-resumen" id="resenas-resumen"></div>
+                    <div class="lista-resenas" id="lista-resenas" aria-live="polite"></div>
+                    <button type="button" class="btn-outline" id="boton-mas-resenas" hidden>Ver más reseñas</button>
+                    <p class="resenas-nota">Solo los viajeros con una reserva terminada en BookingRD pueden publicar una reseña, desde <a href="mis-reservas.html">Mis reservas</a>.</p>
+                </section>
+
+                <section class="bloque-detalle" id="seccion-politicas">
+                    <h2>Lo que debes saber</h2>
+                    <dl class="politicas" id="detalle-politicas"></dl>
+                </section>
+
+                <section class="bloque-detalle tarjeta-empresa">
+                    <p class="tarjeta-empresa-etiqueta">Publicado por</p>
+                    <h2 id="empresa-nombre" translate="no"></h2>
+                    <p id="empresa-descripcion" translate="no"></p>
+                    <dl class="empresa-datos" id="empresa-datos"></dl>
+                </section>
+            </article>
+
+            <!-- Reserva: disponibilidad en tiempo real y confirmación.
+                 GET  /api/publicaciones/:tipo/:id/disponibilidad
+                 POST /api/reservas -->
+            <aside class="tarjeta-reserva" id="tarjeta-reserva" aria-label="Reservar">
+                <div class="reserva-cabecera">
+                    <div class="reserva-precio">
+                        <span id="reserva-precio"></span>
+                        <small id="reserva-unidad"></small>
+                    </div>
+                    <a class="reserva-valoracion" id="reserva-valoracion" href="#resenas" hidden></a>
+                </div>
+                <p class="reserva-garantia" id="reserva-garantia">Cancelación gratuita hasta un día antes. Sin pagos por adelantado.</p>
+
+                <form id="form-reserva" novalidate>
+                    <div class="fila-campos dos" data-solo-tipo="hotel">
+                        <div class="campo">
+                            <label for="reserva-entrada">Entrada</label>
+                            <input type="date" id="reserva-entrada">
+                        </div>
+                        <div class="campo">
+                            <label for="reserva-salida">Salida</label>
+                            <input type="date" id="reserva-salida">
+                        </div>
+                    </div>
+                    <div class="campo" data-solo-tipo="actividad">
+                        <label for="reserva-fecha">Fecha</label>
+                        <input type="date" id="reserva-fecha">
+                    </div>
+                    <!-- Alquiler de auto: recogida y devolución con hora, conductor y extras. -->
+                    <div class="campo" data-solo-tipo="vehiculo" hidden>
+                        <label for="reserva-recogida">Recogida</label>
+                        <div class="fecha-hora">
+                            <input type="date" id="reserva-recogida">
+                            <select id="reserva-hora-recogida" aria-label="Hora de recogida"></select>
+                        </div>
+                    </div>
+                    <div class="campo" data-solo-tipo="vehiculo" hidden>
+                        <label for="reserva-devolucion">Devolución</label>
+                        <div class="fecha-hora">
+                            <input type="date" id="reserva-devolucion">
+                            <select id="reserva-hora-devolucion" aria-label="Hora de devolución"></select>
+                        </div>
+                    </div>
+                    <div class="campo" data-solo-tipo="vehiculo" hidden>
+                        <label for="reserva-ciudad-devolucion">Devolver en</label>
+                        <select id="reserva-ciudad-devolucion"></select>
+                    </div>
+                    <div class="campo" data-solo-tipo="vehiculo" hidden>
+                        <label for="reserva-edad">Edad del conductor principal</label>
+                        <input type="number" id="reserva-edad" min="18" max="99" value="30" inputmode="numeric">
+                    </div>
+                    <p class="ayuda" id="ayuda-alquiler" data-solo-tipo="vehiculo" hidden></p>
+                    <fieldset class="extras-alquiler" id="reserva-extras" data-solo-tipo="vehiculo" hidden>
+                        <legend>Extras <span class="opcional">(opcional)</span></legend>
+                        <div class="extras-lista" id="lista-extras"></div>
+                    </fieldset>
+
+                    <div class="fila-cantidades" data-solo-tipo="hotel actividad">
+                        <div class="campo" data-solo-tipo="hotel">
+                            <label for="reserva-habitaciones">Habitaciones</label>
+                            <div class="contador">
+                                <button type="button" class="contador-boton" data-contador="reserva-habitaciones" data-paso="-1" aria-label="Menos habitaciones">-</button>
+                                <input type="number" id="reserva-habitaciones" min="1" max="20" value="1">
+                                <button type="button" class="contador-boton" data-contador="reserva-habitaciones" data-paso="1" aria-label="Más habitaciones">+</button>
+                            </div>
+                        </div>
+                        <div class="campo">
+                            <label for="reserva-personas">Personas</label>
+                            <div class="contador">
+                                <button type="button" class="contador-boton" data-contador="reserva-personas" data-paso="-1" aria-label="Menos personas">-</button>
+                                <input type="number" id="reserva-personas" min="1" max="60" value="2">
+                                <button type="button" class="contador-boton" data-contador="reserva-personas" data-paso="1" aria-label="Más personas">+</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="campo">
+                        <label for="reserva-comentario">Comentario para la empresa <span class="opcional">(opcional)</span></label>
+                        <textarea id="reserva-comentario" maxlength="500" rows="2" placeholder="Hora de llegada, alergias, celebraciones..."></textarea>
+                    </div>
+
+                    <div class="reserva-resumen" id="reserva-resumen" aria-live="polite"></div>
+                    <p id="mensaje-error" class="mensaje-formulario error" role="alert" hidden></p>
+
+                    <button type="submit" class="btn-rojo btn-bloque" id="boton-reservar" data-sesion="cliente" hidden>Reservar ahora</button>
+                    <a href="login.html" class="btn-rojo btn-bloque" id="boton-login-reservar" data-sesion="invitado">Inicia sesión para reservar</a>
+                    <p class="nota-reserva" data-sesion="empresa" hidden>Las reservas se hacen con una cuenta de viajero.</p>
+                    <p class="nota-reserva" data-sesion="admin" hidden>Las reservas se hacen con una cuenta de viajero.</p>
+                    <p class="nota-reserva" data-sesion="invitado">Confirmación inmediata con tu cuenta de viajero.</p>
+                </form>
+            </aside>
+        </div>
+
+        <!-- Barra inferior en móvil: acceso directo a la tarjeta de reserva. -->
+        <div class="barra-reserva-movil" id="barra-reserva-movil" hidden>
+            <div>
+                <strong id="barra-precio"></strong>
+                <small id="barra-unidad"></small>
+            </div>
+            <a href="#tarjeta-reserva" class="btn-rojo btn-chico">Ver disponibilidad</a>
+        </div>
+
+        <!-- Más publicaciones de la misma categoría -->
+        <section class="seccion relacionadas" id="relacionadas" hidden>
+            <div class="contenedor">
+                <h2 id="titulo-relacionadas">También te puede interesar</h2>
+                <div class="rejilla-tarjetas" id="grid-relacionadas"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Confirmación de reserva -->
+    <dialog class="modal" id="modal-confirmacion" aria-labelledby="confirmacion-titulo">
+        <div class="confirmacion">
+            <svg class="confirmacion-icono" viewBox="0 0 84 84" aria-hidden="true">
+                <circle cx="42" cy="42" r="38"></circle>
+                <path d="M26 43 l11 11 l21 -23"></path>
+            </svg>
+            <h2 id="confirmacion-titulo">Reserva confirmada</h2>
+            <p id="confirmacion-texto"></p>
+            <p class="confirmacion-codigo" id="confirmacion-codigo" translate="no"></p>
+            <p class="nota-reserva">Guarda este código. La empresa recibe tu reserva de inmediato y te llegará un correo de confirmación.</p>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Seguir explorando</button>
+                <a href="mis-reservas.html" class="btn-primario">Ver mis reservas</a>
+            </div>
+        </div>
+    </dialog>
+
+<!-- @pie -->
+
+    <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/clima.js"></script>
+    <script src="js/mapa.js"></script>
+    <script src="js/detalle.js"></script>

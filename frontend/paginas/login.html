@@ -1,0 +1,84 @@
+<!-- @pagina titulo="Iniciar sesión | BookingRD" descripcion="Inicia sesión en BookingRD para reservar, ver tus reservas o gestionar tu empresa." css="login" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <section class="auth-split">
+            <aside class="auth-foto">
+                <img class="auth-foto-imagen" src="img/paginas/avion.jpg" alt="">
+                <div class="auth-foto-texto">
+                    <h2>Tu viaje sigue donde lo dejaste</h2>
+                    <p>Tus reservas, tus guardados y tus reseñas te esperan. Las empresas encuentran aquí su panel de reservas e ingresos.</p>
+                </div>
+            </aside>
+
+            <div class="auth-formulario">
+                <div class="auth-formulario-contenido">
+                    <!-- Formulario: visible sin sesión activa. POST /api/auth/login -->
+                    <div data-sesion="invitado">
+                        <h1 id="titulo-login">Iniciar sesión</h1>
+                        <p class="auth-subtitulo">Usa el correo con el que creaste tu cuenta.</p>
+
+                        <p id="mensaje-info" class="mensaje-formulario exito" role="status" hidden></p>
+                        <p id="mensaje-error" class="mensaje-formulario error" role="alert" hidden></p>
+
+                        <form id="form-login" class="formulario-auth" novalidate>
+                            <div class="campo">
+                                <label for="correo">Correo electrónico</label>
+                                <input type="email" id="correo" maxlength="200" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+                            </div>
+                            <div class="campo">
+                                <label for="password">Contraseña</label>
+                                <div class="campo-password">
+                                    <input type="password" id="password" autocomplete="current-password">
+                                    <button type="button" class="boton-mostrar" id="boton-mostrar">Mostrar</button>
+                                </div>
+                            </div>
+
+                            <div class="login-opciones">
+                                <label class="casilla">
+                                    <input type="checkbox" id="recordarme" checked>
+                                    <span>Recordarme en este equipo</span>
+                                </label>
+                                <button type="button" class="boton-enlace" id="boton-olvido" aria-expanded="false" aria-controls="panel-olvido">¿Olvidaste tu contraseña?</button>
+                            </div>
+
+                            <!-- Recuperación de contraseña: la atiende el equipo mediante el formulario de contacto. -->
+                            <p class="panel-olvido" id="panel-olvido" hidden>
+                                Escríbenos desde <a href="index.html#contacto">Contacto</a> con el correo de tu cuenta y el asunto "Problemas con mi cuenta". Te ayudamos a restablecer la contraseña en un día laborable.
+                            </p>
+
+                            <button type="submit" id="boton-login" class="btn-rojo btn-bloque">Iniciar sesión</button>
+                        </form>
+
+                        <p class="pie-formulario">¿No tienes cuenta? <a href="registro.html">Crea una cuenta de viajero</a> o <a href="registro.html?tipo=empresa">registra tu empresa</a>.</p>
+
+                        <details class="cuentas-demo">
+                            <summary>Cuentas de demostración</summary>
+                            <ul>
+                                <li><button type="button" class="boton-enlace" data-demo="cliente@bookingrd.com" data-clave="Cliente123!">Viajero</button> <span translate="no">cliente@bookingrd.com / Cliente123!</span></li>
+                                <li><button type="button" class="boton-enlace" data-demo="empresa@bookingrd.com" data-clave="Empresa123!">Empresa</button> <span translate="no">empresa@bookingrd.com / Empresa123!</span></li>
+                                <li><button type="button" class="boton-enlace" data-demo="autos@bookingrd.com" data-clave="Empresa123!">Alquiler de autos</button> <span translate="no">autos@bookingrd.com / Empresa123!</span></li>
+                                <li><button type="button" class="boton-enlace" data-demo="admin@bookingrd.com" data-clave="Admin123!">Administración</button> <span translate="no">admin@bookingrd.com / Admin123!</span></li>
+                            </ul>
+                        </details>
+                    </div>
+
+                    <!-- Aviso con sesión activa. -->
+                    <div class="sesion-existente" data-sesion="usuario" hidden>
+                        <h1>Ya iniciaste sesión</h1>
+                        <p>Estás conectado como <strong data-nombre-usuario></strong>.</p>
+                        <div class="sesion-existente-acciones">
+                            <a href="index.html" class="btn-primario">Ir al inicio</a>
+                            <button type="button" class="btn-outline" data-accion="cerrar-sesion" data-destino="login.html">Cerrar sesión</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+<!-- @pie -->
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/login.js"></script>

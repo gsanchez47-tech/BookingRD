@@ -24,12 +24,21 @@ const rutasReservas = require('./routes/reservas.routes');
 const rutasEmpresa = require('./routes/empresa.routes');
 const rutasAdmin = require('./routes/admin.routes');
 const rutasViajero = require('./routes/viajero.routes');
+const rutasExternos = require('./routes/externos.routes');
 const { ErrorHttp } = require('./utils/errores');
 
-// JWT_SECRET es obligatorio para firmar y verificar sesiones.
+const crypto = require('crypto');
+const { MODO_DEMO } = require('./config/modo');
+
+// JWT_SECRET firma las sesiones. Es obligatorio con base de datos; en modo de
+// demostración, si falta, se genera uno temporal (las sesiones se cierran al
+// reiniciar el servidor).
 if (!process.env.JWT_SECRET) {
-    console.error('Configuración incompleta: falta JWT_SECRET en .env (ver .env.example o ejecutar npm run configurar).');
-    process.exit(1);
+    if (!MODO_DEMO) {
+        console.error('Configuración incompleta: falta JWT_SECRET en .env (ver .env.example o ejecutar npm run configurar).');
+        process.exit(1);
+    }
+    process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex');
 }
 
 const app = express();
@@ -67,6 +76,10 @@ app.use('/api/admin', rutasAdmin);
 app.use('/api', rutasCatalogo);
 app.use('/api', rutasContacto);
 app.use('/api', rutasViajero);
+app.use('/api', rutasExternos);
+
+// Estado del servidor (comprobaciones y guía de instalación).
+app.get('/api/salud', (req, res) => res.json({ estado: 'ok', modo: MODO_DEMO ? 'demostracion' : 'base-de-datos' }));
 
 // Rutas /api inexistentes: respuesta JSON uniforme.
 app.use('/api', (req, res) => {
@@ -107,4 +120,8 @@ app.use((error, req, res, next) => {
 const PUERTO = Number(process.env.PORT || 3000);
 app.listen(PUERTO, () => {
     console.log(`BookingRD disponible en http://localhost:${PUERTO}`);
+    if (MODO_DEMO) {
+        console.log('Modo de demostración: datos en memoria (database/datos-demo.js). Los cambios se pierden al reiniciar.');
+        console.log('Para usar Azure SQL o SQL Server, completa DB_SERVER y los demás datos en .env (npm run configurar).');
+    }
 });

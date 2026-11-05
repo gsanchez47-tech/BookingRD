@@ -27,6 +27,32 @@
  */
 
 /* ============================================================================
+   0. PREFERENCIAS DEL VISITANTE (idioma y moneda)
+   Se leen antes que todo lo demás porque determinan el formato de fechas y
+   números. La interfaz para cambiarlas está en preferencias.js.
+   ============================================================================ */
+
+const CLAVE_PREFERENCIAS = 'bookingrd_preferencias';
+
+/** @returns {{idioma: 'es'|'en', moneda: 'DOP'|'USD'|'EUR'}} */
+function leerPreferencias() {
+    try {
+        const guardadas = JSON.parse(localStorage.getItem(CLAVE_PREFERENCIAS)) || {};
+        return {
+            idioma: guardadas.idioma === 'en' ? 'en' : 'es',
+            moneda: ['USD', 'EUR'].includes(guardadas.moneda) ? guardadas.moneda : 'DOP'
+        };
+    } catch (_) {
+        return { idioma: 'es', moneda: 'DOP' };
+    }
+}
+
+const PREFERENCIAS = leerPreferencias();
+
+/** Configuración regional para fechas y números según el idioma elegido. */
+const LOCALE = PREFERENCIAS.idioma === 'en' ? 'en-US' : 'es-DO';
+
+/* ============================================================================
    1. CLIENTE HTTP
    ============================================================================ */
 
@@ -274,37 +300,6 @@ function iniciarMenuMovil() {
     });
 }
 
-/**
- * Menú desplegable "Servicios". En escritorio se abre con el cursor (CSS);
- * el clic lo fija abierto para pantallas táctiles. Se cierra al elegir una
- * opción, al hacer clic fuera o con Escape.
- */
-function iniciarMenuServicios() {
-    const contenedor = document.querySelector('.nav-desplegable');
-    if (!contenedor) return;
-    const boton = contenedor.querySelector('button');
-
-    const cambiarEstado = (abierto) => {
-        contenedor.classList.toggle('abierto', abierto);
-        boton.setAttribute('aria-expanded', String(abierto));
-    };
-
-    boton.addEventListener('click', () => cambiarEstado(!contenedor.classList.contains('abierto')));
-    contenedor.querySelectorAll('a').forEach((enlace) => enlace.addEventListener('click', () => {
-        cambiarEstado(false);
-        enlace.blur();   // retira :focus-within para que el panel se cierre
-    }));
-    document.addEventListener('click', (evento) => {
-        if (!contenedor.contains(evento.target)) cambiarEstado(false);
-    });
-    document.addEventListener('keydown', (evento) => {
-        if (evento.key === 'Escape') {
-            cambiarEstado(false);
-            if (contenedor.contains(document.activeElement)) document.activeElement.blur();
-        }
-    });
-}
-
 /** Aplica la clase .con-sombra al header cuando la página se ha desplazado. */
 function iniciarSombraHeader() {
     const header = document.querySelector('.header-principal');
@@ -385,30 +380,6 @@ function mostrarAvisoProgramado() {
 }
 
 /* ============================================================================
-   5. APARICIÓN AL DESPLAZAR
-   ============================================================================ */
-
-/**
- * Agrega la clase .revelado a cada [data-revelar] cuando entra en el
- * viewport. Sin soporte de IntersectionObserver, se muestran de inmediato.
- */
-function iniciarRevelado() {
-    const elementos = document.querySelectorAll('[data-revelar]');
-    if (!('IntersectionObserver' in window)) {
-        elementos.forEach((elemento) => elemento.classList.add('revelado'));
-        return;
-    }
-    const observador = new IntersectionObserver((entradas) => {
-        entradas.forEach((entrada) => {
-            if (!entrada.isIntersecting) return;
-            entrada.target.classList.add('revelado');
-            observador.unobserve(entrada.target);
-        });
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-    elementos.forEach((elemento) => observador.observe(elemento));
-}
-
-/* ============================================================================
    6. UTILIDADES
    ============================================================================ */
 
@@ -456,6 +427,22 @@ const CATALOGOS = {
     destinos: ['Santo Domingo', 'Punta Cana', 'Puerto Plata', 'Las Terrenas', 'Samaná', 'Las Galeras',
         'La Romana', 'Sosúa', 'Cabarete', 'Jarabacoa', 'Constanza', 'Juan Dolio', 'Boca Chica',
         'Río San Juan', 'Pedernales'],
+    /** Provincia de cada destino (src/utils/catalogos.js: DESTINOS). */
+    provincias: {
+        'Santo Domingo': 'Distrito Nacional', 'Punta Cana': 'La Altagracia', 'Puerto Plata': 'Puerto Plata',
+        'Las Terrenas': 'Samaná', 'Samaná': 'Samaná', 'Las Galeras': 'Samaná', 'La Romana': 'La Romana',
+        'Sosúa': 'Puerto Plata', 'Cabarete': 'Puerto Plata', 'Jarabacoa': 'La Vega', 'Constanza': 'La Vega',
+        'Juan Dolio': 'San Pedro de Macorís', 'Boca Chica': 'Santo Domingo', 'Río San Juan': 'María Trinidad Sánchez',
+        'Pedernales': 'Pedernales'
+    },
+    /** Latitud y longitud de cada destino (src/utils/catalogos.js: COORDENADAS_DESTINOS). */
+    coordenadas: {
+        'Santo Domingo': [18.4861, -69.9312], 'Punta Cana': [18.5601, -68.3725], 'Puerto Plata': [19.7934, -70.6884],
+        'Las Terrenas': [19.3110, -69.5428], 'Samaná': [19.2056, -69.3366], 'Las Galeras': [19.2850, -69.1960],
+        'La Romana': [18.4273, -68.9728], 'Sosúa': [19.7520, -70.5170], 'Cabarete': [19.7490, -70.4100],
+        'Jarabacoa': [19.1180, -70.6380], 'Constanza': [18.9090, -70.7450], 'Juan Dolio': [18.4270, -69.4290],
+        'Boca Chica': [18.4500, -69.6060], 'Río San Juan': [19.6420, -70.0760], 'Pedernales': [18.0380, -71.7440]
+    },
     categorias: {
         'hoteles-resorts': { nombre: 'Hoteles y resorts', tipo: 'hotel', grupo: 'Alojamiento' },
         'villas-cabanas': { nombre: 'Villas y cabañas', tipo: 'hotel', grupo: 'Alojamiento' },
@@ -463,7 +450,7 @@ const CATALOGOS = {
         'tour-montana': { nombre: 'Tours de montaña', tipo: 'actividad', grupo: 'Tours' },
         'tour-gastronomico': { nombre: 'Tours gastronómicos', tipo: 'actividad', grupo: 'Tours' },
         cultural: { nombre: 'Tours culturales e históricos', tipo: 'actividad', grupo: 'Tours' },
-        'zip-line': { nombre: 'Zip line y parapente', tipo: 'actividad', grupo: 'Aventura' },
+        'zip-line': { nombre: 'Tirolesa y aventura aérea', tipo: 'actividad', grupo: 'Aventura' },
         motocross: { nombre: 'Motocross y buggies', tipo: 'actividad', grupo: 'Aventura' },
         acuaticas: { nombre: 'Actividades acuáticas', tipo: 'actividad', grupo: 'Aventura' },
         golf: { nombre: 'Golf', tipo: 'actividad', grupo: 'Aventura' },
@@ -512,8 +499,27 @@ function urlRecurso(ruta) {
     return ruta.startsWith('/api/') ? `${ORIGEN_SERVIDOR}${ruta}` : ruta;
 }
 
-const formatoMoneda = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', maximumFractionDigits: 0 });
-const formatoFechaLarga = new Intl.DateTimeFormat('es-DO', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+/** Símbolo de cada moneda admitida. */
+const SIMBOLOS_MONEDA = { DOP: 'RD$', USD: 'US$', EUR: '€' };
+const formatoEntero = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
+
+/** Importe con el símbolo de su moneda, sin decimales: "RD$14,500", "US$238". */
+function formatearMonto(valor, moneda = 'DOP') {
+    const signo = valor < 0 ? '-' : '';
+    return `${signo}${SIMBOLOS_MONEDA[moneda]}${formatoEntero.format(Math.abs(Math.round(valor)))}`;
+}
+
+/** Importe en pesos dominicanos (paneles, reservas y pagos siempre se muestran en RD$). */
+const formatoMoneda = { format: (pesos) => formatearMonto(pesos, 'DOP') };
+const formatoFechaLarga = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+/**
+ * Precio para mostrar. Por defecto en pesos dominicanos; preferencias.js lo
+ * reemplaza para convertirlo a la moneda que elija el visitante.
+ * @param {number} pesos
+ * @returns {string}
+ */
+let formatearPrecio = (pesos) => formatoMoneda.format(pesos);
 
 /** Fecha AAAA-MM-DD a texto legible ("sáb, 14 nov 2026"). */
 function formatearFecha(iso) {
@@ -551,7 +557,8 @@ const NOMBRE_TIPO = { hotel: 'Alojamiento', actividad: 'Actividad', vehiculo: 'A
 function formatearHora(hhmm) {
     if (!hhmm) return '';
     const [h, m] = hhmm.split(':').map(Number);
-    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+    const sufijo = LOCALE === 'en-US' ? (h < 12 ? 'AM' : 'PM') : (h < 12 ? 'a. m.' : 'p. m.');
+    return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${sufijo}`;
 }
 
 /** Horas en punto y media hora del horario del mostrador, como opciones de un select. */
@@ -643,19 +650,18 @@ function crearTarjetaPublicacion(publicacion) {
             <div class="tarjeta-media${publicacion.imagen ? '' : ' sin-foto'}${esHotel ? '' : esVehiculo ? ' es-vehiculo' : ' es-actividad'}">
                 ${media}
                 <span class="tarjeta-sin-foto-texto" aria-hidden="true">${escaparHtml(categoria.nombre)}</span>
-                <span class="tarjeta-categoria">${escaparHtml(categoria.nombre)}</span>
                 ${insignia ? `<span class="tarjeta-insignia insignia-${insignia.clase}">${escaparHtml(insignia.texto)}</span>` : ''}
                 ${botonFavorito(publicacion)}
             </div>
             <div class="tarjeta-cuerpo">
                 <span class="tarjeta-ubicacion">${escaparHtml(publicacion.ciudad)}, ${escaparHtml(detalleSecundario)}</span>
-                <h3 class="tarjeta-titulo"><a class="tarjeta-enlace" href="${enlaceDetalle(publicacion)}">${escaparHtml(publicacion.nombre)}</a></h3>
+                <h3 class="tarjeta-titulo" translate="no"><a class="tarjeta-enlace" href="${enlaceDetalle(publicacion)}">${escaparHtml(publicacion.nombre)}</a></h3>
                 ${valoracionCompacta(publicacion)}
-                ${esVehiculo ? especificaciones : `<p class="tarjeta-descripcion">${escaparHtml(publicacion.descripcion)}</p>`}
+                ${esVehiculo ? especificaciones : `<p class="tarjeta-descripcion" translate="no">${escaparHtml(publicacion.descripcion)}</p>`}
                 <p class="tarjeta-politica">${esVehiculo ? 'Cancelación gratuita hasta un día antes de la recogida' : 'Cancelación gratuita hasta un día antes'}</p>
                 <div class="tarjeta-pie">
-                    <span class="tarjeta-precio"><small class="tarjeta-desde">Desde</small>${formatoMoneda.format(publicacion.precio)}<small>${unidadPrecio(publicacion.tipo)}</small></span>
-                    <span class="tarjeta-proveedor">${escaparHtml(publicacion.proveedor || '')}</span>
+                    <span class="tarjeta-precio"><small class="tarjeta-desde">Desde</small>${formatearPrecio(publicacion.precio)}<small>${unidadPrecio(publicacion.tipo)}</small></span>
+                    <span class="tarjeta-proveedor" translate="no">${escaparHtml(publicacion.proveedor || '')}</span>
                 </div>
             </div>
         </article>`;
@@ -787,7 +793,9 @@ function retirarMarcasAlEditar(formulario) {
    pantalla.
    ============================================================================ */
 
-const NOMBRES_MES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const NOMBRES_MES = LOCALE === 'en-US'
+    ? ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+    : ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 /** Formato compacto para ejes: 950, 12K, 1.2M. */
 function formatoCompacto(valor) {
@@ -881,11 +889,11 @@ function etiquetaPuntuacion(puntuacion) {
     return 'Regular';
 }
 
-/** Puntuación con un decimal y coma decimal: 9,3. Los enteros llevan ",0" solo si se pide. */
+/** Puntuación con un decimal (9,3 en español, 9.3 en inglés). Los enteros llevan el decimal solo si se pide. */
 function formatoPuntuacion(puntuacion, { decimalFijo = true } = {}) {
     const redondeada = Math.round(puntuacion * 10) / 10;
     return decimalFijo || !Number.isInteger(redondeada)
-        ? redondeada.toFixed(1).replace('.', ',')
+        ? (LOCALE === 'en-US' ? redondeada.toFixed(1) : redondeada.toFixed(1).replace('.', ','))
         : String(redondeada);
 }
 
@@ -1025,12 +1033,14 @@ function botonFavorito(publicacion, conTexto = false) {
 const CLAVE_VISTOS = 'bookingrd_vistos';
 const MAXIMO_VISTOS = 8;
 const CAMPOS_VISTO = ['tipo', 'id', 'nombre', 'categoria', 'ciudad', 'descripcion', 'precio', 'imagen', 'destacado',
-    'proveedor', 'tipoAlojamiento', 'duracionHoras', 'puntuacion', 'totalResenas', 'totalReservas'];
+    'proveedor', 'tipoAlojamiento', 'duracionHoras', 'puntuacion', 'totalResenas', 'totalReservas',
+    'anio', 'pasajeros', 'maletas', 'transmision', 'kmPorDia'];
 
 function leerVistos() {
     try {
         const lista = JSON.parse(localStorage.getItem(CLAVE_VISTOS));
-        return Array.isArray(lista) ? lista : [];
+        // Se descartan entradas guardadas por versiones anteriores sin los datos del auto.
+        return Array.isArray(lista) ? lista.filter((p) => p && (p.tipo !== 'vehiculo' || p.pasajeros)) : [];
     } catch (_) {
         return [];
     }
@@ -1085,10 +1095,8 @@ async function compartirEnlace(titulo, texto) {
 document.addEventListener('DOMContentLoaded', () => {
     aplicarEstadoSesion();
     iniciarMenuMovil();
-    iniciarMenuServicios();
     iniciarSombraHeader();
     iniciarCierreSesion();
-    iniciarRevelado();
     mostrarAvisoProgramado();
     validarSesionRemota();
 
@@ -1103,31 +1111,11 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ---------------------------------------------------------------------------
-   Carruseles y opiniones (inicio y autos)
+   Opiniones (inicio y autos)
    --------------------------------------------------------------------------- */
 
 /** "3 publicaciones", o "Próximamente" si no hay ninguna. */
 const textoPublicaciones = (total) => (total ? `${total} ${total === 1 ? 'publicación' : 'publicaciones'}` : 'Próximamente');
-
-/** Botones anterior / siguiente de un carrusel. */
-function iniciarCarrusel(idCarrusel, idPista) {
-    const contenedor = document.getElementById(idCarrusel);
-    const pista = document.getElementById(idPista);
-    const desplazar = (sentido) => pista.scrollBy({ left: sentido * pista.clientWidth * 0.9, behavior: 'smooth' });
-    const actualizar = () => actualizarBotonesCarrusel(idCarrusel, idPista);
-    contenedor.querySelector('.anterior').addEventListener('click', () => desplazar(-1));
-    contenedor.querySelector('.siguiente').addEventListener('click', () => desplazar(1));
-    pista.addEventListener('scroll', conRetardo(actualizar, 80), { passive: true });
-    window.addEventListener('resize', conRetardo(actualizar, 150));
-}
-
-function actualizarBotonesCarrusel(idCarrusel, idPista) {
-    const contenedor = document.getElementById(idCarrusel);
-    const pista = document.getElementById(idPista);
-    const maximo = pista.scrollWidth - pista.clientWidth - 4;
-    contenedor.querySelector('.anterior').disabled = pista.scrollLeft <= 4;
-    contenedor.querySelector('.siguiente').disabled = pista.scrollLeft >= maximo;
-}
 
 /** Tarjeta de una opinión verificada (reseña destacada). */
 function crearTarjetaOpinion(resena) {
@@ -1138,7 +1126,7 @@ function crearTarjetaOpinion(resena) {
                 <span class="nota nota-grande">${resena.puntuacion}</span>
                 <span class="opinion-etiqueta">${etiquetaPuntuacion(resena.puntuacion)}</span>
             </div>
-            <blockquote>
+            <blockquote translate="no">
                 <p class="opinion-titulo">${escaparHtml(resena.titulo)}</p>
                 <p>${escaparHtml(resena.comentario)}</p>
             </blockquote>

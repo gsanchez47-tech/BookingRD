@@ -4,7 +4,8 @@
  */
 
 const jwt = require('jsonwebtoken');
-const cuentasRepo = require('../repositories/cuentas.repo');
+
+const { cuentasRepo } = require('../repositories');
 
 /**
  * Exige un token JWT válido en el encabezado `Authorization: Bearer <token>`

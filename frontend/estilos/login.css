@@ -1,0 +1,59 @@
+/* Inicio de sesión. */
+
+/* @incluir auth.css */
+
+.login-opciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+    font-size: var(--t-s);
+}
+
+.panel-olvido {
+    padding: var(--e-3) var(--e-4);
+    border-left: 3px solid var(--caribe-deep);
+    background: var(--superficie);
+    font-size: var(--t-s);
+}
+
+#mensaje-info,
+#mensaje-error {
+    margin-bottom: var(--e-4);
+}
+
+.cuentas-demo {
+    margin-top: var(--e-6);
+    padding: var(--e-4);
+    border: 1px dashed var(--linea-fuerte);
+    border-radius: var(--r-m);
+    font-size: var(--t-s);
+}
+
+.cuentas-demo summary {
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.cuentas-demo ul {
+    display: grid;
+    gap: var(--e-2);
+    margin: var(--e-3) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cuentas-demo li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px var(--e-3);
+}
+
+.cuentas-demo li span {
+    color: var(--tinta-3);
+}
+
+.auth-foto-imagen {
+    object-position: 60% 50%;
+}

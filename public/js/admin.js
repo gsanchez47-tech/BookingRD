@@ -382,7 +382,7 @@ function pintarPublicaciones() {
             : '';
         const datos = `data-tipo="${p.tipo}" data-id="${p.id}"`;
         return `
-            <article class="fila-publicacion fila-admin${p.activo ? '' : ' es-oculta'}" style="animation-delay:${Math.min(indice, 8) * 40}ms">
+            <article class="fila-publicacion fila-admin${p.activo ? '' : ' es-oculta'}">
                 <div class="fila-media${p.imagen ? '' : ' sin-foto'}">${media}</div>
                 <div class="fila-info">
                     <span class="fila-categoria">${escaparHtml(categoria ? categoria.nombre : '')}${p.destacado ? ' (destacada)' : ''}</span>
@@ -488,7 +488,7 @@ function pintarMensajes() {
         return;
     }
     lista.innerHTML = admin.mensajes.map((m, indice) => `
-        <article class="mensaje-admin${m.atendido ? ' es-atendido' : ''}" style="animation-delay:${Math.min(indice, 8) * 40}ms">
+        <article class="mensaje-admin${m.atendido ? ' es-atendido' : ''}">
             <header>
                 <span class="etiqueta-servicio servicio-viajero">${NOMBRES_ASUNTO[m.asunto]}</span>
                 <time>${escaparHtml(fechaCorta(m.fechaEnvio))}</time>

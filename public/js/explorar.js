@@ -52,9 +52,9 @@ const DESCRIPCIONES_CATEGORIA = {
     'tour-montana': 'Cascadas, ríos y senderos de la Cordillera Central y la península de Samaná.',
     'tour-gastronomico': 'Café de altura, cacao orgánico y cocina criolla en su lugar de origen.',
     cultural: 'La primera ciudad del Nuevo Mundo, fortalezas, monumentos y arte rupestre taíno.',
-    'zip-line': 'Tirolesas sobre el bosque tropical y vuelos en parapente sobre los valles de la cordillera.',
+    'zip-line': 'Tirolesas sobre el bosque tropical, parapente sobre los valles y vuelos panorámicos en helicóptero.',
     motocross: 'Buggies y cuatrimotos por caminos rurales, ríos y playas.',
-    acuaticas: 'Snorkel en arrecifes, charcos naturales y paseos en el mar Caribe.',
+    acuaticas: 'Snorkel en arrecifes, charcos naturales, motos acuáticas y paseos en yate por el Caribe.',
     golf: 'Campos de golf de clase mundial junto al mar Caribe, con green fee, carrito y caddie.',
     economico: 'Autos de bajo consumo para moverte por la ciudad y entre destinos sin gastar de más.',
     compacto: 'Autos ágiles y fáciles de estacionar, ideales para la Zona Colonial y las ciudades.',
@@ -97,7 +97,25 @@ document.addEventListener('DOMContentLoaded', () => {
     actualizarBanner();
     cargarRangoPrecio();
     cargar(true);
+    cargarConteoCategorias();
 });
+
+/** Publicaciones por categoría (GET /api/estadisticas) para la lista del panel. */
+let conteoCategorias = null;
+
+async function cargarConteoCategorias() {
+    try {
+        const datos = await apiFetch('/estadisticas');
+        conteoCategorias = Object.assign({}, datos.porCategoria, {
+            'todas-hotel': datos.totalHoteles,
+            'todas-actividad': datos.totalActividades,
+            'todas-vehiculo': datos.totalVehiculos
+        });
+        pintarCategorias();
+    } catch (_) {
+        /* la lista funciona sin conteos */
+    }
+}
 
 /* ----------------------------------------------------------------------------
    ESTADO Y URL
@@ -196,15 +214,10 @@ function sincronizarControles() {
         : 'Cancelación gratuita hasta un día antes y confirmación inmediata.';
     document.getElementById('filtro-texto').value = estado.texto;
     document.getElementById('filtro-orden').value = estado.orden;
-    document.querySelectorAll('.tipo-boton').forEach((boton) => {
-        const activo = boton.dataset.tipo === estado.tipo;
-        boton.classList.toggle('activo', activo);
-        boton.setAttribute('aria-selected', String(activo));
-    });
+    marcarRadio('filtro-tipo', estado.tipo);
+    pintarClimaDestino();
     document.querySelectorAll('.vista-boton').forEach((boton) => {
-        const activo = boton.dataset.vista === estado.vista;
-        boton.classList.toggle('activo', activo);
-        boton.setAttribute('aria-pressed', String(activo));
+        boton.setAttribute('aria-pressed', String(boton.dataset.vista === estado.vista));
     });
     pintarContextoViaje();
     pintarFiltrosActivos();
@@ -230,9 +243,9 @@ function pintarFiltrosActivos() {
         activos.push(['personas', `${estado.personas} ${estado.personas === '1' ? palabra[0] : palabra[1]}`]);
     }
     if (estado.transmision) activos.push(['transmision', CATALOGOS.transmisiones[estado.transmision]]);
-    if (estado.precioMin && estado.precioMax) activos.push(['precio', `${formatoMoneda.format(Number(estado.precioMin))} a ${formatoMoneda.format(Number(estado.precioMax))}`]);
-    else if (estado.precioMin) activos.push(['precio', `Desde ${formatoMoneda.format(Number(estado.precioMin))}`]);
-    else if (estado.precioMax) activos.push(['precio', `Hasta ${formatoMoneda.format(Number(estado.precioMax))}`]);
+    if (estado.precioMin && estado.precioMax) activos.push(['precio', `${formatearPrecio(Number(estado.precioMin))} a ${formatearPrecio(Number(estado.precioMax))}`]);
+    else if (estado.precioMin) activos.push(['precio', `Desde ${formatearPrecio(Number(estado.precioMin))}`]);
+    else if (estado.precioMax) activos.push(['precio', `Hasta ${formatearPrecio(Number(estado.precioMax))}`]);
     if (estado.puntuacionMin) activos.push(['puntuacionMin', `Valoración ${estado.puntuacionMin}+`]);
     document.getElementById('filtros-activos').innerHTML = activos
         .map(([clave, texto]) => `<button type="button" class="etiqueta-filtro" data-quitar-filtro="${clave}" aria-label="Quitar filtro ${escaparHtml(texto)}">${escaparHtml(texto)}</button>`)
@@ -270,10 +283,9 @@ function pintarContextoViaje() {
 }
 
 function iniciarControles() {
-    document.querySelectorAll('.tipo-boton').forEach((boton) => {
-        boton.addEventListener('click', () => {
-            if (boton.dataset.tipo === estado.tipo && !estado.categoria) return;
-            estado.tipo = boton.dataset.tipo;
+    document.querySelectorAll('input[name="filtro-tipo"]').forEach((opcion) => {
+        opcion.addEventListener('change', () => {
+            estado.tipo = opcion.value;
             estado.categoria = null;
             estado.transmision = '';
             aplicarCambio();
@@ -359,19 +371,20 @@ function aplicarCambio(repintarCategorias = true) {
     cargar(true);
 }
 
-/** Fila de categorías del tipo actual, con la marca de color de su grupo. */
+/** Categorías del tipo actual como opciones del panel, con su número de publicaciones. */
 function pintarCategorias() {
-    const fila = document.getElementById('categorias-fila');
+    const lista = document.getElementById('filtro-categorias');
     const categorias = Object.entries(CATALOGOS.categorias).filter(([, c]) => c.tipo === estado.tipo);
-    fila.innerHTML = `<button type="button" class="chip-categoria" data-categoria="">
-            <span class="chip-categoria-marca todas" aria-hidden="true"></span>${TEXTOS_TIPO[estado.tipo].todas}
-        </button>` + categorias.map(([codigo, categoria]) => `
-        <button type="button" class="chip-categoria" data-categoria="${codigo}">
-            <span class="chip-categoria-marca grupo-${categoria.grupo.toLowerCase()}" aria-hidden="true"></span>${escaparHtml(categoria.nombre)}
-        </button>`).join('');
-    fila.querySelectorAll('.chip-categoria').forEach((chip) => {
-        chip.addEventListener('click', () => {
-            estado.categoria = chip.dataset.categoria || null;
+    const conteo = (clave) => (conteoCategorias ? `<span class="conteo">${conteoCategorias[clave] || 0}</span>` : '');
+    lista.innerHTML = `
+        <label class="opcion-filtro"><input type="radio" name="categoria" value="">
+            <span>${TEXTOS_TIPO[estado.tipo].todas}${conteo(`todas-${estado.tipo}`)}</span></label>`
+        + categorias.map(([codigo, categoria]) => `
+        <label class="opcion-filtro"><input type="radio" name="categoria" value="${codigo}">
+            <span>${escaparHtml(categoria.nombre)}${conteo(codigo)}</span></label>`).join('');
+    lista.querySelectorAll('input[name="categoria"]').forEach((opcion) => {
+        opcion.addEventListener('change', () => {
+            estado.categoria = opcion.value || null;
             aplicarCambio(false);
         });
     });
@@ -379,32 +392,36 @@ function pintarCategorias() {
 }
 
 function marcarCategoriaActiva() {
-    document.querySelectorAll('.chip-categoria').forEach((chip) => {
-        const activa = (chip.dataset.categoria || null) === estado.categoria;
-        chip.classList.toggle('activo', activa);
-        chip.setAttribute('aria-pressed', String(activa));
-    });
+    marcarRadio('categoria', estado.categoria || '');
 }
 
-/** Textos del banner según la categoría o el tipo, con transición suave. */
+/** Clima actual del destino filtrado. */
+function pintarClimaDestino() {
+    const contenedor = document.getElementById('clima-destino');
+    if (!estado.ciudad) {
+        contenedor.hidden = true;
+        contenedor.dataset.ciudad = '';
+        return;
+    }
+    if (contenedor.dataset.ciudad === estado.ciudad) return;
+    pintarClimaCompacto(contenedor, estado.ciudad, `Ahora en ${estado.ciudad}`);
+}
+
+/** Título y descripción según la categoría o el tipo (y el destino, si hay uno). */
 function actualizarBanner() {
     const categoria = estado.categoria ? CATALOGOS.categorias[estado.categoria] : null;
     const textos = TEXTOS_TIPO[estado.tipo];
-    const titulo = categoria ? categoria.nombre : textos.titulo;
-    const contenido = document.querySelector('.banner-contenido');
-
-    const aplicar = () => {
-        document.getElementById('banner-titulo').textContent = titulo;
-        document.getElementById('banner-texto').textContent = categoria ? DESCRIPCIONES_CATEGORIA[estado.categoria] : textos.texto;
-        document.getElementById('migas-actual').textContent = titulo;
-        document.getElementById('migas-actual').hidden = false;
-        document.getElementById('migas-separador').hidden = false;
-        contenido.classList.remove('cambiando');
-    };
+    const base = categoria ? categoria.nombre : textos.titulo;
+    const titulo = estado.ciudad ? `${categoria ? categoria.nombre : textos.todas} en ${estado.ciudad}` : base;
+    document.getElementById('banner-titulo').textContent = titulo;
+    document.getElementById('banner-texto').textContent = categoria ? DESCRIPCIONES_CATEGORIA[estado.categoria] : textos.texto;
+    document.getElementById('migas-actual').textContent = titulo;
     document.title = `${titulo} | BookingRD`;
-    if (document.getElementById('banner-titulo').textContent === titulo) return aplicar();
-    contenido.classList.add('cambiando');
-    setTimeout(aplicar, 200);
+    // El menú principal marca la sección del tipo elegido.
+    document.querySelectorAll('.nav-principal a').forEach((enlace) => enlace.removeAttribute('aria-current'));
+    const nav = { hotel: 'alojamiento', actividad: 'actividades', vehiculo: 'autos' }[estado.tipo];
+    const enlace = document.querySelector(`.nav-principal [data-nav="${nav}"]`);
+    if (enlace) enlace.setAttribute('aria-current', 'page');
 }
 
 /* ----------------------------------------------------------------------------
@@ -518,12 +535,12 @@ function pintarRangoPrecio() {
     // Con ambos tiradores al final, el mínimo queda encima para poder moverlo.
     minimo.style.zIndex = desde > rangoPrecio.minimo + amplitud / 2 ? 3 : 1;
     maximo.style.zIndex = 2;
-    document.getElementById('precio-min-texto').textContent = formatoMoneda.format(desde);
+    document.getElementById('precio-min-texto').textContent = formatearPrecio(desde);
     document.getElementById('precio-max-texto').textContent = hasta >= rangoPrecio.maximo
-        ? `${formatoMoneda.format(hasta)}+`
-        : formatoMoneda.format(hasta);
-    minimo.setAttribute('aria-valuetext', formatoMoneda.format(desde));
-    maximo.setAttribute('aria-valuetext', formatoMoneda.format(hasta));
+        ? `${formatearPrecio(hasta)}+`
+        : formatearPrecio(hasta);
+    minimo.setAttribute('aria-valuetext', formatearPrecio(desde));
+    maximo.setAttribute('aria-valuetext', formatearPrecio(hasta));
     const barras = document.querySelectorAll('#histograma-precio span');
     const [baseMin, baseMax] = rangoPrecio.base || [rangoPrecio.minimo, rangoPrecio.maximo];
     const anchoTramo = Math.max(baseMax - baseMin, 1) / (barras.length || 1);

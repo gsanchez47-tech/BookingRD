@@ -2,13 +2,13 @@
  * @file public/js/login.js
  * @description Inicio de sesión (login.html).
  *
- *   - Fondo: presentación automática de fotografías; los botones de destino
- *     permiten elegir una y reinician el temporizador.
  *   - Formulario: correo y contraseña, opción "Mostrar" contraseña y
  *     "Recordarme" (sesión persistente en localStorage o, si se desmarca,
  *     en sessionStorage hasta cerrar el navegador).
  *   - "¿Olvidaste tu contraseña?" muestra las instrucciones de recuperación
  *     mediante el formulario de contacto.
+ *   - "Cuentas de demostración" completa el formulario con una cuenta de
+ *     ejemplo (datos de database/datos-demo.js).
  *
  * Parámetros de URL opcionales:
  *   volver  página local a la que se redirige tras iniciar sesión
@@ -18,46 +18,9 @@
  * API: POST /api/auth/login  { correo, password } -> { token, usuario }
  */
 
-const DURACION_DIAPOSITIVA_MS = 7000;
-
 document.addEventListener('DOMContentLoaded', () => {
-    iniciarPresentacion();
     iniciarFormulario();
 });
-
-/* ----------------------------------------------------------------------------
-   PRESENTACIÓN DE FONDO
-   ---------------------------------------------------------------------------- */
-
-function iniciarPresentacion() {
-    const diapositivas = document.querySelectorAll('.login-diapositiva');
-    const botones = document.querySelectorAll('.login-destino');
-    const reducirMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    let indice = 0;
-    let temporizador = null;
-
-    document.documentElement.style.setProperty('--duracion-diapositiva', `${DURACION_DIAPOSITIVA_MS}ms`);
-
-    const mostrar = (nuevoIndice) => {
-        indice = (nuevoIndice + diapositivas.length) % diapositivas.length;
-        diapositivas.forEach((diapositiva, i) => diapositiva.classList.toggle('activa', i === indice));
-        botones.forEach((boton, i) => {
-            boton.classList.toggle('activo', i === indice);
-            boton.setAttribute('aria-pressed', String(i === indice));
-        });
-        programar();
-    };
-
-    const programar = () => {
-        clearTimeout(temporizador);
-        if (!reducirMovimiento) temporizador = setTimeout(() => mostrar(indice + 1), DURACION_DIAPOSITIVA_MS);
-    };
-
-    botones.forEach((boton) => {
-        boton.addEventListener('click', () => mostrar(Number(boton.dataset.diapositiva)));
-    });
-    mostrar(0);
-}
 
 /* ----------------------------------------------------------------------------
    FORMULARIO
@@ -72,7 +35,7 @@ function iniciarFormulario() {
     if (parametros.get('motivo') === 'sesion-expirada') {
         const info = document.getElementById('mensaje-info');
         info.textContent = 'Tu sesión expiró. Inicia sesión de nuevo para continuar.';
-        info.classList.add('visible');
+        info.hidden = false;
     }
 
     // Mostrar u ocultar la contraseña.
@@ -90,6 +53,15 @@ function iniciarFormulario() {
         evento.currentTarget.setAttribute('aria-expanded', String(!panel.hidden));
     });
 
+    // Cuentas de demostración: completan el formulario.
+    document.querySelectorAll('[data-demo]').forEach((boton) => {
+        boton.addEventListener('click', () => {
+            document.getElementById('correo').value = boton.dataset.demo;
+            document.getElementById('password').value = boton.dataset.clave;
+            document.getElementById('boton-login').focus();
+        });
+    });
+
     formulario.addEventListener('input', (evento) => {
         const contenedor = evento.target.closest('.campo');
         if (contenedor) contenedor.classList.remove('invalido');
@@ -97,7 +69,7 @@ function iniciarFormulario() {
 
     formulario.addEventListener('submit', async (evento) => {
         evento.preventDefault();
-        mensajeError.classList.remove('visible');
+        mensajeError.hidden = true;
         formulario.querySelectorAll('.invalido').forEach((campo) => campo.classList.remove('invalido'));
 
         const correo = document.getElementById('correo').value.trim();
@@ -128,9 +100,7 @@ function iniciarFormulario() {
     /** Muestra el mensaje de error y marca el campo indicado. */
     function mostrarError(texto, idCampo) {
         mensajeError.textContent = texto;
-        mensajeError.classList.remove('visible');
-        void mensajeError.offsetWidth;   // reinicia la animación si el mensaje ya estaba visible
-        mensajeError.classList.add('visible');
+        mensajeError.hidden = false;
         if (idCampo) {
             const campo = document.getElementById(idCampo);
             campo.closest('.campo').classList.add('invalido');

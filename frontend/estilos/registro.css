@@ -1,0 +1,209 @@
+/* Registro de viajeros y empresas (tres pasos para empresas). */
+
+/* @incluir auth.css */
+
+.selector-cuenta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e-3);
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.opcion-cuenta {
+    position: relative;
+    display: block;
+    cursor: pointer;
+}
+
+.opcion-cuenta input {
+    position: absolute;
+    opacity: 0;
+}
+
+.opcion-cuenta-texto {
+    display: grid;
+    gap: 2px;
+    height: 100%;
+    padding: var(--e-4);
+    border: 1px solid var(--linea-fuerte);
+    border-radius: var(--r-m);
+    background: var(--superficie);
+}
+
+.opcion-cuenta-texto small {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.opcion-cuenta input:checked + .opcion-cuenta-texto {
+    border: 2px solid var(--azul);
+    padding: calc(var(--e-4) - 1px);
+    background: var(--azul-tenue);
+}
+
+.opcion-cuenta input:focus-visible + .opcion-cuenta-texto {
+    box-shadow: var(--enfoque);
+}
+
+/* Indicador de pasos (secuencia real de tres pasos) */
+.pasos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--e-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pasos .paso {
+    display: grid;
+    gap: 6px;
+    padding-top: var(--e-2);
+    border-top: 3px solid var(--linea);
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.pasos .paso.activo {
+    border-color: var(--azul);
+    color: var(--azul);
+}
+
+.pasos .paso.completado {
+    border-color: var(--jungle);
+    color: var(--jungle);
+}
+
+.paso-numero {
+    font-family: var(--f-display);
+    font-size: var(--t-l);
+}
+
+.paso-formulario {
+    display: grid;
+    gap: var(--e-4);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.titulo-bloque-form {
+    margin-bottom: var(--e-2);
+    padding: 0;
+    font-family: var(--f-display);
+    font-size: var(--t-xl);
+    font-weight: 600;
+}
+
+.fila-campos {
+    display: grid;
+    gap: var(--e-4);
+}
+
+@media (min-width: 620px) {
+    .fila-campos {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .fila-campos:has(> .campo:only-child),
+    .fila-campos:has(> .campo:not([hidden]):first-child + .campo[hidden]) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.medidor-password {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--linea);
+    overflow: hidden;
+}
+
+.medidor-password span {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--rojo);
+    transition: width 0.2s, background-color 0.2s;
+}
+
+.opcional {
+    color: var(--tinta-3);
+    font-weight: 600;
+}
+
+.bloque-servicio {
+    display: grid;
+    gap: var(--e-3);
+    padding: var(--e-4);
+    border: 1px solid var(--linea);
+    border-radius: var(--r-m);
+    background: var(--superficie);
+}
+
+.bloque-servicio-titulo {
+    font-size: var(--t-l);
+}
+
+.bloque-servicio-texto {
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+}
+
+.etiqueta-grupo {
+    font-size: var(--t-xs);
+    font-weight: 800;
+    color: var(--tinta-2);
+}
+
+.opciones-chip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+}
+
+.opcion-chip {
+    position: relative;
+    cursor: pointer;
+}
+
+.opcion-chip input {
+    position: absolute;
+    opacity: 0;
+}
+
+.opcion-chip span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--linea-fuerte);
+    border-radius: 999px;
+    background: var(--superficie);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.opcion-chip input:checked + span {
+    border-color: var(--azul);
+    background: var(--azul);
+    color: #fff;
+}
+
+.opcion-chip input:focus-visible + span {
+    box-shadow: var(--enfoque);
+}
+
+.campo.invalido .opcion-chip span {
+    border-color: var(--rojo);
+}
+
+.acciones-formulario {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--e-3);
+    padding-top: var(--e-2);
+}

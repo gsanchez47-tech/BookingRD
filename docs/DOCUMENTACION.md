@@ -4,9 +4,9 @@
 
 | Módulo | Contenido |
 |---|---|
-| Inicio | Presentación de tres fotografías con indicadores, buscador (alojamiento, actividades o autos; destino con autocompletado; fechas, o recogida y devolución con hora; personas), cinta de destinos, destinos con publicaciones, indicadores con la valoración media, *Vistos recientemente*, menú *Servicios*, vitrina por categoría, carrusel de destacados, mapa de la isla con precios, opiniones verificadas, *Sobre nosotros*, llamado a empresas y *Contacto*. |
+| Inicio | Mapa SVG de la isla con los 15 destinos (ficha con conteos por tipo y clima), buscador (alojamiento, actividades o autos; destino con autocompletado; fechas, o recogida y devolución con hora; personas), postales de destinos, categorías, recomendados por tipo, *Vistos recientemente*, opiniones verificadas, *Nosotros*, llamado a empresas y *Contacto*. |
 | Alquiler de autos | `autos.html`: portada con buscador de autos, tipos de auto con su conteo, autos mejor valorados, pasos, lo que incluye, requisitos y preguntas frecuentes. |
-| Explorar | Panel de filtros a la izquierda (cajón lateral en móvil) con etiquetas de filtros activos; catálogo filtrable por categoría, destino, personas, transmisión, rango de precio (control deslizante de dos extremos sobre un histograma), valoración mínima y texto; siete órdenes; vista de lista o de mapa; paginación incremental; filtros y fechas del viaje reflejados en la URL. |
+| Explorar | Todos los filtros en un panel a la izquierda (cajón lateral en móvil): tipo, categoría con conteo, destino, palabra clave, personas o pasajeros, transmisión, rango de precio (control de dos extremos sobre un histograma), valoración mínima y fechas; etiquetas de filtros activos; siete órdenes; vista de lista o de mapa; clima del destino; paginación incremental; filtros y fechas en la URL. |
 | Detalle | Valoración, guardar y compartir; barra de secciones; lo más destacado; información, servicios o lo que incluye; mapa de la zona; reseñas con distribución y respuestas; políticas; datos de la empresa; relacionadas y reserva con disponibilidad en tiempo real. |
 | Favoritos y reseñas | Publicaciones guardadas por el viajero (`dbo.favoritos`); reseñas de 1 a 10 sobre reservas terminadas, una por reserva, con respuesta pública de la empresa y moderación de la administración (`dbo.resenas`). |
 | Alquiler de autos | Flota publicada por empresas de tipo `vehiculos` (`dbo.vehiculos`): ficha técnica, requisitos, políticas, recogida y devolución con hora, devolución en otra ciudad, edad del conductor y extras; precio y disponibilidad calculados en el servidor (sección 4.1). |
@@ -16,6 +16,7 @@
 | Cuentas | Registro de viajero (sencillo) y de empresa (tres pasos), inicio de sesión con *Recordarme*, cierre de sesión, expiración del token. |
 | Contacto | Mensajes guardados en `dbo.mensajes_contacto`. |
 | Correos | Bienvenida al registrarse (viajero o empresa) y confirmación de cada reserva, por SMTP con nodemailer (sección 7.1). |
+| Idioma y moneda | Interfaz en español o inglés; precios en RD$, US$ o € con la tasa del día (el pago siempre en pesos); clima actual y pronóstico de cada destino (sección 6.8). |
 
 Fuera de alcance: pagos en línea, recuperación automática de contraseña por correo y edición de datos legales de la empresa desde el panel (RNC, razón social y tipo de servicio quedan a cargo de la administración).
 
@@ -56,6 +57,12 @@ Express (src/server.js): helmet, CORS, límite de intentos, límites de tamaño
 
 Errores: los controladores lanzan `ErrorHttp(status, mensaje, campo)`; el manejador central responde `{ error, campo }`. Los fallos de conexión a la base responden 503 con un mensaje para el usuario.
 
+### 2.1 Modo de demostración
+
+`src/config/modo.js` activa el modo de demostración cuando `DB_SERVER` está vacío o `DB_MODO=demo` (`npm run demo`). `src/repositories/index.js` entrega entonces la implementación en memoria (`repositories/memoria/`) en lugar de la SQL, con las mismas funciones y la misma forma de respuesta; controladores, servicios y middleware importan siempre desde `require('../repositories')` y no distinguen el modo. Las transacciones en memoria se serializan con una cola de promesas, de modo que el control de cupo se comporta igual que con `UPDLOCK, HOLDLOCK`. Si falta `JWT_SECRET`, se genera uno temporal. `GET /api/salud` informa `{ estado, modo }`.
+
+Los datos salen de `database/datos-demo.js`, la misma fuente que genera las inserciones del script SQL (`npm run bd:generar`), por lo que la demostración y la base instalada tienen el mismo contenido.
+
 ## 3. API
 
 Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`campo` solo en validaciones). `:tipo` es `hotel`, `actividad` o `vehiculo`.
@@ -64,7 +71,7 @@ Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`camp
 
 | Método y ruta | Descripción |
 |---|---|
-| `GET /api/estadisticas` | `{ totalHoteles, totalActividades, totalVehiculos, totalEmpresas, ciudades[], porCategoria{}, porCiudad{}, puntuacionMedia, totalResenas }` |
+| `GET /api/estadisticas` | `{ totalHoteles, totalActividades, totalVehiculos, totalEmpresas, ciudades[], porCategoria{}, porCiudad{}, porCiudadTipo{ ciudad: { hotel, actividad, vehiculo } }, puntuacionMedia, totalResenas }` |
 | `GET /api/catalogos` | Valores permitidos (destinos, categorías de alojamiento, actividad y vehículo, tipos de alojamiento, servicios, transmisiones, combustibles, extras de alquiler con su precio y horario del mostrador) |
 | `GET /api/publicaciones` | Parámetros: `tipo`, `categoria`, `ciudad`, `personas` (pasajeros en autos), `transmision` (solo autos: automatica, manual), `precioMin`, `precioMax` (400 si el mínimo supera al máximo), `puntuacionMin` (1-10), `q`, `orden` (destacados, valoracion, populares, recientes, precio-asc, precio-desc, nombre), `pagina`, `porPagina` (máx. 48). Respuesta `{ total, pagina, porPagina, publicaciones[] }`; cada publicación incluye `puntuacion` (media de reseñas visibles o `null`), `totalResenas`, `totalReservas` y `fechaCreacion` |
 | `GET /api/publicaciones/precios` | `tipo`, `categoria`, `ciudad`. `{ tipo, minimo, maximo, total, tramos[24] }`: rango de precios de las publicaciones visibles y cuántas caen en cada uno de 24 tramos iguales (histograma del filtro de precio) |
@@ -74,6 +81,9 @@ Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`camp
 | `GET /api/publicaciones/:tipo/:id/disponibilidad` | Hotel: `entrada`, `salida`, `habitaciones`, `personas`. Actividad: `fecha`, `personas`. Respuesta `{ disponible, libres, noches, total, mensaje }`. Auto: `recogida`, `horaRecogida`, `devolucion`, `horaDevolucion` (HH:MM), `edadConductor`, `ciudadDevolucion`?, `extras` (códigos separados por coma). Respuesta `{ disponible, libres, dias, total, desglose[{ concepto, importe }], deposito, mensaje }` |
 | `GET /api/imagenes/:id` | Fotografía subida por una empresa (caché inmutable) |
 | `POST /api/contacto` | `{ nombre, correo, asunto, mensaje }` |
+| `GET /api/clima?ciudad=` | Clima actual y pronóstico de 4 días del destino (Open-Meteo, caché de 15 minutos): `{ ciudad, actualizado, temperatura, sensacion, humedad, viento, estado, descripcion, pronostico[] }`. 503 si el servicio no responde |
+| `GET /api/monedas` | Tasas de RD$ a USD y EUR (ExchangeRate-API, caché de 6 horas); sin conexión responde las tasas de respaldo (`TASA_USD` y `TASA_EUR` en `.env`, por defecto 61 y 71) con `fuente: "respaldo"` |
+| `GET /api/salud` | `{ estado: "ok", modo: "demostracion" \| "sql" }` |
 
 ### 3.2 Cuentas
 
@@ -172,7 +182,7 @@ El precio se guarda en la reserva (`precio_unitario`), por lo que un cambio post
 
 ## 5. Base de datos
 
-Script: `database/instalacion-completa.sql` (idempotente, UTF-8). `npm run bd:instalar` ejecuta desde el marcador `-- @inicio-esquema` (compatible con Azure SQL Database).
+Scripts generados por `npm run bd:generar` a partir de `database/esquema.sql` (tablas e índices) y `database/datos-demo.js` (datos): `database/instalacion-completa.sql` (SQL Server local: crea la base y el login `bookingrd_app`) y `database/instalacion-azure.sql` (Azure SQL Database: se ejecuta sobre la base de la conexión). Ambos son idempotentes y UTF-8. `npm run bd:instalar` ejecuta el primero desde el marcador `-- @inicio-esquema`; `npm run bd:reiniciar` elimina las tablas y reinstala.
 
 | Tabla | Propósito | Restricciones principales |
 |---|---|---|
@@ -189,39 +199,46 @@ Script: `database/instalacion-completa.sql` (idempotente, UTF-8). `npm run bd:in
 
 Índices sobre empresa, ciudad, categoría y estado de las publicaciones, y sobre usuario, publicación y fecha de las reservas.
 
-**Actualización desde versiones anteriores:** si el script detecta `hoteles`, `actividades` o `reservas` con la estructura de la versión anterior (sin las columnas nuevas), las elimina y las vuelve a crear. Las bases nuevas o ya actualizadas no pierden datos al volver a ejecutarlo. La sección 3.9 agrega a una base existente lo necesario para el alquiler de autos (tabla `vehiculos`, columnas nuevas de `reservas` y `favoritos`, y las restricciones `CHECK` ampliadas de `empresas`, `actividades`, `reservas` y `favoritos`) sin borrar datos.
+**Bases de una versión anterior:** el script solo crea lo que falta y no altera tablas existentes. Si la base tiene tablas de una versión previa con otra estructura, usar `npm run bd:reiniciar` (borra los datos de BookingRD).
 
-**Datos de demostración:** 1 cuenta de administración (`admin@bookingrd.com`, `Admin123!`), 12 viajeros (`Cliente123!`), 7 empresas (`Empresa123!`; dos de alquiler de autos), 14 alojamientos, 24 actividades, 5 autos, 76 reservas con fechas relativas a la instalación (11 con fecha futura, entre ellas 3 alquileres de autos, y 65 de historial), 63 reseñas (12 con respuesta de la empresa; dos actividades y un alojamiento quedan sin reseñas y se muestran como *Nuevo*), 6 favoritos y 2 mensajes de contacto. Las tablas `resenas` y `favoritos` se crean en bases existentes sin tocar los demás datos. Si la base tenía los datos de una versión anterior, la sección 4.3 del script retira las publicaciones de ejemplo eliminadas (o las oculta si tienen reservas), renombra las que cambiaron y actualiza sus fotografías, sin tocar las publicaciones con fotografía subida por la empresa. Las fotografías de demostración son archivos estáticos (`public/img/publicaciones/`, columna `imagen_url`); las subidas desde el panel van a `dbo.imagenes`.
+**Datos de demostración:** 1 cuenta de administración (`admin@bookingrd.com`, `Admin123!`), 12 viajeros (`Cliente123!`), 7 empresas (`Empresa123!`; dos de alquiler de autos), 15 alojamientos, 34 actividades y 11 autos en los 15 destinos, 90 reservas con fechas relativas a la instalación (próximas, realizadas y canceladas), 74 reseñas con respuestas de las empresas, 6 favoritos y 2 mensajes de contacto. Las relaciones se expresan con claves naturales (correo, RNC y nombre de la publicación) y el script las resuelve con subconsultas, así que no depende de los identificadores generados. Cada inserción comprueba antes que el registro no exista. Las fotografías de demostración son archivos estáticos (`public/img/publicaciones/`, columna `imagen_url`); las subidas desde el panel van a `dbo.imagenes`.
 
 ## 6. Frontend
 
-### 6.1 Páginas
+### 6.1 Construcción de las páginas
 
-| Archivo | Hoja de estilos | Script | Acceso |
-|---|---|---|---|
-| `index.html` | `css/index.css` | `js/buscador.js`, `js/mapa.js`, `js/index.js` | Público |
-| `autos.html` | `css/autos.css` | `js/buscador.js`, `js/autos.js` | Público |
-| `explorar.html` | `css/explorar.css` | `js/explorar.js` | Público |
-| `detalle.html?tipo=&id=` | `css/detalle.css` | `js/detalle.js` | Público; reservar exige cuenta de viajero |
-| `mis-reservas.html` | `css/mis-reservas.css` | `js/mis-reservas.js` | Viajero |
-| `panel-empresa.html` | `css/panel-empresa.css` | `js/panel-empresa.js` | Empresa |
-| `admin.html` | `css/admin.css` | `js/admin.js` | Administración |
-| `registro.html` | `css/registro.css` | `js/registro.js` | Público |
-| `login.html` | `css/login.css` | `js/login.js` | Público |
+Las páginas se escriben en `frontend/` y `npm run construir` (`scripts/construir-frontend.js`) genera `public/*.html` y `public/css/*.css`:
 
-Todas cargan `js/comun.js` (cliente de la API, sesión, header, catálogos, tarjetas, modales, gráficos, favoritos, valoraciones, vistos recientemente, formato de moneda y fechas). Inicio, explorar y detalle cargan además `vendor/leaflet/leaflet.js` y `js/mapa.js`. Al iniciar sesión sin página de regreso, cada rol va a su espacio: `admin.html`, `panel-empresa.html` o la página de inicio. Cada hoja de estilos es autónoma; las secciones comunes (base, header, botones, formularios, tarjetas, modales, footer) son idénticas en las hojas que las incluyen y un cambio en ellas debe replicarse en cada una. Las páginas protegidas envían al inicio de sesión con regreso automático (`login.html?volver=`).
+- `frontend/paginas/<pagina>.html` empieza con `<!-- @pagina titulo="" descripcion="" css="" nav="" -->` y usa `<!-- @encabezado -->` y `<!-- @pie -->`, que se sustituyen por `frontend/partes/` (cabeza, encabezado y pie comunes, con la sección activa marcada).
+- Cada hoja de `public/css/` es `frontend/estilos/base.css` más la hoja de la página; `/* @incluir x.css */` inserta una hoja de `frontend/estilos/compartidos/` (mapa, buscador, auth, cuenta, panel) una sola vez.
+- El resultado es HTML y CSS estáticos, una hoja por página, sin dependencias en el navegador. Los scripts de `public/js/` se editan directamente.
+
+| Página | Script | Acceso |
+|---|---|---|
+| `index.html` | `isla.js`, `clima.js`, `buscador.js`, `index.js` | Público |
+| `autos.html` | `buscador.js`, `autos.js` | Público |
+| `explorar.html` | `clima.js`, `mapa.js`, `explorar.js` | Público |
+| `detalle.html?tipo=&id=` | `clima.js`, `mapa.js`, `detalle.js` | Público; reservar exige cuenta de viajero |
+| `mis-reservas.html` | `mis-reservas.js` | Viajero |
+| `panel-empresa.html` | `panel-empresa.js` | Empresa |
+| `admin.html` | `admin.js` | Administración |
+| `registro.html` | `registro.js` | Público |
+| `login.html` | `login.js` | Público |
+
+Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tarjetas, modales, gráficos, favoritos, valoraciones, vistos recientemente, formato de moneda y fechas) y `preferencias.js` (idioma y moneda). Las páginas protegidas envían al inicio de sesión con regreso automático (`login.html?volver=`).
 
 ### 6.2 Diseño
 
-- Identidad dominicana: paleta de la bandera y del Caribe (azul `#003087`, rojo `#CE1126`, turquesa `#00B4D8` / `#0077A8`, selva `#2D6A4F` / `#52B788`, arena `#F4A261` / `#FDEBD0`, noche `#05132B` / `#0A1F44`) sobre fondo crema `#F8F5EF`; franja tricolor al pie del hero, de los banners y del footer; etiquetas en píldora sobre los títulos de sección y palabra destacada en cursiva turquesa en los titulares.
-- Tipografía: Fraunces para titulares y precios, Nunito para el texto. Sin librerías de iconos: los pocos íconos (corazón, compartir, ubicación, verificación) son SVG en línea o se dibujan con CSS.
-- Dinamismo: foto del hero con acercamiento lento y destino que cambia en el título; contadores animados; aparición de secciones al desplazar; tarjetas que se elevan al pasar el cursor; latido del corazón al guardar; mapa con vuelo al destino elegido; barras de distribución de reseñas y de los gráficos. Con "reducir movimiento" activado se desactivan las animaciones continuas.
-- Patrones de plataformas de reservas conocidas: nota de 1 a 10 con calificación verbal y número de reseñas; insignias; corazón para guardar; política de cancelación en la tarjeta; marcadores con precio en el mapa; barra de secciones fija en el detalle; aviso de últimas plazas calculado con la disponibilidad real; vistos recientemente; fechas del buscador que llegan completadas a la reserva.
-- Mobile-first, verificado en 375, 768, 1024, 1280 y 1440 px. En móvil, el detalle muestra una barra inferior con el precio y acceso a la reserva; las tablas de los paneles se convierten en tarjetas; las pestañas, los filtros de categoría y la barra de secciones se desplazan en horizontal.
+- Paleta de la bandera y del Caribe (azul `#003087`, rojo `#CE1126`, turquesa `#00B4D8` / `#0077A8`, selva `#2D6A4F` / `#52B788`, arena `#F4A261` / `#FDEBD0`, noche `#05132B` / `#0A1F44`) sobre fondo papel `#F8F5EF`; franja tricolor en el pie.
+- Tipografía: Fraunces (titulares y precios) y Nunito (texto), servidas desde `public/fonts/` (licencia OFL) para no depender de Google Fonts. Sin emojis ni librerías de iconos: los pocos íconos son SVG en línea.
+- El elemento principal es el mapa de la isla del inicio. Los destinos se presentan como postales con marco blanco; las categorías como mosaico; las opiniones separadas por filetes.
+- Movimiento: una sola animación, la aparición de los puntos del mapa al cargar. Sin carruseles, presentaciones de fotografías ni cintas que se desplacen; las transiciones solo responden a acciones del usuario. Con "reducir movimiento" no hay animación.
+- Mobile-first, verificado de 375 a 1440 px; en móvil el mapa agrega una lista de destinos, el panel de filtros es un cajón y las tablas de los paneles se convierten en tarjetas.
 
 ### 6.3 Mapas
 
-`js/mapa.js` crea los mapas con Leaflet 1.9.4, incluido en `public/vendor/leaflet/` para no depender de una CDN. El fondo son mosaicos de CARTO con datos de OpenStreetMap; debajo se dibuja el contorno de República Dominicana (Natural Earth, dominio público), de modo que el mapa sigue siendo legible mientras cargan los mosaicos o sin conexión. Las publicaciones guardan el destino, no coordenadas: cada una se ubica en el centro de su destino con un desplazamiento pequeño y estable para que no se superpongan, y el detalle lo presenta como zona aproximada con un enlace *Cómo llegar* a Google Maps con la dirección o el punto de encuentro.
+- Inicio: `isla.js` contiene el contorno de República Dominicana y Haití (Natural Earth, dominio público) como trazados SVG y `ISLA.proyectar(lat, lon)`. Los 15 destinos se ubican con `COORDENADAS_DESTINOS` (`src/utils/catalogos.js`, también en `/api/catalogos`). Cada punto es un botón accesible por teclado.
+- Explorar y detalle: Leaflet 1.9.4 incluido en `public/vendor/leaflet/`, con mosaicos de CARTO / OpenStreetMap y el contorno del país debajo, legible aunque no carguen los mosaicos. Las publicaciones se ubican en su destino con un desplazamiento estable; el detalle enlaza a *Cómo llegar* en Google Maps.
 
 ### 6.4 Reseñas, favoritos y vistos recientemente
 
@@ -238,19 +255,25 @@ Todas cargan `js/comun.js` (cliente de la API, sesión, header, catálogos, tarj
 
 | Carpeta | Uso |
 |---|---|
-| `img/publicaciones/` | Una fotografía por publicación de demostración, incluidos los autos (43) |
-| `img/destinos/` | Mosaico de destinos de la página de inicio (5) |
-| `img/servicios/` | Vitrina de categorías de la página de inicio, con golf y alquiler de autos (11) |
-| `img/registro/` | Selector *Soy viajero* / *Soy una empresa* |
-| `img/` | Hero, *Sobre nosotros*, llamado a empresas, banner de Explorar e inicio de sesión |
+| `img/publicaciones/` | Una fotografía por publicación de demostración (60) |
+| `img/destinos/` | Postales de 10 destinos en el inicio |
+| `img/servicios/` | Mosaico de categorías y tipos de auto |
+| `img/paginas/` | Nosotros, llamado a empresas, autos, registro y mis reservas |
 
-Ninguna fotografía se repite: cada archivo se usa en un solo lugar del sitio (las del registro aparecen en el selector y, ampliadas, en el panel lateral de la misma página). La verificación se hizo con una comparación automática que detecta también recortes de una misma imagen, más una revisión visual. Las categorías de Explorar se distinguen con una marca de color por grupo, no con fotografías. El panel reduce las fotografías subidas a 1600 px (JPEG) antes de enviarlas.
+Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado con un inventario automático de referencias más revisión visual). En las fotografías de autos se difuminaron las placas y se retiraron marcas de agua. El panel de empresa reduce las fotografías subidas a 1600 px (JPEG) antes de enviarlas.
 
 ### 6.7 Sesión en el navegador
 
 - *Recordarme* activado: `localStorage`; desactivado: `sessionStorage`.
 - Un 401 en una petición autenticada cierra la sesión local y envía al inicio de sesión con el aviso de sesión expirada.
 - `data-sesion` en el HTML (`invitado`, `usuario`, `cliente`, `empresa`) determina qué elementos se muestran.
+
+### 6.8 Idioma, moneda y clima
+
+- `preferencias.js` guarda en el navegador el idioma (`es` / `en`) y la moneda (`DOP` / `USD` / `EUR`) elegidos en el encabezado.
+- Inglés: se carga `idioma-en.js` y se traducen los textos y atributos visibles (placeholder, aria-label, title, alt), también los que se agregan después (MutationObserver). `CATALOGO_EN` traduce textos fijos, `PATRONES_EN` textos con cantidades o nombres y `REEMPLAZOS_EN` frases compuestas. El contenido escrito por usuarios y empresas lleva `translate="no"`. Fechas, horas (10:00 AM) y decimales siguen la configuración regional.
+- Moneda: `formatearPrecio` convierte con las tasas de `/api/monedas`; los importes a pagar se muestran siempre en RD$ con una nota del equivalente.
+- Clima: `clima.js` pinta el estado actual y el pronóstico de `/api/clima` en la ficha del mapa, en Explorar y en el detalle; si el servicio no responde, la sección se oculta sin afectar la página.
 
 ## 7. Correo electrónico
 
@@ -284,22 +307,14 @@ Ninguna fotografía se repite: cada archivo se usa en un solo lugar del sitio (l
 
 ## 9. Pruebas realizadas
 
-El entorno de desarrollo no disponía de un motor SQL Server ni de acceso a Azure. Las pruebas se ejecutaron con el backend real (Express, controladores, servicios, validadores, bcrypt y JWT) y una capa de repositorios en memoria con los mismos datos de demostración y restricciones del script. El script SQL y las 114 consultas de los repositorios se validaron como T-SQL contra el esquema (tablas y columnas existentes).
+El entorno de desarrollo no disponía de SQL Server ni de acceso a Azure, ni de salida a Open-Meteo o ExchangeRate-API. Las pruebas se ejecutaron con el backend real (Express, controladores, servicios, validadores, bcrypt y JWT) en modo de demostración; el clima se simuló en el navegador y la moneda usó las tasas de referencia.
 
 | Prueba | Resultado |
 |---|---|
-| API: catálogo y filtros, detalle, disponibilidad, reservas (sin cupo, fechas pasadas, empresa que intenta reservar, cancelación repetida), panel de empresa (permisos, validaciones, fotografías, eliminación con reservas, perfil), administración (suspensión con efecto en catálogo, login y token; cuentas admin protegidas; moderación; mensajes; acceso denegado a otros roles) | Correcto |
-| Recorridos en navegador automatizado: explorar, reservar, mis reservas y cancelación, panel de empresa (resumen, publicaciones con fotografía, reservas con búsqueda y CSV, perfil), administración (resumen, suspender y reactivar empresa, aviso de cuenta suspendida, filtros, destacar, reservas, mensajes), redirecciones por rol | 125 de 125 |
-| Inicio, registro de viajero y de empresa por pasos, contacto, login con y sin *Recordarme*, token inválido, menú móvil | 53 de 53 |
-| Funciones nuevas: autocompletado y fechas del buscador hasta el formulario de reserva, vistos recientemente, mapa (marcadores, filtro, ventana), opiniones, orden y filtro por valoración, vista de mapa, reseñas en el detalle (resumen, orden, respuesta), favoritos (header, catálogo, guardados), escribir una reseña con sus validaciones, respuesta de la empresa, moderación de la administración, y reglas de la API (401/403/404/409, reserva futura, segunda reseña, empresa ajena) | 83 de 83 |
-| Alquiler de autos: catálogo y filtros (transmisión, pasajeros, precio por día, lugar), precio por días con hora de cortesía, conductor joven, edad mínima, devolución en otra ciudad (con cargo o no permitida), extras, horario y validaciones, disponibilidad por flota y liberación al cancelar, permisos, empresa de alquiler (crear y editar con validaciones; un hotel no puede publicar autos), administración, favoritos, registro, buscador del inicio, explorar, detalle, reserva completa en el navegador, mis reservas, panel y sin desborde en 375 y 768 px | 93 de 93 |
-| Desbordamiento horizontal y errores de JavaScript (9 páginas, cada sección de los paneles y las pestañas nuevas, 375 / 768 / 1024 / 1280 / 1440 px) | 0 incidencias |
-| Base de datos inaccesible: mensajes de servicio no disponible | Correcto |
-| Menús desplegables (Servicios, menú móvil y sugerencias del buscador) visibles y sin quedar tapados por mapas, franjas ni barras fijas, en 9 páginas, 5 anchos y varias posiciones de desplazamiento | 197 de 197 |
-| Panel de filtros (escritorio fijo a la izquierda, cajón móvil, etiquetas, contador, Escape y toque fuera) y aviso de servidor detenido | 31 de 31 |
-| Presentación de fotografías del inicio (indicadores, cambio de fotografía, pausa fuera de la vista) y página de autos | Correcto |
-| Filtro de precio: histograma de 24 tramos, arrastre con el ratón y teclado, extremos que no se cruzan, URL, etiqueta que lo quita, cambio de tipo | Correcto |
-| Correos: bienvenida de viajero y de empresa (asunto, nombre, pasos, enlaces, nombre escapado), sin correo en registros o reservas rechazados, confirmación de alquiler y de hotel con sus datos, envío real por SMTP con autenticación (servidor de prueba local) y servidor de correo caído sin afectar el registro | 12 de 12 |
-| Script SQL (301 lotes) y 114 consultas de repositorios contra el esquema | 0 errores |
+| `npm run probar`: catálogo, filtros, detalle, disponibilidad, reservas (sin cupo, fechas pasadas, empresa que intenta reservar), cancelación, reseñas, favoritos, panel de empresa, administración (suspensión con efecto en catálogo, login y token), clima y monedas | 24 de 24 |
+| Recorrido en navegador automatizado: mapa del inicio (15 destinos, ficha), recomendados, buscador hacia Explorar, panel de filtros, vista de mapa, detalle, reserva de hotel, actividad y auto, mis reservas, cancelación, reseña, respuesta de la empresa, publicación nueva, administración, registro de viajero y de empresa | 34 de 34, sin errores de JavaScript |
+| Recorrido en inglés con dólares: textos de la interfaz sin traducir (excluidos nombres propios y contenido de usuarios) | 0 pendientes |
+| Script SQL: esquema y 259 lotes de inserción emulados; cada clave natural resuelve y los conteos coinciden con `datos-demo.js` | Correcto |
+| Desbordamiento horizontal en 375, 768 y 1440 px y revisión visual de las 9 páginas | Sin incidencias |
 
-**Primera verificación recomendada al equipo:** `npm run configurar`, `npm start` y el recorrido sugerido del README (crear una publicación con fotografía, reservarla con la cuenta de viajero y verla en *Reservas recibidas*).
+**Pendiente de verificar con un motor real:** ejecutar `npm run configurar` (o `npm run bd:instalar`) contra Azure SQL Database y comprobar con `npm run bd:probar` que los conteos coinciden: 20 usuarios, 7 empresas, 15 hoteles, 34 actividades, 11 vehículos, 90 reservas, 74 reseñas, 6 favoritos y 2 mensajes.

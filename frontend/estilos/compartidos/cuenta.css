@@ -1,0 +1,49 @@
+/* Encabezado de las páginas de cuenta (Mis reservas, panel de empresa y administración). */
+
+.cabecera-cuenta {
+    padding: var(--e-6) 0 var(--e-5);
+}
+
+.cabecera-cuenta-contenido {
+    display: grid;
+    gap: var(--e-5);
+    align-items: end;
+}
+
+.cabecera-cuenta-etiqueta {
+    color: var(--rojo);
+    font-size: var(--t-s);
+    font-weight: 800;
+}
+
+.cabecera-cuenta h1 {
+    margin-top: var(--e-2);
+    font-size: var(--t-3xl);
+}
+
+.cabecera-cuenta-texto > p:last-child {
+    max-width: 52ch;
+    margin-top: var(--e-3);
+    color: var(--tinta-2);
+}
+
+.cifras-cuenta {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    justify-content: start;
+    gap: var(--e-6);
+    margin: 0;
+}
+
+.cifras-cuenta dt {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.cifras-cuenta dd {
+    margin: 0;
+    font-family: var(--f-display);
+    font-size: var(--t-2xl);
+    font-weight: 600;
+}

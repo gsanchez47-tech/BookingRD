@@ -1,29 +1,36 @@
 # BookingRD: resumen del proyecto
 
-**Estado:** versión completa para entrega: catálogo con mapa, reservas de alojamiento, actividades y **alquiler de autos**, favoritos, reseñas, panel de empresa y administración de la plataforma. Pendiente la primera ejecución del script contra la base de Azure.
+**Estado:** versión completa para presentación. Funciona en cualquier PC con Node.js en modo de demostración (sin base de datos) y está lista para instalarse en Azure SQL Database. Pendiente la primera ejecución del script SQL contra un motor real.
 
 ## Qué es
 
-Plataforma web de alojamiento, tours, actividades de aventura y alquiler de autos en República Dominicana. Las empresas turísticas publican sus servicios; los viajeros los encuentran, consultan la disponibilidad y reservan; el equipo de desarrollo supervisa la plataforma desde un panel de administración.
+Plataforma web de alojamiento, excursiones, actividades y alquiler de autos en República Dominicana. Las empresas turísticas publican sus servicios; los viajeros los encuentran, consultan la disponibilidad y reservan; el equipo supervisa la plataforma desde un panel de administración.
 
-**Stack:** Node.js + Express (rutas, controladores, servicios, validadores y repositorios), Azure SQL Database / SQL Server (`mssql`), HTML + CSS + JavaScript sin frameworks, bcrypt + JWT.
+**Stack:** Node.js + Express (rutas, controladores, servicios, validadores y repositorios), Azure SQL Database / SQL Server (`mssql`) o datos en memoria, HTML + CSS + JavaScript sin frameworks, bcrypt + JWT.
+
+## Arrancar
+
+```bash
+npm install
+npm start        # http://localhost:3000
+```
+
+Sin `.env`, arranca en modo de demostración con todos los datos de ejemplo. Con Azure: `npm run configurar`.
 
 ## Módulos
 
 | Parte | Detalle |
 |---|---|
-| Inicio | Presentación de fotografías con indicadores y destino rotativo; cinta de destinos; buscador con pestañas de alojamiento, actividades y autos (recogida y devolución con hora), autocompletado de destinos y fechas; indicadores con valoración media; vistos recientemente; menú *Servicios*; vitrina de 10 categorías más alquiler de autos; destacados; mosaico de destinos; mapa de la isla con precios; opiniones verificadas; *Sobre nosotros* con paralaje; *Contacto*. |
-| Página de autos | `autos.html` con buscador, tipos de auto, flota mejor valorada, pasos, requisitos y preguntas frecuentes. |
-| Explorar | Panel de filtros a la izquierda (cajón en móvil) por destino, personas o pasajeros, transmisión (autos), rango de precio con control deslizante sobre un histograma, valoración y texto, con etiquetas de filtros activos; 7 órdenes (incluye mejor valorados y más reservados); vista de lista o de mapa; las fechas del buscador llegan a la reserva; búsqueda compartible por URL. |
-| Tarjetas | Nota de 1 a 10 con calificación y número de reseñas, insignias (*Destacado*, *Muy reservado*, *Favorito de viajeros*), corazón para guardar, política de cancelación. |
-| Detalle y reserva | Guardar y compartir; barra de secciones; lo más destacado; mapa de la zona; reseñas con distribución, orden y respuestas; políticas; disponibilidad y total en tiempo real con aviso de últimas plazas; código de reserva; control de cupo en transacción. |
-| Alquiler de autos | Ficha técnica, requisitos y políticas del sector (combustible lleno a lleno, depósito, seguro, horario); recogida y devolución con fecha y hora, ciudad de devolución, edad del conductor y 6 extras; precio por bloques de 24 horas con una hora de cortesía, cargo por conductor joven y por devolución en otra ciudad, con desglose; disponibilidad por unidades de la flota en cada día. |
-| Mis reservas | Próximas, pasadas y canceladas; cancelación; *Guardados*; *Reseñas* (pendientes y publicadas) con formulario de 1 a 10. |
-| Panel de empresa | Resumen con gráficos y valoración media; publicaciones con fotografía (alojamiento, actividades o vehículos con todos sus datos); reservas recibidas con búsqueda y exportación CSV; reseñas con respuesta pública; perfil público editable. |
-| Administración | Indicadores y gráficos globales; empresas y usuarios con suspensión y reactivación; moderación de publicaciones (ocultar, destacar) y de reseñas; reservas de la plataforma; mensajes de contacto. |
-| Correos | Bienvenida al registrarse (viajero o empresa) y confirmación de cada reserva, por SMTP (Gmail, Outlook u otro) o guardados en `correos-enviados/` si no hay SMTP. |
-| Cuentas | Registro sencillo de viajero y por pasos de empresa (alojamiento, actividades, mixto o alquiler de vehículos); login con *Recordarme*; cada rol llega a su espacio. |
-| Base de datos | 10 tablas (incluye `vehiculos`, `resenas` y `favoritos`); fotografías subidas guardadas en la base para que todo el equipo las vea; script idempotente con datos de demostración (1 administración, 12 viajeros, 7 empresas, 14 alojamientos, 24 actividades, 5 autos en 15 destinos, 76 reservas, 63 reseñas, 6 favoritos, 2 mensajes). Las bases ya instaladas se actualizan sin perder datos (sección 3.9 del script). |
+| Inicio | Mapa de la isla con 15 destinos (ficha con conteos y clima), buscador, postales de destinos, categorías, recomendados, opiniones, *Nosotros*, contacto. Sin carruseles ni movimiento automático. |
+| Explorar | Todos los filtros en un panel a la izquierda; lista o mapa; siete órdenes; clima del destino; búsqueda en la URL. |
+| Detalle y reserva | Fotografía, características, ubicación y pronóstico, reseñas, políticas, disponibilidad y total en tiempo real, control de cupo en transacción. |
+| Alquiler de autos | Recogida y devolución con hora, ciudad de devolución, edad del conductor, extras, precio por bloques de 24 horas con desglose, disponibilidad por flota. |
+| Mis reservas | Próximas, pasadas, canceladas, guardados y reseñas. |
+| Panel de empresa | Resumen con gráficos, publicaciones con fotografía, reservas con CSV, respuesta a reseñas, perfil. |
+| Administración | Indicadores, suspensión de cuentas, moderación de publicaciones y reseñas, reservas, mensajes. |
+| Idioma y moneda | Español o inglés; RD$, US$ o € con tasa del día; el pago siempre en pesos. |
+| Correos | Bienvenida y confirmación de reserva por SMTP, o guardados en `correos-enviados/`. |
+| Base de datos | 10 tablas; datos de ejemplo en un solo archivo (`database/datos-demo.js`) que alimenta tanto la demostración como los scripts SQL: 20 cuentas, 7 empresas, 15 alojamientos, 34 actividades, 11 autos, 90 reservas, 74 reseñas. |
 
 ## Cuentas de demostración
 
@@ -37,15 +44,16 @@ Plataforma web de alojamiento, tours, actividades de aventura y alquiler de auto
 
 ## Verificación
 
-- 594 comprobaciones (93 del alquiler de autos y 12 de los correos) en navegador automatizado contra el backend real con datos simulados: todas correctas.
-- 0 errores de JavaScript y 0 desbordamientos en 9 páginas y todos los anchos probados (375 a 1440 px).
-- Script SQL (301 lotes) y 114 consultas validados como T-SQL contra el esquema.
-- Fotografías: ninguna se repite (comparación automática, que también detecta recortes, más revisión visual).
+- 24 de 24 pruebas de la API (`npm run probar`).
+- 34 de 34 comprobaciones en navegador automatizado, sin errores de JavaScript.
+- Recorrido completo en inglés y dólares sin textos de interfaz pendientes.
+- Script SQL emulado: todas las inserciones resuelven sus claves y los conteos coinciden.
+- 94 fotografías, cada una usada una sola vez.
 
 ## Pendientes
 
-1. **Crear la base gratuita en Azure y ejecutar `npm run configurar`** (README, sección 3.A). El script SQL no se ha ejecutado aún contra un motor real; la primera instalación confirma la validación estática.
+1. Crear la base gratuita en Azure y ejecutar `npm run configurar` (README, sección 3.A). El script aún no se ha ejecutado contra un motor real; `npm run bd:probar` confirma los conteos.
 2. Cada integrante autoriza su IP en el firewall de Azure.
-3. Cambiar la contraseña de la cuenta de administración si el sitio se expone fuera del equipo (README, sección 4).
-4. Configurar el SMTP en `.env` para que los correos salgan (README, sección 4).
-5. **Siguiente fase:** pagos, recuperación de contraseña por correo y galería de varias fotografías por publicación, tarifas de autos por temporada.
+3. Configurar el SMTP en `.env` para que los correos salgan.
+4. Cambiar la contraseña de administración si el sitio se expone fuera del equipo.
+5. Siguiente fase posible: pagos en línea, recuperación de contraseña por correo y varias fotografías por publicación.

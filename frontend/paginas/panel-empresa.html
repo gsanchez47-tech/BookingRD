@@ -1,0 +1,449 @@
+<!-- @pagina titulo="Panel de empresa | BookingRD" descripcion="Publicaciones, reservas recibidas, reseñas, ingresos y perfil de tu empresa en BookingRD." css="panel-empresa" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <!-- ENCABEZADO E INDICADORES
+             GET /api/empresa/perfil -->
+        <section class="cabecera-cuenta">
+            <div class="contenedor cabecera-cuenta-contenido">
+                <div class="cabecera-cuenta-texto">
+                    <p class="cabecera-cuenta-etiqueta"><span id="panel-servicio">Panel de empresa</p></span>
+                    <h1 id="panel-empresa-nombre" data-nombre-empresa></h1>
+                    <p>Publica alojamientos, actividades o tu flota de autos, controla su visibilidad y consulta las reservas que recibes.</p>
+                </div>
+                <dl class="cifras-cuenta">
+                    <div><dt>Publicaciones</dt><dd id="cifra-publicaciones">0</dd></div>
+                    <div><dt>Próximas reservas</dt><dd id="cifra-proximas">0</dd></div>
+                    <div><dt>Ingresos</dt><dd id="cifra-ingresos">RD$0</dd></div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="seccion-panel">
+            <div class="contenedor">
+                <div class="pestanas" role="tablist" aria-label="Secciones del panel">
+                    <button type="button" class="pestana activo" data-seccion="resumen" role="tab" aria-selected="true">Resumen</button>
+                    <button type="button" class="pestana" data-seccion="publicaciones" role="tab" aria-selected="false">Publicaciones</button>
+                    <button type="button" class="pestana" data-seccion="reservas" role="tab" aria-selected="false">Reservas recibidas <span class="pestana-conteo" id="conteo-reservas">0</span></button>
+                    <button type="button" class="pestana" data-seccion="resenas" role="tab" aria-selected="false">Reseñas <span class="pestana-conteo pestana-alerta" id="conteo-resenas" title="Sin responder" hidden>0</span></button>
+                    <button type="button" class="pestana" data-seccion="perfil" role="tab" aria-selected="false">Perfil</button>
+                </div>
+
+                <!-- RESUMEN: indicadores y gráficos calculados a partir de
+                     las reservas recibidas (GET /api/empresa/reservas). -->
+                <div class="panel-seccion" id="seccion-resumen">
+                    <dl class="indicadores" id="indicadores-empresa"></dl>
+                    <div class="tablero">
+                        <section class="tarjeta-tablero">
+                            <h3>Ingresos por mes de servicio</h3>
+                            <p>Reservas confirmadas según la fecha de entrada, de la actividad o de recogida del auto.</p>
+                            <div id="grafico-ingresos"></div>
+                        </section>
+                        <section class="tarjeta-tablero">
+                            <h3>Próximas llegadas</h3>
+                            <p>Las cinco reservas confirmadas más cercanas.</p>
+                            <ul class="lista-breve" id="lista-llegadas"></ul>
+                        </section>
+                        <section class="tarjeta-tablero ancho-completo">
+                            <h3>Publicaciones con más reservas</h3>
+                            <p>Ingresos confirmados por publicación.</p>
+                            <div id="grafico-publicaciones"></div>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- PUBLICACIONES
+                     GET    /api/empresa/publicaciones?tipo=
+                     PATCH  /api/empresa/publicaciones/:tipo/:id/estado
+                     DELETE /api/empresa/publicaciones/:tipo/:id -->
+                <div class="panel-seccion" id="seccion-publicaciones" hidden>
+                    <div class="barra-panel">
+                        <div class="filtros-tipo" id="filtros-tipo-panel" role="group" aria-label="Tipo de publicación">
+                            <button type="button" class="tipo-boton" data-tipo="hotel">Alojamiento</button>
+                            <button type="button" class="tipo-boton" data-tipo="actividad">Actividades</button>
+                            <button type="button" class="tipo-boton" data-tipo="vehiculo">Autos</button>
+                        </div>
+                        <button type="button" class="btn-primario" id="boton-nueva">Nueva publicación</button>
+                    </div>
+                    <div class="lista-panel" id="lista-publicaciones" aria-live="polite"></div>
+                </div>
+
+                <!-- RESERVAS RECIBIDAS
+                     GET /api/empresa/reservas -->
+                <div class="panel-seccion" id="seccion-reservas" hidden>
+                    <div class="barra-panel barra-filtros-tabla">
+                        <div class="filtro-tabla">
+                            <label for="buscar-reservas" class="visualmente-oculto">Buscar reservas</label>
+                            <input type="search" id="buscar-reservas" placeholder="Buscar por código, cliente o publicación">
+                        </div>
+                        <div class="filtro-tabla">
+                            <label for="estado-reservas" class="visualmente-oculto">Estado</label>
+                            <select id="estado-reservas">
+                                <option value="">Todos los estados</option>
+                                <option value="confirmada">Confirmadas</option>
+                                <option value="cancelada">Canceladas</option>
+                            </select>
+                        </div>
+                        <button type="button" class="btn-outline btn-chico" id="boton-exportar">Exportar CSV</button>
+                    </div>
+                    <div class="tabla-envoltura">
+                        <table class="tabla-datos">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Código</th>
+                                    <th scope="col">Publicación</th>
+                                    <th scope="col">Cliente</th>
+                                    <th scope="col">Fechas</th>
+                                    <th scope="col">Grupo</th>
+                                    <th scope="col">Total</th>
+                                    <th scope="col">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-reservas"></tbody>
+                        </table>
+                    </div>
+                    <div id="reservas-vacio"></div>
+                </div>
+
+                <!-- RESEÑAS de las publicaciones de la empresa.
+                     GET /api/empresa/resenas
+                     PUT /api/empresa/resenas/:id/respuesta -->
+                <div class="panel-seccion" id="seccion-resenas" hidden>
+                    <div class="resenas-panel-cabecera">
+                        <div class="resenas-panel-nota" id="resenas-panel-nota"></div>
+                        <div class="filtros-tipo" role="group" aria-label="Filtrar reseñas">
+                            <button type="button" class="tipo-boton activo" data-filtro-resenas="todas" aria-pressed="true">Todas</button>
+                            <button type="button" class="tipo-boton" data-filtro-resenas="sin-respuesta" aria-pressed="false">Sin responder</button>
+                        </div>
+                    </div>
+                    <div class="lista-resenas" id="lista-resenas-panel" aria-live="polite"></div>
+                </div>
+
+                <!-- PERFIL DE LA EMPRESA
+                     PUT /api/empresa/perfil (datos de contacto y descripción).
+                     El RNC, la razón social y el tipo de servicio son de solo
+                     lectura: los modifica la administración de la plataforma. -->
+                <div class="panel-seccion" id="seccion-perfil" hidden>
+                    <div class="perfil-layout">
+                        <aside class="tarjeta-perfil">
+                            <h3>Datos registrados</h3>
+                            <dl class="datos-perfil" id="datos-perfil"></dl>
+                            <p class="nota-perfil">Para cambiar estos datos escribe a soporte@bookingrd.com.</p>
+                        </aside>
+                        <form class="tarjeta-perfil" id="form-perfil" novalidate>
+                            <h3>Información pública</h3>
+                            <p class="nota-perfil">Se muestra a los viajeros en cada una de tus publicaciones.</p>
+                            <div class="campo">
+                                <label for="perfil-nombre">Nombre comercial</label>
+                                <input type="text" id="perfil-nombre" maxlength="150">
+                            </div>
+                            <div class="fila-campos">
+                                <div class="campo">
+                                    <label for="perfil-telefono">Teléfono</label>
+                                    <input type="tel" id="perfil-telefono" maxlength="30">
+                                </div>
+                                <div class="campo">
+                                    <label for="perfil-licencia">Licencia MITUR <span class="opcional">(opcional)</span></label>
+                                    <input type="text" id="perfil-licencia" maxlength="30">
+                                </div>
+                            </div>
+                            <div class="fila-campos">
+                                <div class="campo">
+                                    <label for="perfil-provincia">Provincia</label>
+                                    <select id="perfil-provincia">
+                                        <option value="">Selecciona</option>
+                                            <option value="Azua">Azua</option>
+                                            <option value="Bahoruco">Bahoruco</option>
+                                            <option value="Barahona">Barahona</option>
+                                            <option value="Dajabón">Dajabón</option>
+                                            <option value="Distrito Nacional">Distrito Nacional</option>
+                                            <option value="Duarte">Duarte</option>
+                                            <option value="El Seibo">El Seibo</option>
+                                            <option value="Elías Piña">Elías Piña</option>
+                                            <option value="Espaillat">Espaillat</option>
+                                            <option value="Hato Mayor">Hato Mayor</option>
+                                            <option value="Hermanas Mirabal">Hermanas Mirabal</option>
+                                            <option value="Independencia">Independencia</option>
+                                            <option value="La Altagracia">La Altagracia</option>
+                                            <option value="La Romana">La Romana</option>
+                                            <option value="La Vega">La Vega</option>
+                                            <option value="María Trinidad Sánchez">María Trinidad Sánchez</option>
+                                            <option value="Monseñor Nouel">Monseñor Nouel</option>
+                                            <option value="Monte Cristi">Monte Cristi</option>
+                                            <option value="Monte Plata">Monte Plata</option>
+                                            <option value="Pedernales">Pedernales</option>
+                                            <option value="Peravia">Peravia</option>
+                                            <option value="Puerto Plata">Puerto Plata</option>
+                                            <option value="Samaná">Samaná</option>
+                                            <option value="San Cristóbal">San Cristóbal</option>
+                                            <option value="San José de Ocoa">San José de Ocoa</option>
+                                            <option value="San Juan">San Juan</option>
+                                            <option value="San Pedro de Macorís">San Pedro de Macorís</option>
+                                            <option value="Sánchez Ramírez">Sánchez Ramírez</option>
+                                            <option value="Santiago">Santiago</option>
+                                            <option value="Santiago Rodríguez">Santiago Rodríguez</option>
+                                            <option value="Santo Domingo">Santo Domingo</option>
+                                            <option value="Valverde">Valverde</option>
+                                    </select>
+                                </div>
+                                <div class="campo">
+                                    <label for="perfil-ciudad">Ciudad o municipio</label>
+                                    <input type="text" id="perfil-ciudad" maxlength="100">
+                                </div>
+                            </div>
+                            <div class="campo">
+                                <label for="perfil-direccion">Dirección</label>
+                                <input type="text" id="perfil-direccion" maxlength="250">
+                            </div>
+                            <div class="campo">
+                                <label for="perfil-sitio">Sitio web <span class="opcional">(opcional)</span></label>
+                                <input type="url" id="perfil-sitio" maxlength="300" placeholder="https://">
+                            </div>
+                            <div class="campo">
+                                <label for="perfil-descripcion">Descripción</label>
+                                <textarea id="perfil-descripcion" maxlength="1000" rows="4"></textarea>
+                            </div>
+                            <div id="perfil-error" class="mensaje-error" role="alert"></div>
+                            <div class="modal-acciones">
+                                <button type="submit" class="btn-primario" id="boton-perfil">Guardar cambios</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+
+    <!-- FORMULARIO DE PUBLICACIÓN (crear y editar)
+         POST /api/empresa/imagenes
+         POST /api/empresa/publicaciones | PUT /api/empresa/publicaciones/:tipo/:id -->
+    <dialog class="modal modal-ancho" id="modal-publicacion" aria-labelledby="publicacion-titulo">
+        <div class="modal-encabezado">
+            <h2 id="publicacion-titulo">Nueva publicación</h2>
+            <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+        </div>
+        <form class="modal-cuerpo" id="form-publicacion" novalidate>
+            <div class="campo" id="campo-tipo-publicacion">
+                <label for="pub-tipo">Tipo de publicación</label>
+                <select id="pub-tipo">
+                    <option value="hotel">Alojamiento</option>
+                    <option value="actividad">Actividad o tour</option>
+                    <option value="vehiculo">Vehículo de alquiler</option>
+                </select>
+            </div>
+
+            <!-- Fotografía: se reduce en el navegador antes de subirse. -->
+            <div class="campo">
+                <label for="pub-imagen">Fotografía principal</label>
+                <label class="zona-imagen" id="zona-imagen" for="pub-imagen">
+                    <img id="vista-imagen" alt="" hidden>
+                    <span class="zona-imagen-texto" id="zona-imagen-texto">
+                        <strong>Arrastra una fotografía o haz clic para elegirla</strong>
+                        JPG, PNG o WEBP. Se ajusta automáticamente a 1600 px.
+                    </span>
+                    <span class="zona-imagen-progreso" id="zona-imagen-progreso" hidden><span class="spinner" aria-hidden="true"></span>Subiendo fotografía...</span>
+                </label>
+                <input type="file" id="pub-imagen" accept="image/jpeg,image/png,image/webp" class="visualmente-oculto">
+            </div>
+
+            <div class="campo">
+                <label for="pub-nombre">Nombre</label>
+                <input type="text" id="pub-nombre" maxlength="150" placeholder="Ej.: Coralia Grand Resort &amp; Spa">
+            </div>
+
+            <div class="fila-campos">
+                <div class="campo">
+                    <label for="pub-ciudad">Destino</label>
+                    <select id="pub-ciudad">
+                        <option value="">Selecciona un destino</option>
+                    </select>
+                </div>
+                <div class="campo">
+                    <label for="pub-precio" id="etiqueta-precio">Precio por noche (RD$)</label>
+                    <input type="number" id="pub-precio" min="1" max="1000000" step="1" placeholder="0">
+                </div>
+            </div>
+
+            <!-- Campos de alojamiento -->
+            <div data-campos-tipo="hotel">
+                <div class="fila-campos">
+                    <div class="campo">
+                        <label for="pub-tipo-alojamiento">Tipo de alojamiento</label>
+                        <select id="pub-tipo-alojamiento">
+                            <option value="">Selecciona</option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="pub-direccion">Dirección</label>
+                        <input type="text" id="pub-direccion" maxlength="250" placeholder="Calle, sector o playa">
+                    </div>
+                </div>
+                <div class="fila-campos">
+                    <div class="campo">
+                        <label for="pub-capacidad">Personas por habitación</label>
+                        <input type="number" id="pub-capacidad" min="1" max="30" value="2">
+                    </div>
+                    <div class="campo">
+                        <label for="pub-habitaciones">Habitaciones o unidades</label>
+                        <input type="number" id="pub-habitaciones" min="1" max="5000" value="10">
+                    </div>
+                </div>
+                <fieldset class="campo grupo-servicios" id="pub-servicios">
+                    <legend>Servicios</legend>
+                    <div class="opciones-servicios" id="opciones-servicios"></div>
+                </fieldset>
+            </div>
+
+            <!-- Campos de actividad -->
+            <div data-campos-tipo="actividad" hidden>
+                <div class="fila-campos">
+                    <div class="campo">
+                        <label for="pub-categoria">Categoría</label>
+                        <select id="pub-categoria">
+                            <option value="">Selecciona</option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="pub-punto">Punto de encuentro</label>
+                        <input type="text" id="pub-punto" maxlength="250" placeholder="Ej.: Muelle de Bayahibe">
+                    </div>
+                </div>
+                <div class="fila-campos">
+                    <div class="campo">
+                        <label for="pub-duracion">Duración (horas)</label>
+                        <input type="number" id="pub-duracion" min="0.5" max="240" step="0.5" value="4">
+                    </div>
+                    <div class="campo">
+                        <label for="pub-cupo">Cupo diario (personas)</label>
+                        <input type="number" id="pub-cupo" min="1" max="1000" value="20">
+                    </div>
+                </div>
+                <div class="campo">
+                    <label for="pub-incluye">Incluye <span class="opcional">(separado por comas)</span></label>
+                    <input type="text" id="pub-incluye" maxlength="500" placeholder="Transporte, almuerzo, guía bilingüe">
+                </div>
+            </div>
+
+            <!-- Campos de vehículo de alquiler -->
+            <div data-campos-tipo="vehiculo" hidden>
+                <div class="fila-campos">
+                    <div class="campo">
+                        <label for="veh-categoria">Categoría</label>
+                        <select id="veh-categoria">
+                            <option value="">Selecciona</option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label for="veh-unidades">Unidades de este modelo</label>
+                        <input type="number" id="veh-unidades" min="1" max="1000" value="2">
+                    </div>
+                </div>
+                <div class="fila-campos fila-3">
+                    <div class="campo">
+                        <label for="veh-marca">Marca</label>
+                        <input type="text" id="veh-marca" maxlength="60" placeholder="Toyota">
+                    </div>
+                    <div class="campo">
+                        <label for="veh-modelo">Modelo</label>
+                        <input type="text" id="veh-modelo" maxlength="60" placeholder="Corolla">
+                    </div>
+                    <div class="campo">
+                        <label for="veh-anio">Año</label>
+                        <input type="number" id="veh-anio" min="2000" max="2030" placeholder="2024">
+                    </div>
+                </div>
+                <div class="fila-campos">
+                    <div class="campo">
+                        <label for="veh-transmision">Transmisión</label>
+                        <select id="veh-transmision"></select>
+                    </div>
+                    <div class="campo">
+                        <label for="veh-combustible">Combustible</label>
+                        <select id="veh-combustible"></select>
+                    </div>
+                </div>
+                <div class="fila-campos fila-3">
+                    <div class="campo">
+                        <label for="veh-pasajeros">Pasajeros</label>
+                        <input type="number" id="veh-pasajeros" min="1" max="15" value="5">
+                    </div>
+                    <div class="campo">
+                        <label for="veh-puertas">Puertas</label>
+                        <input type="number" id="veh-puertas" min="2" max="5" value="4">
+                    </div>
+                    <div class="campo">
+                        <label for="veh-maletas">Maletas</label>
+                        <input type="number" id="veh-maletas" min="0" max="10" value="2">
+                    </div>
+                </div>
+                <div class="campo">
+                    <label for="veh-lugar">Lugar de recogida</label>
+                    <input type="text" id="veh-lugar" maxlength="250" placeholder="Ej.: Aeropuerto Las Américas (SDQ), mostrador en llegadas">
+                </div>
+                <div class="fila-campos">
+                    <div class="campo">
+                        <label for="veh-km">Kilómetros por día <span class="opcional">(vacío: ilimitado)</span></label>
+                        <input type="number" id="veh-km" min="1" max="5000" placeholder="Ilimitado">
+                    </div>
+                    <div class="campo">
+                        <label for="veh-deposito">Depósito de garantía (RD$)</label>
+                        <input type="number" id="veh-deposito" min="0" max="1000000" value="15000">
+                    </div>
+                </div>
+                <div class="fila-campos fila-3">
+                    <div class="campo">
+                        <label for="veh-edad">Edad mínima</label>
+                        <input type="number" id="veh-edad" min="18" max="30" value="21">
+                    </div>
+                    <div class="campo">
+                        <label for="veh-cargo-joven">Cargo menor de 25 <span class="opcional">(por día)</span></label>
+                        <input type="number" id="veh-cargo-joven" min="0" max="100000" placeholder="Sin cargo">
+                    </div>
+                    <div class="campo">
+                        <label for="veh-cargo-ciudad">Devolución en otra ciudad</label>
+                        <input type="number" id="veh-cargo-ciudad" min="0" max="1000000" placeholder="No permitida">
+                    </div>
+                </div>
+                <label class="opcion-servicio opcion-aire"><input type="checkbox" id="veh-aire" checked><span>Aire acondicionado</span></label>
+                <div class="campo">
+                    <label for="veh-incluye">Incluye <span class="opcional">(separado por comas)</span></label>
+                    <input type="text" id="veh-incluye" maxlength="500" placeholder="Seguro básico de colisión, asistencia 24 horas">
+                </div>
+            </div>
+
+            <div class="campo">
+                <label for="pub-descripcion">Descripción</label>
+                <textarea id="pub-descripcion" maxlength="2000" rows="5" placeholder="Qué hace especial a esta experiencia, qué esperar y recomendaciones."></textarea>
+                <span class="ayuda-campo"><span id="contador-descripcion">0</span> / 2000 caracteres</span>
+            </div>
+
+            <div id="publicacion-error" class="mensaje-error" role="alert"></div>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Cancelar</button>
+                <button type="submit" class="btn-primario" id="boton-guardar">Publicar</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Confirmación de eliminación -->
+    <dialog class="modal" id="modal-eliminar" aria-labelledby="eliminar-titulo">
+        <div class="modal-encabezado">
+            <h2 id="eliminar-titulo">Eliminar publicación</h2>
+            <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-cuerpo">
+            <p>Se eliminará <strong id="eliminar-nombre"></strong> de forma definitiva. Si solo quieres dejar de recibir reservas, puedes ocultarla.</p>
+            <div id="eliminar-error" class="mensaje-error" role="alert"></div>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Conservar</button>
+                <button type="button" class="btn-rojo" id="boton-confirmar-eliminar">Eliminar</button>
+            </div>
+        </div>
+    </dialog>
+
+<!-- @pie -->
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/panel-empresa.js"></script>

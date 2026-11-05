@@ -3,8 +3,8 @@
  * @description Reservas del viajero con sesión iniciada.
  */
 
+const { reservasRepo } = require('../repositories');
 const reservasService = require('../services/reservas.service');
-const reservasRepo = require('../repositories/reservas.repo');
 
 /**
  * POST /api/reservas

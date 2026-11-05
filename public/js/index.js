@@ -1,216 +1,295 @@
 /**
  * @file public/js/index.js
- * @description Lógica de la página de inicio (index.html).
- *
- *   - Hero:                    presentación de fotografías y destino que
- *                              cambia en el título.
- *   - Buscador:                js/buscador.js.
- *   - Indicadores, destinos y conteo por categoría:  GET /api/estadisticas
- *   - Vistos recientemente:    historial local del navegador (js/comun.js).
- *   - Carrusel de destacados:  GET /api/publicaciones?tipo=hotel|actividad|vehiculo&orden=destacados
- *   - Mapa de la isla:         GET /api/publicaciones (los tres tipos, al acercarse a la sección)
- *   - Opiniones de viajeros:   GET /api/resenas/destacadas
- *   - Navegación:              marca en el menú la sección visible.
- *   - Contacto:                POST /api/contacto
+ * @description Página de inicio: buscador, mapa de destinos con su ficha
+ *   (clima y oferta), postales de destinos, conteo por categoría,
+ *   recomendados por tipo, vistos recientemente, opiniones, cifras y
+ *   formulario de contacto.
  */
 
-const DESTACADOS_POR_TIPO = 9;
-const PUBLICACIONES_MAPA = 48;
+const RECOMENDADOS_POR_TIPO = 8;
 
-/** Estado del carrusel de destacados. */
-const destacados = { tipo: 'hotel', solicitud: 0 };
+/** Destinos con fotografía propia en la sección de postales (cada foto se usa solo aquí). */
+const POSTALES = [
+    { ciudad: 'Santo Domingo', foto: 'img/destinos/santo-domingo.jpg', alt: 'Fachada de piedra del Alcázar de Colón en la Ciudad Colonial' },
+    { ciudad: 'Punta Cana', foto: 'img/destinos/punta-cana.jpg', alt: 'Playa de arena blanca con cocoteros vista desde el aire' },
+    { ciudad: 'Samaná', foto: 'img/destinos/samana.jpg', alt: 'Puente peatonal sobre el mar hacia los cayos de Samaná' },
+    { ciudad: 'Puerto Plata', foto: 'img/destinos/puerto-plata.jpg', alt: 'Cañones de la Fortaleza San Felipe frente al Atlántico' },
+    { ciudad: 'Las Terrenas', foto: 'img/destinos/las-terrenas.jpg', alt: 'Playa de aguas turquesa en la península de Samaná' },
+    { ciudad: 'Juan Dolio', foto: 'img/destinos/juan-dolio.jpg', alt: 'Costa de Juan Dolio iluminada de noche' },
+    { ciudad: 'La Romana', foto: 'img/destinos/la-romana.jpg', alt: 'Iglesia de piedra de Altos de Chavón' },
+    { ciudad: 'Jarabacoa', foto: 'img/destinos/jarabacoa.jpg', alt: 'Casa de campo y vacas en las montañas de Jarabacoa' },
+    { ciudad: 'Constanza', foto: 'img/destinos/constanza.jpg', alt: 'Agricultores en los campos de cultivo del valle de Constanza' },
+    { ciudad: 'Pedernales', foto: 'img/destinos/pedernales.jpg', alt: 'Costa de Pedernales con flores amarillas frente al mar' }
+];
+
+/**
+ * Posición de la etiqueta de cada destino en el mapa respecto a su punto,
+ * para que no se superpongan en las zonas con varios destinos cercanos.
+ *   [desplazamiento x, desplazamiento y, alineación]
+ */
+const ETIQUETAS_MAPA = {
+    'Santo Domingo': [-14, 6, 'end'],
+    'Boca Chica': [-4, 32, 'middle'],
+    'Juan Dolio': [12, -12, 'start'],
+    'La Romana': [0, 32, 'middle'],
+    'Punta Cana': [-14, -14, 'end'],
+    'Puerto Plata': [-14, -10, 'end'],
+    'Sosúa': [-2, 30, 'middle'],
+    'Cabarete': [10, -14, 'start'],
+    'Río San Juan': [14, 6, 'start'],
+    'Las Terrenas': [-12, -14, 'end'],
+    'Samaná': [0, 32, 'middle'],
+    'Las Galeras': [12, -12, 'start'],
+    'Jarabacoa': [14, -6, 'start'],
+    'Constanza': [14, 14, 'start'],
+    'Pedernales': [14, 6, 'start']
+};
+
+const estado = {
+    estadisticas: null,
+    destinoElegido: 'Punta Cana',
+    recomendados: { tipo: 'hotel', solicitud: 0 }
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-    iniciarPresentacion();
-    iniciarParalaje();
-    iniciarDestinoRotativo();
     iniciarBuscador();
+    dibujarMapa();
+    pintarPostales();
     cargarEstadisticas();
+    iniciarRecomendados();
     pintarVistos();
-    cargarDestacados();
-    iniciarPestanas();
-    iniciarCarrusel('carrusel-destacados', 'grid-destacados');
-    iniciarCarrusel('carrusel-opiniones', 'grid-opiniones');
-    iniciarMapaDiferido();
     cargarOpiniones();
-    iniciarNavegacionActiva();
     iniciarContacto();
 });
 
 /* ----------------------------------------------------------------------------
-   HERO: DESTINO ROTATIVO
-   ---------------------------------------------------------------------------- */
-
-const DURACION_DIAPOSITIVA = 7000;
-
-/**
- * Presentación de fotografías del hero: fundido cada 7 segundos con barra de
- * progreso en el indicador activo. Los indicadores permiten elegir una
- * fotografía. Se detiene con la pestaña oculta o el hero fuera de la vista, y
- * no avanza sola con "reducir movimiento".
- */
-function iniciarPresentacion() {
-    const hero = document.querySelector('.hero');
-    const fotos = [...document.querySelectorAll('.hero-diapositiva')];
-    const indicadores = [...document.querySelectorAll('.hero-indicador')];
-    if (fotos.length < 2) return;
-    const automatica = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    hero.style.setProperty('--duracion-diapositiva', `${DURACION_DIAPOSITIVA / 1000}s`);
-    let actual = 0;
-    let temporizador = null;
-    let visible = true;
-
-    const mostrar = (indice) => {
-        actual = (indice + fotos.length) % fotos.length;
-        fotos.forEach((foto, i) => foto.classList.toggle('activa', i === actual));
-        indicadores.forEach((boton, i) => {
-            boton.classList.remove('activo');
-            boton.classList.toggle('visto', i < actual);
-            boton.setAttribute('aria-current', String(i === actual));
-        });
-        void indicadores[actual].offsetWidth;   // reinicia la animación de la barra
-        indicadores[actual].classList.add('activo');
-        programar();
-    };
-    const programar = () => {
-        clearTimeout(temporizador);
-        if (automatica && visible && !document.hidden) temporizador = setTimeout(() => mostrar(actual + 1), DURACION_DIAPOSITIVA);
-    };
-    const pausar = (pausa) => {
-        hero.classList.toggle('pausado', pausa);
-        if (pausa) clearTimeout(temporizador);
-        else programar();
-    };
-
-    indicadores.forEach((boton, i) => boton.addEventListener('click', () => mostrar(i)));
-    document.addEventListener('visibilitychange', () => pausar(document.hidden));
-    if ('IntersectionObserver' in window) {
-        new IntersectionObserver(([entrada]) => {
-            visible = entrada.isIntersecting;
-            pausar(!visible);
-        }, { threshold: 0.1 }).observe(hero);
-    }
-    if (!automatica) hero.classList.add('pausado');
-    mostrar(0);
-}
-
-/**
- * Paralaje suave al desplazar: las fotografías de "Sobre nosotros" se mueven
- * a distinta velocidad y el fondo del llamado a empresas se desplaza más
- * lento que la página. Un solo cálculo por cuadro (requestAnimationFrame).
- */
-function iniciarParalaje() {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const capas = [
-        ...[...document.querySelectorAll('.nosotros-foto-principal')].map((e) => ({ e, v: -0.06 })),
-        ...[...document.querySelectorAll('.nosotros-foto-secundaria')].map((e) => ({ e, v: 0.1 }))
-    ];
-    const franja = document.querySelector('.franja-empresas');
-    let pendiente = false;
-    const aplicar = () => {
-        pendiente = false;
-        const alto = window.innerHeight;
-        capas.forEach(({ e, v }) => {
-            const caja = e.getBoundingClientRect();
-            const desde = caja.top + caja.height / 2 - alto / 2;
-            e.style.translate = `0 ${Math.round(desde * v)}px`;
-        });
-        if (franja) {
-            const caja = franja.getBoundingClientRect();
-            if (caja.bottom > 0 && caja.top < alto) franja.style.backgroundPositionY = `${50 + ((caja.top / alto) * 18)}%`;
-        }
-    };
-    window.addEventListener('scroll', () => {
-        if (!pendiente) { pendiente = true; requestAnimationFrame(aplicar); }
-    }, { passive: true });
-    aplicar();
-}
-
-/**
- * Cambia el destino del título cada pocos segundos: el actual sale hacia
- * arriba y el siguiente entra desde abajo. Los nombres ya están en el HTML,
- * apilados en la misma celda, por lo que el título conserva su tamaño. El
- * texto para lectores de pantalla es fijo ("la isla"). Se desactiva con la
- * preferencia de movimiento reducido.
- */
-function iniciarDestinoRotativo() {
-    const opciones = [...document.querySelectorAll('#hero-destino .hero-destino-opcion')];
-    if (opciones.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let indice = 0;
-    setInterval(() => {
-        const actual = opciones[indice];
-        indice = (indice + 1) % opciones.length;
-        actual.classList.remove('activa');
-        actual.classList.add('saliendo');
-        opciones[indice].classList.add('activa');
-        setTimeout(() => actual.classList.remove('saliendo'), 500);
-    }, 2800);
-}
-
-/* ----------------------------------------------------------------------------
-   INDICADORES, DESTINOS Y CATEGORÍAS
-   ---------------------------------------------------------------------------- */
+   Estadísticas: cifras, conteos de categorías, destinos y buscador
+   ------------------------------------------------------------------------- */
 
 async function cargarEstadisticas() {
-    const contenedorChips = document.getElementById('chips-destinos');
     try {
         const datos = await apiFetch('/estadisticas');
-        publicacionesPorDestino = datos.porCiudad || {};
+        estado.estadisticas = datos;
+        publicacionesPorDestino = datos.porCiudad;
         estadisticasCargadas = true;
+
         animarNumero(document.getElementById('stat-hoteles'), datos.totalHoteles);
         animarNumero(document.getElementById('stat-actividades'), datos.totalActividades);
-        animarNumero(document.getElementById('stat-vehiculos'), datos.totalVehiculos || 0);
-        animarNumero(document.getElementById('stat-ciudades'), datos.ciudades.length);
+        animarNumero(document.getElementById('stat-vehiculos'), datos.totalVehiculos);
         animarNumero(document.getElementById('stat-empresas'), datos.totalEmpresas);
-        if (datos.puntuacionMedia) {
-            animarNumero(document.getElementById('stat-valoracion'), Math.round(datos.puntuacionMedia * 10), (n) => formatoPuntuacion(n / 10));
-            document.getElementById('stat-valoracion-texto').textContent = `Valoración media en ${textoResenas(datos.totalResenas)}`;
+        if (datos.puntuacionMedia !== null) {
+            document.getElementById('stat-valoracion').textContent = formatoPuntuacion(datos.puntuacionMedia);
+            document.getElementById('stat-valoracion-texto').textContent = `Valoración media (${textoResenas(datos.totalResenas)})`;
         }
-        pintarDestinos(datos.ciudades);
-        document.querySelectorAll('[data-conteo-destino]').forEach((elemento) => {
-            const total = publicacionesPorDestino[elemento.dataset.conteoDestino] || 0;
-            elemento.textContent = total ? textoPublicaciones(total) : '';
+
+        document.querySelectorAll('[data-conteo]').forEach((elemento) => {
+            const clave = elemento.dataset.conteo;
+            const total = clave === 'vehiculo' ? datos.totalVehiculos : datos.porCategoria[clave] || 0;
+            elemento.textContent = textoPublicaciones(total);
         });
-        pintarConteoCategorias(datos.porCategoria);
-        document.querySelectorAll('[data-conteo-tipo="vehiculo"]').forEach((elemento) => {
-            const total = datos.totalVehiculos || 0;
-            elemento.textContent = total ? `${total} ${total === 1 ? 'modelo disponible' : 'modelos disponibles'}` : 'Ver autos';
-        });
-        pintarListaMapa();
-    } catch (error) {
-        contenedorChips.innerHTML = '<span class="chip chip-informativo">Destinos no disponibles por el momento</span>';
+
+        pintarPostales();
+        pintarFicha(estado.destinoElegido);
+    } catch (_) {
+        document.querySelectorAll('[data-conteo]').forEach((elemento) => { elemento.textContent = ''; });
+        pintarFicha(estado.destinoElegido);
     }
 }
 
-/** Chips de destino: uno por ciudad con publicaciones activas. */
-function pintarDestinos(ciudades) {
-    const contenedor = document.getElementById('chips-destinos');
-    if (!ciudades.length) {
-        contenedor.innerHTML = '<span class="chip chip-informativo">Aún no hay destinos publicados</span>';
-        return;
-    }
-    contenedor.innerHTML = ciudades
-        .map((ciudad) => `<a class="chip" href="explorar.html?ciudad=${encodeURIComponent(ciudad)}">${escaparHtml(ciudad)}<span class="chip-conteo">${publicacionesPorDestino[ciudad] || 0}</span></a>`)
-        .join('');
-}
-
-/** Cantidad de publicaciones en cada tarjeta de la vitrina de servicios. */
-function pintarConteoCategorias(porCategoria) {
-    document.querySelectorAll('[data-conteo-categoria]').forEach((elemento) => {
-        elemento.textContent = textoPublicaciones(porCategoria[elemento.dataset.conteoCategoria] || 0);
-    });
-    document.querySelectorAll('[data-conteo-chip]').forEach((elemento) => {
-        elemento.textContent = porCategoria[elemento.dataset.conteoChip] || 0;
-    });
+/** Oferta de un destino por tipo: { hotel, actividad, vehiculo }. */
+function ofertaDestino(ciudad) {
+    const datos = estado.estadisticas;
+    return (datos && datos.porCiudadTipo && datos.porCiudadTipo[ciudad]) || { hotel: 0, actividad: 0, vehiculo: 0 };
 }
 
 /* ----------------------------------------------------------------------------
-   VISTOS RECIENTEMENTE
-   ---------------------------------------------------------------------------- */
+   Mapa de destinos (SVG con el contorno de la isla)
+   ------------------------------------------------------------------------- */
+
+function dibujarMapa() {
+    const lienzo = document.getElementById('mapa-lienzo');
+    const { ancho, alto } = ISLA;
+
+    // Paralelos 18°, 19° y 20° N como referencia.
+    const paralelos = [18, 19].map((latitud) => {
+        const { y } = ISLA.proyectar(latitud, -72);
+        return `<line class="mapa-paralelo" x1="0" x2="${ancho}" y1="${y}" y2="${y}"></line>
+                <text class="mapa-paralelo-texto" x="${ancho - 12}" y="${y - 6}" text-anchor="end">${latitud}° N</text>`;
+    }).join('');
+
+    const puntos = CATALOGOS.destinos.map((ciudad, orden) => {
+        const [latitud, longitud] = CATALOGOS.coordenadas[ciudad];
+        const { x, y } = ISLA.proyectar(latitud, longitud);
+        const [dx, dy, alineacion] = ETIQUETAS_MAPA[ciudad] || [12, 5, 'start'];
+        return `
+            <g class="mapa-punto" role="button" tabindex="0" data-ciudad="${escaparHtml(ciudad)}" aria-pressed="false"
+               aria-label="${escaparHtml(ciudad)}" style="--orden:${orden}">
+                <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="8"></circle>
+                <text x="${(x + dx).toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${alineacion}">${escaparHtml(ciudad)}</text>
+            </g>`;
+    }).join('');
+
+    lienzo.innerHTML = `
+        <svg viewBox="0 0 ${ancho} ${alto}" role="group" aria-label="Destinos en el mapa de República Dominicana">
+            ${paralelos}
+            <text class="mapa-mar-texto" x="${ancho * 0.5}" y="${ISLA.proyectar(19.92, 0).y}" text-anchor="middle">Océano Atlántico</text>
+            <text class="mapa-mar-texto" x="${ancho * 0.52}" y="${ISLA.proyectar(17.72, 0).y}" text-anchor="middle">Mar Caribe</text>
+            <path class="mapa-vecino" d="${ISLA.haiti}"></path>
+            <path class="mapa-tierra" d="${ISLA.republicaDominicana}"></path>
+            ${puntos}
+        </svg>`;
+
+    const elegir = (punto) => {
+        estado.destinoElegido = punto.dataset.ciudad;
+        pintarFicha(estado.destinoElegido);
+    };
+
+    // Tamaño de puntos y rótulos constante en pantalla, sea cual sea el ancho del mapa.
+    const ajustarEscala = () => {
+        const escala = ancho / Math.max(lienzo.clientWidth, 1);
+        lienzo.style.setProperty('--texto-mapa', `${Math.round(13 * escala)}px`);
+        lienzo.style.setProperty('--punto-mapa', `${Math.max(7, Math.round(6 * escala))}px`);
+        lienzo.classList.toggle('compacto', lienzo.clientWidth < 620);
+    };
+    ajustarEscala();
+    window.addEventListener('resize', conRetardo(ajustarEscala, 120));
+
+    const selector = document.getElementById('selector-destino');
+    selector.innerHTML = CATALOGOS.destinos.map((ciudad) => `<option value="${escaparHtml(ciudad)}">${escaparHtml(ciudad)}</option>`).join('');
+    selector.value = estado.destinoElegido;
+    selector.addEventListener('change', () => {
+        estado.destinoElegido = selector.value;
+        pintarFicha(selector.value);
+    });
+    lienzo.querySelectorAll('.mapa-punto').forEach((punto) => {
+        punto.addEventListener('click', () => elegir(punto));
+        punto.addEventListener('keydown', (evento) => {
+            if (evento.key === 'Enter' || evento.key === ' ') {
+                evento.preventDefault();
+                elegir(punto);
+            }
+        });
+    });
+    marcarPunto(estado.destinoElegido);
+}
+
+function marcarPunto(ciudad) {
+    const selector = document.getElementById('selector-destino');
+    if (selector) selector.value = ciudad;
+    document.querySelectorAll('.mapa-punto').forEach((punto) => {
+        const elegido = punto.dataset.ciudad === ciudad;
+        punto.setAttribute('aria-pressed', String(elegido));
+        // El punto elegido se dibuja al final para quedar por encima de los demás.
+        if (elegido) punto.parentNode.appendChild(punto);
+    });
+}
+
+/** Ficha del destino elegido: provincia, oferta por tipo y clima actual. */
+function pintarFicha(ciudad) {
+    marcarPunto(ciudad);
+    const ficha = document.getElementById('ficha-destino');
+    const oferta = ofertaDestino(ciudad);
+    const enlace = (tipo, total, singular, plural) => (total
+        ? `<li><a href="explorar.html?tipo=${tipo}&ciudad=${encodeURIComponent(ciudad)}"><strong>${total}</strong> ${total === 1 ? singular : plural}</a></li>`
+        : '');
+    const enlaces = [
+        enlace('hotel', oferta.hotel, 'alojamiento', 'alojamientos'),
+        enlace('actividad', oferta.actividad, 'actividad', 'actividades'),
+        enlace('vehiculo', oferta.vehiculo, 'auto', 'autos')
+    ].join('');
+
+    ficha.innerHTML = `
+        <div class="ficha-cabecera">
+            <h3>${escaparHtml(ciudad)}</h3>
+            <span class="ficha-provincia">${escaparHtml(CATALOGOS.provincias[ciudad] || '')}</span>
+        </div>
+        <div class="ficha-cuerpo">
+            <ul class="ficha-conteos">${enlaces || '<li class="sin-oferta">Pronto habrá publicaciones en este destino.</li>'}</ul>
+            <div class="ficha-clima" id="ficha-clima"></div>
+        </div>`;
+    pintarClimaCompacto(document.getElementById('ficha-clima'), ciudad);
+}
+
+/* ----------------------------------------------------------------------------
+   Postales de destinos y lista del resto
+   ------------------------------------------------------------------------- */
+
+function pintarPostales() {
+    const conteo = (ciudad) => (estado.estadisticas ? textoPublicaciones(estado.estadisticas.porCiudad[ciudad] || 0) : '');
+    document.getElementById('postales').innerHTML = POSTALES.map((p) => `
+        <li class="postal">
+            <a href="explorar.html?ciudad=${encodeURIComponent(p.ciudad)}">
+                <div class="postal-foto"><img src="${p.foto}" alt="${escaparHtml(p.alt)}" loading="lazy"></div>
+                <div class="postal-pie">
+                    <h3>${escaparHtml(p.ciudad)}</h3>
+                    <p>${conteo(p.ciudad)}</p>
+                </div>
+            </a>
+        </li>`).join('');
+
+    const conFoto = new Set(POSTALES.map((p) => p.ciudad));
+    document.getElementById('otros-destinos').innerHTML = CATALOGOS.destinos
+        .filter((ciudad) => !conFoto.has(ciudad))
+        .map((ciudad) => `
+            <li><a href="explorar.html?ciudad=${encodeURIComponent(ciudad)}">
+                <span>${escaparHtml(ciudad)} <small>${escaparHtml(CATALOGOS.provincias[ciudad] || '')}</small></span>
+                <small>${conteo(ciudad)}</small>
+            </a></li>`).join('');
+}
+
+/* ----------------------------------------------------------------------------
+   Recomendados
+   ------------------------------------------------------------------------- */
+
+const TEXTO_VER_TODO = { hotel: 'Ver todo el alojamiento', actividad: 'Ver todas las actividades', vehiculo: 'Ver todos los autos' };
+
+function iniciarRecomendados() {
+    document.querySelectorAll('input[name="tipo-destacados"]').forEach((opcion) => {
+        opcion.addEventListener('change', () => {
+            estado.recomendados.tipo = opcion.value;
+            const enlace = document.getElementById('enlace-ver-todo');
+            enlace.href = opcion.value === 'vehiculo' ? 'explorar.html?tipo=vehiculo' : `explorar.html?tipo=${opcion.value}`;
+            enlace.textContent = TEXTO_VER_TODO[opcion.value];
+            cargarRecomendados();
+        });
+    });
+    cargarRecomendados();
+}
+
+async function cargarRecomendados() {
+    const rejilla = document.getElementById('grid-destacados');
+    const { tipo } = estado.recomendados;
+    const numero = ++estado.recomendados.solicitud;
+    rejilla.innerHTML = tarjetasEsqueleto(4);
+    try {
+        const respuesta = await apiFetch(`/publicaciones?tipo=${tipo}&orden=destacados&porPagina=${RECOMENDADOS_POR_TIPO}`);
+        if (numero !== estado.recomendados.solicitud) return;
+        rejilla.innerHTML = respuesta.publicaciones.length
+            ? respuesta.publicaciones.map(crearTarjetaPublicacion).join('')
+            : crearEstado({
+                titulo: 'Todavía no hay publicaciones de este tipo',
+                texto: 'Cuando las empresas registradas publiquen sus servicios, aparecerán aquí.'
+            });
+        Favoritos.pintar(rejilla);
+    } catch (error) {
+        if (numero !== estado.recomendados.solicitud) return;
+        rejilla.innerHTML = crearEstado({
+            titulo: 'No se pudieron cargar las publicaciones',
+            texto: error.message,
+            accion: '<button type="button" class="btn-outline" id="boton-reintentar">Reintentar</button>',
+            esError: true
+        });
+        document.getElementById('boton-reintentar').addEventListener('click', cargarRecomendados);
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   Vistos recientemente y opiniones
+   ------------------------------------------------------------------------- */
 
 function pintarVistos() {
     const seccion = document.getElementById('vistos');
-    const vistos = leerVistos();
+    const vistos = leerVistos().slice(0, 4);
     seccion.hidden = !vistos.length;
     if (!vistos.length) return;
     document.getElementById('grid-vistos').innerHTML = vistos.map(crearTarjetaPublicacion).join('');
@@ -220,187 +299,25 @@ function pintarVistos() {
         borrar.addEventListener('click', () => {
             borrarVistos();
             pintarVistos();
-            mostrarAviso('Historial de vistos borrado.', 'exito', 2500);
+            mostrarAviso('Historial borrado.', 'exito', 2500);
         });
     }
 }
-
-/* ----------------------------------------------------------------------------
-   DESTACADOS
-   ---------------------------------------------------------------------------- */
-
-function iniciarPestanas() {
-    document.querySelectorAll('.tab-boton').forEach((boton) => {
-        boton.addEventListener('click', () => {
-            if (boton.dataset.tab === destacados.tipo) return;
-            destacados.tipo = boton.dataset.tab;
-            document.querySelectorAll('.tab-boton').forEach((otro) => {
-                const activo = otro === boton;
-                otro.classList.toggle('activo', activo);
-                otro.setAttribute('aria-selected', String(activo));
-            });
-            const enlace = document.getElementById('enlace-ver-todo');
-            enlace.href = `explorar.html?tipo=${destacados.tipo}`;
-            enlace.textContent = { hotel: 'Ver todo el alojamiento', actividad: 'Ver todas las actividades', vehiculo: 'Ver todos los autos' }[destacados.tipo];
-            cargarDestacados();
-        });
-    });
-}
-
-async function cargarDestacados() {
-    const pista = document.getElementById('grid-destacados');
-    const numero = ++destacados.solicitud;
-    pista.innerHTML = tarjetasEsqueleto(3);
-    pista.scrollLeft = 0;
-
-    try {
-        const respuesta = await apiFetch(`/publicaciones?tipo=${destacados.tipo}&orden=destacados&porPagina=${DESTACADOS_POR_TIPO}`);
-        if (numero !== destacados.solicitud) return;
-        pista.innerHTML = respuesta.publicaciones.length
-            ? respuesta.publicaciones.map(crearTarjetaPublicacion).join('')
-            : crearEstado({
-                titulo: {
-                    hotel: 'No se ha publicado ningún alojamiento por el momento',
-                    actividad: 'No se ha publicado ninguna actividad por el momento',
-                    vehiculo: 'No se ha publicado ningún auto por el momento'
-                }[destacados.tipo],
-                texto: 'Cuando las empresas registradas publiquen sus servicios, aparecerán en esta sección.'
-            });
-    } catch (error) {
-        if (numero !== destacados.solicitud) return;
-        pista.innerHTML = crearEstado({
-            titulo: 'No se pudieron cargar las publicaciones',
-            texto: error.message,
-            accion: '<button type="button" class="btn-outline" id="boton-reintentar">Reintentar</button>',
-            esError: true
-        });
-        document.getElementById('boton-reintentar').addEventListener('click', cargarDestacados);
-    }
-    actualizarBotonesCarrusel('carrusel-destacados', 'grid-destacados');
-}
-
-/* ----------------------------------------------------------------------------
-   MAPA DE LA ISLA
-   Se crea cuando la sección se acerca al viewport, para no cargar los
-   mosaicos ni las publicaciones si el visitante no llega hasta ahí.
-   ---------------------------------------------------------------------------- */
-
-const mapaIsla = { mapa: null, publicaciones: [], capa: null, filtro: 'todos' };
-
-function iniciarMapaDiferido() {
-    document.querySelectorAll('[data-mapa-filtro]').forEach((boton) => {
-        boton.addEventListener('click', () => {
-            mapaIsla.filtro = boton.dataset.mapaFiltro;
-            document.querySelectorAll('[data-mapa-filtro]').forEach((otro) => {
-                otro.classList.toggle('activo', otro === boton);
-                otro.setAttribute('aria-pressed', String(otro === boton));
-            });
-            pintarMarcadoresMapa(true);
-            pintarListaMapa();
-        });
-    });
-
-    const seccion = document.getElementById('mapa');
-    if (!('IntersectionObserver' in window)) {
-        cargarMapa();
-        return;
-    }
-    const observador = new IntersectionObserver((entradas) => {
-        if (!entradas.some((e) => e.isIntersecting)) return;
-        observador.disconnect();
-        cargarMapa();
-    }, { rootMargin: '400px 0px' });
-    observador.observe(seccion);
-}
-
-async function cargarMapa() {
-    const contenedor = document.getElementById('mapa-isla');
-    mapaIsla.mapa = crearMapaRD(contenedor);
-    if (!mapaIsla.mapa) return;
-    try {
-        const respuestas = await Promise.all(['hotel', 'actividad', 'vehiculo']
-            .map((tipo) => apiFetch(`/publicaciones?tipo=${tipo}&porPagina=${PUBLICACIONES_MAPA}`)));
-        mapaIsla.publicaciones = respuestas.flatMap((r) => r.publicaciones);
-        pintarMarcadoresMapa(true);
-        pintarListaMapa();
-    } catch (_) {
-        /* El mapa queda sin marcadores; el resto de la página funciona. */
-    }
-}
-
-function publicacionesFiltradasMapa() {
-    return mapaIsla.publicaciones.filter((p) => mapaIsla.filtro === 'todos' || p.tipo === mapaIsla.filtro);
-}
-
-function pintarMarcadoresMapa(ajustar) {
-    if (!mapaIsla.mapa) return;
-    if (mapaIsla.capa) mapaIsla.capa.remove();
-    mapaIsla.capa = agregarMarcadores(mapaIsla.mapa, publicacionesFiltradasMapa(), { ajustar });
-}
-
-/** Lista de destinos junto al mapa; al elegir uno, el mapa se acerca a él. */
-function pintarListaMapa() {
-    const lista = document.getElementById('mapa-destinos');
-    const conteo = {};
-    const fuente = mapaIsla.publicaciones.length ? publicacionesFiltradasMapa() : null;
-    if (fuente) fuente.forEach((p) => { conteo[p.ciudad] = (conteo[p.ciudad] || 0) + 1; });
-    else Object.assign(conteo, publicacionesPorDestino);
-    const destinos = Object.entries(conteo).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es'));
-    lista.innerHTML = destinos.map(([ciudad, total]) => `
-        <li><button type="button" data-destino-mapa="${escaparHtml(ciudad)}">
-            <span>${escaparHtml(ciudad)}</span><small>${total}</small>
-        </button></li>`).join('');
-    lista.querySelectorAll('[data-destino-mapa]').forEach((boton) => {
-        boton.addEventListener('click', () => {
-            const centro = COORDENADAS_DESTINOS[boton.dataset.destinoMapa];
-            if (mapaIsla.mapa && centro) mapaIsla.mapa.flyTo(centro, 12, { duration: 1.2 });
-            lista.querySelectorAll('button').forEach((b) => b.classList.toggle('activo', b === boton));
-        });
-    });
-}
-
-/* ----------------------------------------------------------------------------
-   OPINIONES DE VIAJEROS
-   ---------------------------------------------------------------------------- */
 
 async function cargarOpiniones() {
     try {
-        const { resenas } = await apiFetch('/resenas/destacadas');
+        const { resenas } = await apiFetch('/resenas/destacadas?limite=3');
         if (!resenas.length) return;
-        document.getElementById('grid-opiniones').innerHTML = resenas.map(crearTarjetaOpinion).join('');
+        document.getElementById('grid-opiniones').innerHTML = resenas.slice(0, 3).map(crearTarjetaOpinion).join('');
         document.getElementById('opiniones').hidden = false;
-        actualizarBotonesCarrusel('carrusel-opiniones', 'grid-opiniones');
     } catch (_) {
         /* sección opcional */
     }
 }
 
 /* ----------------------------------------------------------------------------
-   NAVEGACIÓN ACTIVA
-   ---------------------------------------------------------------------------- */
-
-/** Resalta en el menú la sección visible (Inicio, Nosotros o Contacto). */
-function iniciarNavegacionActiva() {
-    const enlaces = document.querySelectorAll('.nav-principal .nav-enlace');
-    const secciones = ['inicio', 'nosotros', 'contacto'].map((id) => document.getElementById(id)).filter(Boolean);
-    if (!('IntersectionObserver' in window)) return;
-
-    const observador = new IntersectionObserver((entradas) => {
-        entradas.forEach((entrada) => {
-            if (!entrada.isIntersecting) return;
-            const destino = entrada.target.id === 'inicio'
-                ? document.querySelector('.nav-principal a[href="index.html"]')
-                : document.querySelector(`.nav-principal a[href="#${entrada.target.id}"]`);
-            enlaces.forEach((enlace) => enlace.classList.toggle('activo', enlace === destino));
-        });
-    }, { rootMargin: '-45% 0px -50% 0px' });
-
-    secciones.forEach((seccion) => observador.observe(seccion));
-}
-
-/* ----------------------------------------------------------------------------
-   CONTACTO (POST /api/contacto)
-   ---------------------------------------------------------------------------- */
+   Contacto (POST /api/contacto)
+   ------------------------------------------------------------------------- */
 
 function iniciarContacto() {
     const formulario = document.getElementById('form-contacto');
@@ -409,14 +326,15 @@ function iniciarContacto() {
 
     const mostrarEstado = (texto, tipo) => {
         estadoEnvio.textContent = texto;
-        estadoEnvio.className = `mensaje-estado es-${tipo}`;
+        estadoEnvio.className = `mensaje-formulario ${tipo}`;
+        estadoEnvio.hidden = false;
     };
 
     retirarMarcasAlEditar(formulario);
 
     formulario.addEventListener('submit', async (evento) => {
         evento.preventDefault();
-        estadoEnvio.className = 'mensaje-estado';
+        estadoEnvio.hidden = true;
         formulario.querySelectorAll('.invalido').forEach((campo) => campo.classList.remove('invalido'));
 
         const datos = {
