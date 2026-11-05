@@ -41,6 +41,8 @@ npm start
 
 Abre <http://localhost:3000> en el navegador. Para detener el servidor, pulsa `Ctrl + C` en la terminal.
 
+> **Importante:** no abras los archivos `.html` con doble clic (la barra de direcciones diría `C:/Users/.../public/index.html`). Así el navegador no habla con el servidor: los contadores salen en 0, no hay publicaciones y no se puede iniciar sesión. Entra siempre por <http://localhost:3000> con `npm start` en ejecución.
+
 Sin archivo `.env`, el servidor arranca en **modo de demostración**: carga en memoria los datos de `database/datos-demo.js` (20 cuentas, 7 empresas, 60 publicaciones, 90 reservas con su pago y 74 reseñas) y todo el sitio funciona: registrarse, reservar, cancelar, reseñar, publicar desde el panel de empresa y moderar desde la administración. Los cambios se pierden al detener el servidor. La consola lo indica al arrancar.
 
 | Comando | Para qué |
@@ -97,7 +99,7 @@ Para empezar la demostración con los datos originales, detén el servidor (`Ctr
 
 | Página | Contenido |
 |---|---|
-| Inicio | Portada con fotografía de playa a pantalla completa, píldora roja *República Dominicana*, titular con cursiva turquesa y buscador de alojamiento, actividades o autos. **Mapa de la isla** sobre azul noche con los 15 destinos: al elegir uno, una ficha muestra sus alojamientos, actividades y autos, y el clima del momento. Banda azul con las cifras de la plataforma. Postales de 9 destinos con su fotografía, categorías, recomendados por tipo, lo visto recientemente, opiniones verificadas, *Nosotros*, llamado a empresas y contacto. |
+| Inicio | Seis bloques en orden claro: 1) portada con fotografía de playa, buscador sobre vidrio y cifras; 2) *¿Qué quieres reservar?*: alojamiento, actividades o autos; 3) **mapa de la isla** con los 15 destinos y una ficha con la foto del destino, lo que tiene y el clima del momento; 4) recomendados por tipo; 5) opiniones verificadas; 6) llamado a empresas con el formulario de contacto. |
 | Explorar | **Todos los filtros en un panel a la izquierda** (cajón en móvil): qué buscas, categoría con su conteo, destino, palabra clave, personas o pasajeros, transmisión, rango de precio sobre un histograma, valoración y fechas del viaje. Etiquetas de filtros aplicados, siete órdenes, vista de lista o de mapa, clima del destino elegido y búsqueda compartible por URL. |
 | Detalle | Valoración, guardar y compartir, lo más destacado, descripción, características, ubicación con clima y pronóstico, reseñas con distribución y respuesta de la empresa, lo que debes saber, relacionadas y reserva con disponibilidad y total en tiempo real. |
 | Autos | Buscador con fecha y hora de recogida y devolución, tipos de auto, flota mejor valorada, cómo reservar, precio y requisitos, otras formas de moverse y preguntas frecuentes. |
@@ -109,7 +111,7 @@ Para empezar la demostración con los datos originales, detén el servidor (`Ctr
 
 **Idioma y moneda.** El sitio está en español y se puede ver en inglés. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia); el pago siempre es en pesos y la reserva lo indica. Los textos escritos por usuarios y empresas no se traducen.
 
-**Diseño caribeño.** Encabezado azul noche con la franja tricolor de la bandera; portada con fotografía de playa; cabeceras de página con el degradado del mar (azul noche a turquesa); píldoras sobre los títulos y segunda línea en cursiva turquesa; bandas azul noche, azul bandera y arena alternadas con el fondo claro. Tipografías Fraunces y Nunito (incluidas en `public/fonts/`). Una sola animación: los puntos del mapa al cargar; sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (93) se usa en un solo lugar del sitio.
+**Diseño caribeño y futurista.** Azules profundos del Caribe de noche con paneles de vidrio translúcido, bordes de luz y brillos turquesa; fotografías a pantalla completa bajo un velo azul (inicio, inicio de sesión, registro, empresas y categorías de Explorar); encabezado azul noche con la franja tricolor; píldoras sobre los títulos y segunda línea en cursiva turquesa; retícula de puntos en las bandas oscuras. Tipografías Fraunces y Nunito (incluidas en `public/fonts/`). Una sola animación: los puntos del mapa al cargar; sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (90) se usa en un solo lugar del sitio.
 
 **Correos.** Bienvenida al registrarse y confirmación de cada reserva por SMTP. Sin `SMTP_HOST` en `.env`, cada correo se guarda como HTML en `correos-enviados/`.
 

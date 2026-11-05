@@ -1,19 +1,19 @@
-/* Página de inicio: portada con buscador y mapa, destinos, categorías,
-   recomendados, opiniones, nosotros y contacto. */
+/* Página de inicio en seis bloques: portada (buscador y cifras), qué
+   reservar, destinos en el mapa, recomendados, opiniones, y empresas con
+   contacto. Estética: azules profundos del Caribe nocturno con paneles de
+   vidrio y brillo turquesa (.vidrio, .banda-oscura en base.css). */
 
 /* ----------------------------------------------------------------------------
-   Portada
+   1. Portada
    ------------------------------------------------------------------------- */
 
-/* Fotografía de playa a pantalla completa bajo un velo azul noche: el texto
-   blanco y el buscador quedan legibles en cualquier recorte de la foto. */
 .portada {
     position: relative;
     isolation: isolate;
     display: flex;
     align-items: center;
-    min-height: min(88vh, 760px);
-    padding: var(--e-8) 0 calc(var(--e-8) + 6px);
+    min-height: min(92vh, 820px);
+    padding: var(--e-8) 0 calc(var(--e-7) + 6px);
     background: var(--night);   /* respaldo si la fotografía no carga */
     color: #fff;
     overflow: hidden;
@@ -29,14 +29,16 @@
     object-position: 65% center;
 }
 
+/* Velo azul noche con un resplandor turquesa, como el mar al atardecer. */
 .portada::before {
     content: '';
     position: absolute;
     inset: 0;
     z-index: -1;
     background:
-        linear-gradient(90deg, rgba(5, 19, 43, 0.86) 0%, rgba(5, 19, 43, 0.62) 45%, rgba(5, 19, 43, 0.18) 100%),
-        linear-gradient(0deg, rgba(5, 19, 43, 0.7) 0%, transparent 45%);
+        radial-gradient(60% 70% at 85% 15%, rgba(0, 180, 216, 0.28) 0%, transparent 60%),
+        linear-gradient(90deg, rgba(5, 19, 43, 0.9) 0%, rgba(5, 19, 43, 0.62) 50%, rgba(5, 19, 43, 0.3) 100%),
+        linear-gradient(0deg, rgba(5, 19, 43, 0.85) 0%, transparent 50%);
 }
 
 .portada-franja {
@@ -45,42 +47,119 @@
 }
 
 .portada-contenido {
+    display: grid;
+    gap: var(--e-6);
     width: 100%;
 }
 
 .portada-texto {
-    max-width: 640px;
+    max-width: 680px;
 }
 
 .portada h1 {
     color: #fff;
-    font-size: clamp(2.75rem, 1.6rem + 4.4vw, 5rem);
+    font-size: clamp(2.75rem, 1.5rem + 4.6vw, 5.25rem);
     line-height: 1.02;
-    text-shadow: 0 2px 24px rgba(5, 19, 43, 0.35);
+    text-shadow: 0 2px 30px rgba(5, 19, 43, 0.4);
 }
 
 .portada h1 em {
     display: block;
+    background: linear-gradient(90deg, #4FD8F0 0%, var(--caribe) 60%, #7FE3F5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 }
 
 .portada-entrada {
-    max-width: 46ch;
+    max-width: 50ch;
     margin-top: var(--e-4);
-    color: rgba(255, 255, 255, 0.88);
+    color: rgba(255, 255, 255, 0.86);
     font-size: var(--t-l);
-    line-height: 1.45;
+    line-height: 1.5;
+}
+
+/* Buscador sobre vidrio oscuro: etiquetas blancas, campos claros. */
+.portada-buscador {
+    max-width: 1100px;
+    padding: var(--e-4) var(--e-5) var(--e-5);
 }
 
 .portada .buscador {
-    max-width: 1080px;
+    margin: 0;
+    padding: 0;
     border: 0;
-    color: var(--tinta);
-    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6);
+    background: none;
+    box-shadow: none;
+}
+
+.portada .buscador-tipos {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.portada .buscador-tipos span {
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.portada .buscador-tipos input:checked + span {
+    background: #fff;
+    color: var(--azul);
+}
+
+.portada .buscador label {
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.portada .buscador input,
+.portada .buscador select {
+    border-color: transparent;
+}
+
+.portada .buscador-resumen {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Cifras de la plataforma, en una línea bajo el buscador. */
+.portada-cifras {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e-4);
+    max-width: 1100px;
+    margin: 0;
+}
+
+.portada-cifras div {
+    display: flex;
+    flex-direction: column-reverse;
+    padding-left: var(--e-3);
+    border-left: 2px solid var(--caribe);
+}
+
+.portada-cifras dd {
+    margin: 0;
+    color: #fff;
+    font-family: var(--f-display);
+    font-size: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.portada-cifras dt {
+    color: rgba(255, 255, 255, 0.72);
+    font-size: var(--t-s);
+    font-weight: 700;
+}
+
+@media (min-width: 760px) {
+    .portada-cifras {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 699px) {
     .portada {
         text-align: center;
+        padding-top: var(--e-7);
     }
 
     .portada-texto,
@@ -88,12 +167,23 @@
         margin-inline: auto;
     }
 
-    .portada .buscador {
+    .portada .etiqueta-caribe {
+        margin-inline: auto;
+    }
+
+    .portada-buscador {
+        padding: var(--e-4);
+        text-align: left;
+    }
+
+    .portada-cifras {
         text-align: left;
     }
 
     .portada::before {
-        background: linear-gradient(180deg, rgba(5, 19, 43, 0.72) 0%, rgba(5, 19, 43, 0.55) 50%, rgba(5, 19, 43, 0.85) 100%);
+        background:
+            radial-gradient(80% 50% at 50% 0%, rgba(0, 180, 216, 0.25) 0%, transparent 70%),
+            linear-gradient(180deg, rgba(5, 19, 43, 0.7) 0%, rgba(5, 19, 43, 0.6) 45%, rgba(5, 19, 43, 0.92) 100%);
     }
 }
 
@@ -127,7 +217,105 @@
 /* @incluir buscador.css */
 
 /* ----------------------------------------------------------------------------
-   Mapa de destinos
+   2. Qué quieres reservar
+   ------------------------------------------------------------------------- */
+
+.seccion-cabecera.centrada {
+    justify-content: center;
+    text-align: center;
+}
+
+.seccion-cabecera.centrada > div {
+    margin-inline: auto;
+}
+
+.servicios {
+    display: grid;
+    gap: var(--e-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.servicio a {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    min-height: 280px;
+    padding: var(--e-3);
+    border-radius: 24px;
+    color: #fff;
+    text-decoration: none;
+    overflow: hidden;
+    isolation: isolate;
+    box-shadow: 0 30px 60px -36px rgba(5, 19, 43, 0.7);
+}
+
+.servicio img {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+
+.servicio a::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(180deg, transparent 35%, rgba(5, 19, 43, 0.75) 100%);
+}
+
+.servicio a:hover img {
+    transform: scale(1.04);
+}
+
+.servicio a:hover .servicio-texto {
+    border-color: rgba(0, 180, 216, 0.6);
+}
+
+.servicio-texto {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+    padding: var(--e-4);
+    border-radius: 18px;
+}
+
+.servicio-texto strong {
+    font-family: var(--f-display);
+    font-size: var(--t-xl);
+}
+
+.servicio-texto span {
+    color: rgba(255, 255, 255, 0.82);
+    font-size: var(--t-s);
+}
+
+.servicio-texto small {
+    color: var(--caribe);
+    font-weight: 800;
+}
+
+.servicio-texto small:empty {
+    display: none;
+}
+
+@media (min-width: 760px) {
+    .servicios {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .servicio a {
+        min-height: 420px;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   3. Destinos: mapa de la isla y ficha
    ------------------------------------------------------------------------- */
 
 .mapa-destinos {
@@ -135,11 +323,14 @@
     margin: 0;
 }
 
+/* Carta náutica nocturna: mar azul profundo, isla en verde selva con
+   contorno turquesa luminoso. */
 .mapa-lienzo {
     position: relative;
-    border-radius: var(--r-l);
+    padding: var(--e-2);
     background:
-        radial-gradient(120% 90% at 60% 40%, #E3F4F8 0%, #CFEAF1 70%, #BFE2EC 100%);
+        radial-gradient(90% 80% at 55% 45%, rgba(0, 119, 168, 0.35) 0%, transparent 70%),
+        linear-gradient(180deg, rgba(10, 31, 68, 0.75) 0%, rgba(5, 19, 43, 0.85) 100%);
     overflow: hidden;
 }
 
@@ -149,30 +340,32 @@
     height: auto;
 }
 
-/* Líneas de latitud: referencia sutil de carta náutica */
 .mapa-paralelo {
-    stroke: rgba(0, 119, 168, 0.18);
+    stroke: rgba(0, 180, 216, 0.22);
     stroke-width: 1;
     stroke-dasharray: 2 6;
 }
 
 .mapa-paralelo-texto {
-    fill: rgba(0, 119, 168, 0.6);
+    fill: rgba(0, 180, 216, 0.6);
     font: 600 12px var(--f-texto);
 }
 
 .mapa-tierra {
-    fill: var(--jungle);
-    stroke: #22533D;
-    stroke-width: 1;
+    fill: #1F5A45;
+    stroke: var(--caribe);
+    stroke-width: 1.5;
+    filter: drop-shadow(0 0 10px rgba(0, 180, 216, 0.45));
 }
 
 .mapa-vecino {
-    fill: #D9D2C1;
+    fill: rgba(255, 255, 255, 0.08);
+    stroke: rgba(255, 255, 255, 0.18);
+    stroke-width: 1;
 }
 
 .mapa-mar-texto {
-    fill: rgba(0, 119, 168, 0.75);
+    fill: rgba(127, 227, 245, 0.55);
     font: italic 500 17px var(--f-display);
     letter-spacing: 0.08em;
 }
@@ -182,6 +375,7 @@
 }
 
 .mapa-punto circle {
+    r: var(--punto-mapa, 8px);
     fill: var(--rojo);
     stroke: #fff;
     stroke-width: 3;
@@ -199,10 +393,6 @@
     stroke-linejoin: round;
 }
 
-.mapa-punto circle {
-    r: var(--punto-mapa, 8px);
-}
-
 .mapa-punto:hover circle,
 .mapa-punto:focus-visible circle {
     r: calc(var(--punto-mapa, 8px) * 1.35);
@@ -210,16 +400,16 @@
 
 .mapa-punto[aria-pressed='true'] circle {
     r: calc(var(--punto-mapa, 8px) * 1.5);
-    fill: var(--sand);
-    stroke: var(--night);
+    fill: var(--caribe);
+    stroke: #fff;
+    filter: drop-shadow(0 0 8px rgba(0, 180, 216, 0.9));
 }
 
 .mapa-punto[aria-pressed='true'] text {
-    fill: var(--sand-light);
+    fill: #7FE3F5;
 }
 
 .mapa-punto:focus-visible {
-    box-shadow: none;
     outline: none;
 }
 
@@ -248,40 +438,76 @@
     margin-top: var(--e-3);
 }
 
+.seccion-mapa .mapa-selector label {
+    color: rgba(255, 255, 255, 0.86);
+}
+
 @media (min-width: 700px) {
     .mapa-selector {
         display: none;
     }
 }
 
-/* Ficha del destino elegido */
+/* Ficha del destino: fotografía arriba, oferta y clima abajo. */
 .ficha-destino {
     margin-top: var(--e-4);
-    padding: var(--e-5);
-    border: 1px solid var(--linea);
-    border-radius: var(--r-m);
+    border-radius: 22px;
     background: var(--superficie);
+    color: var(--tinta);
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(0, 180, 216, 0.35), 0 30px 60px -30px rgba(0, 0, 0, 0.7);
 }
 
 .ficha-destino:empty {
     display: none;
 }
 
+.ficha-foto {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background:
+        radial-gradient(80% 90% at 80% 0%, rgba(0, 180, 216, 0.5) 0%, transparent 60%),
+        linear-gradient(135deg, var(--night-mid) 0%, var(--caribe-deep) 100%);
+}
+
+.ficha-foto.sin-foto {
+    aspect-ratio: auto;
+    min-height: 120px;
+}
+
+.ficha-foto img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ficha-foto::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 40%, rgba(5, 19, 43, 0.85) 100%);
+}
+
 .ficha-cabecera {
+    position: absolute;
+    inset: auto var(--e-4) var(--e-3);
+    z-index: 1;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: var(--e-2) var(--e-4);
+    gap: 2px var(--e-3);
 }
 
 .ficha-cabecera h3 {
-    color: var(--azul);
+    color: #fff;
     font-size: var(--t-xl);
 }
 
 .ficha-provincia {
-    color: var(--tinta-3);
+    color: rgba(255, 255, 255, 0.78);
     font-size: var(--t-s);
     font-weight: 700;
 }
@@ -289,7 +515,7 @@
 .ficha-cuerpo {
     display: grid;
     gap: var(--e-4);
-    margin-top: var(--e-4);
+    padding: var(--e-4);
 }
 
 .ficha-conteos {
@@ -307,7 +533,7 @@
     align-items: baseline;
     padding: 8px 12px;
     border: 1px solid var(--linea-fuerte);
-    border-radius: var(--r-s);
+    border-radius: 12px;
     color: var(--tinta);
     font-size: var(--t-s);
     font-weight: 700;
@@ -315,8 +541,8 @@
 }
 
 .ficha-conteos a:hover {
-    border-color: var(--azul);
-    color: var(--azul);
+    border-color: var(--caribe-deep);
+    color: var(--caribe-deep);
 }
 
 .ficha-conteos strong {
@@ -330,28 +556,10 @@
     font-size: var(--t-s);
 }
 
-@media (min-width: 720px) {
-    .ficha-cuerpo {
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-    }
-}
-
-.ficha-destino {
-    color: var(--tinta);
-    border: 0;
-    border-top: 5px solid var(--caribe);
-    box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.55);
-}
-
-.seccion-mapa .mapa-selector label {
-    color: rgba(255, 255, 255, 0.86);
-}
-
 @media (min-width: 1040px) {
     .mapa-destinos {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 340px;
+        grid-template-columns: minmax(0, 1fr) 360px;
         gap: var(--e-5);
         align-items: start;
     }
@@ -359,285 +567,15 @@
     .ficha-destino {
         margin: 0;
     }
-
-    .ficha-cuerpo {
-        grid-template-columns: 1fr;
-    }
 }
 
 /* ----------------------------------------------------------------------------
-   Cifras: banda azul de la bandera
-   ------------------------------------------------------------------------- */
-
-.banda-cifras {
-    position: relative;
-    padding: var(--e-7) 0 calc(var(--e-7) + 6px);
-    background:
-        radial-gradient(60% 160% at 0% 100%, rgba(0, 180, 216, 0.28) 0%, transparent 60%),
-        var(--azul);
-    color: #fff;
-}
-
-.banda-cifras::after {
-    content: '';
-    position: absolute;
-    inset: auto 0 0;
-    height: 6px;
-    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
-}
-
-.cifras {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--e-5);
-    margin: 0 auto;
-    text-align: center;
-}
-
-.cifras div {
-    display: flex;
-    flex-direction: column-reverse;
-}
-
-.cifras dd {
-    margin: 0;
-    font-family: var(--f-display);
-    font-size: clamp(2.25rem, 1.6rem + 2.4vw, 3.25rem);
-    font-weight: 700;
-    line-height: 1.05;
-}
-
-.cifras dt {
-    margin-top: 4px;
-    color: rgba(255, 255, 255, 0.82);
-    font-size: var(--t-s);
-    font-weight: 700;
-}
-
-@media (min-width: 760px) {
-    .cifras {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-}
-
-/* ----------------------------------------------------------------------------
-   Destinos: postales
-   ------------------------------------------------------------------------- */
-
-.postales {
-    display: grid;
-    gap: var(--e-4);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (min-width: 700px) {
-    .postales {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-
-.postal a {
-    display: block;
-    height: 100%;
-    padding: 10px 10px 14px;
-    border: 1px solid var(--linea);
-    border-radius: 6px;
-    background: var(--superficie);
-    color: var(--tinta);
-    text-decoration: none;
-    transition: border-color 0.15s;
-}
-
-
-
-.postal-foto {
-    aspect-ratio: 5 / 4;
-    border-radius: 3px;
-    overflow: hidden;
-    background: var(--superficie-suave);
-}
-
-.postal-foto img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.postal-pie {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--e-3);
-    padding: var(--e-3) 4px 0;
-}
-
-.postal-pie h3 {
-    font-size: var(--t-l);
-}
-
-.postal-pie p {
-    color: var(--tinta-3);
-    font-size: var(--t-xs);
-    font-weight: 700;
-}
-
-/* Postales con marco blanco y una franja turquesa de mar al pie. */
-.postal a {
-    border: 0;
-    box-shadow: 0 1px 0 var(--linea), 0 18px 36px -24px rgba(5, 19, 43, 0.45);
-}
-
-.postal a:hover {
-    box-shadow: 0 0 0 2px var(--caribe), 0 18px 36px -24px rgba(5, 19, 43, 0.45);
-}
-
-.postal-pie h3 {
-    color: var(--azul);
-}
-
-.postal-pie p {
-    color: var(--caribe-deep);
-}
-
-.otros-destinos {
-    margin-top: var(--e-6);
-}
-
-.otros-destinos h3 {
-    margin-bottom: var(--e-3);
-    font-size: var(--t-l);
-}
-
-.otros-destinos ul {
-    display: grid;
-    gap: 0 var(--e-5);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
-}
-
-.otros-destinos a {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--e-3);
-    padding: 14px 0;
-    border-bottom: 1px solid var(--linea);
-    color: var(--tinta);
-    font-weight: 800;
-    text-decoration: none;
-}
-
-.otros-destinos a:hover {
-    color: var(--azul);
-}
-
-.otros-destinos a > span small {
-    display: block;
-    font-weight: 600;
-}
-
-.otros-destinos small {
-    color: var(--tinta-3);
-    font-size: var(--t-xs);
-    font-weight: 700;
-}
-
-/* ----------------------------------------------------------------------------
-   Categorías
-   ------------------------------------------------------------------------- */
-
-/* Fondo arena: la sección de experiencias se lee como la playa. */
-
-.categorias {
-    display: grid;
-    gap: var(--e-3);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    grid-template-columns: repeat(2, 1fr);
-    grid-auto-rows: 180px;
-    grid-auto-flow: dense;
-}
-
-.categoria a {
-    position: relative;
-    display: block;
-    height: 100%;
-    border-radius: var(--r-m);
-    overflow: hidden;
-    color: #fff;
-    text-decoration: none;
-    background: var(--night-mid);
-}
-
-.categoria img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.4s ease;
-}
-
-.categoria a::after {
-    content: '';
-    position: absolute;
-    inset: 40% 0 0;
-    background: linear-gradient(180deg, rgba(5, 19, 43, 0) 0%, rgba(5, 19, 43, 0.82) 100%);
-}
-
-.categoria a:hover img {
-    transform: scale(1.04);
-}
-
-.categoria-texto {
-    position: absolute;
-    left: var(--e-4);
-    right: var(--e-4);
-    bottom: var(--e-3);
-    z-index: 1;
-    display: grid;
-}
-
-.categoria-texto strong {
-    font-family: var(--f-display);
-    font-size: var(--t-l);
-    font-weight: 600;
-    line-height: 1.15;
-}
-
-.categoria-texto small {
-    font-size: var(--t-xs);
-    font-weight: 700;
-    opacity: 0.9;
-}
-
-.categoria-ancha {
-    grid-column: span 2;
-}
-
-@media (min-width: 760px) {
-    .categorias {
-        grid-template-columns: repeat(4, 1fr);
-        grid-auto-rows: 210px;
-    }
-
-    .categoria-alta {
-        grid-row: span 2;
-    }
-}
-
-/* ----------------------------------------------------------------------------
-   Recomendados, vistos y opiniones
+   4-5. Recomendados, vistos y opiniones
    ------------------------------------------------------------------------- */
 
 .ver-todo {
     margin-top: var(--e-6);
-    font-weight: 800;
+    text-align: center;
 }
 
 .seccion-vistos {
@@ -646,15 +584,17 @@
 
 .opiniones {
     display: grid;
-    gap: var(--e-6);
+    gap: var(--e-5);
 }
 
 .opiniones .opinion {
     padding: var(--e-5);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-top: 4px solid var(--caribe);
-    border-radius: var(--r-m);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 22px;
     background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .banda-oscura .opinion blockquote p:not(.opinion-titulo),
@@ -675,141 +615,74 @@
 @media (min-width: 900px) {
     .opiniones {
         grid-template-columns: repeat(3, 1fr);
-        gap: var(--e-6);
     }
 }
 
 /* ----------------------------------------------------------------------------
-   Nosotros
+   6. Empresas y contacto, sobre el Malecón con velo azul
    ------------------------------------------------------------------------- */
 
-.nosotros-rejilla {
+.banda-empresas {
+    position: relative;
+    isolation: isolate;
+    padding: var(--e-8) 0 calc(var(--e-8) + 6px);
+    background: var(--azul-oscuro);
+    color: #fff;
+    overflow: hidden;
+}
+
+.banda-empresas-foto {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.banda-empresas::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(60% 80% at 100% 50%, rgba(0, 180, 216, 0.3) 0%, transparent 60%),
+        linear-gradient(100deg, rgba(0, 48, 135, 0.94) 0%, rgba(0, 48, 135, 0.8) 45%, rgba(5, 19, 43, 0.7) 100%);
+}
+
+.banda-empresas-rejilla {
     display: grid;
     gap: var(--e-7);
     align-items: center;
 }
 
-.nosotros-texto > p {
-    max-width: 58ch;
-    margin-top: var(--e-4);
-    color: var(--tinta-2);
-}
-
-.nosotros-fotos {
-    display: grid;
-    grid-template-columns: 1.3fr 1fr 1fr;
-    grid-template-areas:
-        'principal viajera viajera'
-        'principal rosa cotorra';
-    gap: var(--e-3);
-}
-
-.nosotros-fotos figure {
-    margin: 0;
-}
-
-.nosotros-fotos img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: var(--r-m);
-}
-
-.foto-principal {
-    grid-area: principal;
-    min-height: 380px;
-}
-
-.foto-viajera {
-    grid-area: viajera;
-    height: 190px;
-}
-
-.foto-simbolo:nth-of-type(2) {
-    grid-area: rosa;
-}
-
-.foto-simbolo:nth-of-type(3) {
-    grid-area: cotorra;
-}
-
-.foto-simbolo img {
-    height: auto;
-    aspect-ratio: 1;
-}
-
-.foto-simbolo figcaption {
-    margin-top: 6px;
-    color: var(--tinta-3);
-    font-size: var(--t-xs);
-    font-weight: 700;
-    line-height: 1.35;
-}
-
-@media (max-width: 520px) {
-    .nosotros-fotos {
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas:
-            'principal principal'
-            'viajera viajera'
-            'rosa cotorra';
-    }
-
-    .foto-principal {
-        min-height: 260px;
-    }
-}
-
-@media (min-width: 1040px) {
-    .nosotros-rejilla {
-        grid-template-columns: 1fr 1.1fr;
-    }
-}
-
-/* ----------------------------------------------------------------------------
-   Llamado a empresas y contacto
-   ------------------------------------------------------------------------- */
-
-.banda-empresas {
-    position: relative;
-    padding: var(--e-8) 0;
-    background:
-        radial-gradient(70% 140% at 100% 50%, rgba(0, 180, 216, 0.45) 0%, transparent 60%),
-        linear-gradient(110deg, var(--azul) 0%, var(--azul-oscuro) 55%, var(--caribe-deep) 100%);
+.banda-empresas h2 {
     color: #fff;
-}
-
-.banda-empresas .etiqueta-caribe {
-    background: rgba(255, 255, 255, 0.16);
-    color: #fff;
+    font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem);
 }
 
 .banda-empresas h2 em {
     color: #7FE3F5;
 }
 
-.banda-empresas-rejilla {
-    display: grid;
-    gap: var(--e-5);
-    align-items: center;
+.banda-empresas-texto > p:not(.etiqueta-caribe) {
+    max-width: 46ch;
+    margin-top: var(--e-4);
+    color: rgba(255, 255, 255, 0.86);
+    font-size: var(--t-l);
 }
 
-.banda-empresas h2 {
-    max-width: 22ch;
-    font-size: var(--t-2xl);
-}
-
-.banda-empresas p {
-    max-width: 56ch;
-    margin-top: var(--e-3);
-    color: rgba(255, 255, 255, 0.85);
+.banda-empresas .etiqueta-caribe {
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
 }
 
 .banda-empresas-acciones {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--e-5);
+    gap: var(--e-4);
+    margin-top: var(--e-6);
 }
 
 .enlace-claro {
@@ -817,55 +690,44 @@
     font-weight: 800;
 }
 
-@media (min-width: 900px) {
-    .banda-empresas-rejilla {
-        grid-template-columns: 1fr auto;
-    }
+/* Formulario de contacto sobre vidrio */
+.contacto {
+    padding: var(--e-6) var(--e-5);
+    scroll-margin-top: 100px;
 }
 
-.contacto-rejilla {
-    display: grid;
-    gap: var(--e-6);
+.contacto h2 {
+    font-size: var(--t-2xl, 1.75rem);
 }
 
-.contacto-rejilla > div > p {
-    max-width: 44ch;
-    margin-top: var(--e-3);
+.contacto-entrada {
+    margin: var(--e-2) 0 var(--e-4);
+    color: rgba(255, 255, 255, 0.78);
+    font-size: var(--t-s);
 }
 
-.contacto-datos {
-    display: grid;
-    gap: var(--e-3);
-    margin: var(--e-5) 0 0;
-    padding: 0;
-    list-style: none;
+.contacto label {
+    color: rgba(255, 255, 255, 0.86);
 }
 
-.contacto-datos strong {
-    display: block;
-    color: var(--tinta-3);
-    font-size: var(--t-xs);
+.contacto input,
+.contacto select,
+.contacto textarea {
+    border-color: transparent;
 }
 
 .formulario-contacto {
     display: grid;
-    gap: var(--e-4);
-    padding: var(--e-5);
-    border: 1px solid var(--linea);
-    border-radius: var(--r-m);
-    background: var(--superficie);
+    gap: var(--e-3);
 }
 
-.formulario-contacto .btn-primario {
-    justify-self: start;
+.formulario-contacto textarea {
+    min-height: 110px;
 }
 
-@media (min-width: 900px) {
-    .contacto-rejilla {
-        grid-template-columns: 1fr 1.4fr;
+@media (min-width: 960px) {
+    .banda-empresas-rejilla {
+        grid-template-columns: 1.1fr 1fr;
+        gap: var(--e-8);
     }
-}
-
-.pagina-index .pie {
-    margin-top: 0;
 }

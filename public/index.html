@@ -77,16 +77,17 @@
     </header>
 
     <main id="contenido">
-        <!-- Portada: fotografía de playa a pantalla completa con el buscador -->
+        <!-- 1. Portada: fotografía de playa, buscador y cifras sobre paneles de vidrio -->
         <section class="portada" aria-labelledby="titulo-portada">
             <img class="portada-foto" src="img/paginas/portada-playa.jpg" alt="" fetchpriority="high">
             <div class="contenedor portada-contenido">
                 <div class="portada-texto">
                     <p class="etiqueta-caribe roja"><span class="bandera-mini" aria-hidden="true"><i></i><b></b></span>República Dominicana</p>
                     <h1 id="titulo-portada">Tu paraíso caribeño <em>te espera</em></h1>
-                    <p class="portada-entrada">Hoteles, villas, excursiones y autos de empresas locales en quince destinos de la isla, con disponibilidad real y confirmación al instante.</p>
+                    <p class="portada-entrada">Hoteles, excursiones y autos de empresas dominicanas en quince destinos, con disponibilidad real y confirmación al instante.</p>
                 </div>
 
+                <div class="portada-buscador vidrio">
                     <form id="form-busqueda" class="buscador" action="explorar.html" autocomplete="off" aria-label="Buscar alojamiento, actividades o autos" data-tipo="hotel">
                         <div class="buscador-tipos" role="radiogroup" aria-label="Qué buscas">
                             <label><input type="radio" name="tipo" value="hotel" checked><span>Alojamiento</span></label>
@@ -134,23 +135,75 @@
                         </div>
                         <p class="buscador-resumen" id="busqueda-resumen" aria-live="polite"></p>
                     </form>
+                </div>
+
+                <dl class="portada-cifras" aria-label="BookingRD en cifras">
+                    <div><dd id="stat-hoteles">0</dd><dt>Alojamientos</dt></div>
+                    <div><dd id="stat-actividades">0</dd><dt>Actividades</dt></div>
+                    <div><dd id="stat-vehiculos">0</dd><dt>Autos de alquiler</dt></div>
+                    <div><dd id="stat-valoracion">-</dd><dt id="stat-valoracion-texto">Valoración media</dt></div>
+                </dl>
             </div>
             <div class="franja-tricolor portada-franja" aria-hidden="true"></div>
         </section>
 
-        <!-- Mapa interactivo de destinos sobre el azul noche -->
-        <section class="seccion banda-oscura seccion-mapa" aria-labelledby="titulo-mapa">
+        <!-- 2. Qué quieres reservar: las tres secciones del sitio -->
+        <section class="seccion" aria-labelledby="titulo-servicios">
+            <div class="contenedor">
+                <div class="seccion-cabecera centrada">
+                    <div>
+                        <p class="etiqueta-caribe">Empieza aquí</p>
+                        <h2 id="titulo-servicios">¿Qué quieres <em>reservar?</em></h2>
+                    </div>
+                </div>
+                <ul class="servicios">
+                    <li class="servicio">
+                        <a href="explorar.html?tipo=hotel">
+                            <img src="img/servicios/hoteles-resorts.jpg" alt="" loading="lazy">
+                            <span class="servicio-texto vidrio">
+                                <strong>Alojamiento</strong>
+                                <span>Resorts, hoteles boutique, villas y cabañas.</span>
+                                <small data-conteo="hotel"></small>
+                            </span>
+                        </a>
+                    </li>
+                    <li class="servicio">
+                        <a href="explorar.html?tipo=actividad">
+                            <img src="img/servicios/acuaticas.jpg" alt="" loading="lazy">
+                            <span class="servicio-texto vidrio">
+                                <strong>Actividades</strong>
+                                <span>Playas, montañas, cultura, sabores y aventura.</span>
+                                <small data-conteo="actividad"></small>
+                            </span>
+                        </a>
+                    </li>
+                    <li class="servicio">
+                        <a href="autos.html">
+                            <img src="img/servicios/alquiler-autos.jpg" alt="" loading="lazy">
+                            <span class="servicio-texto vidrio">
+                                <strong>Alquiler de autos</strong>
+                                <span>Recogida en aeropuertos y ciudades, seguro incluido.</span>
+                                <small data-conteo="vehiculo"></small>
+                            </span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 3. Destinos: mapa interactivo y ficha con fotografía, oferta y clima -->
+        <section class="seccion banda-oscura seccion-mapa" id="destinos" aria-labelledby="titulo-mapa">
             <div class="contenedor">
                 <div class="seccion-cabecera">
                     <div>
-                        <p class="etiqueta-caribe">Mapa de la isla</p>
+                        <p class="etiqueta-caribe">Destinos</p>
                         <h2 id="titulo-mapa">Elige tu destino <em>en el mapa</em></h2>
-                        <p>Toca un punto para ver el clima de hoy y cuántos alojamientos, actividades y autos tiene.</p>
+                        <p>Quince destinos, de la capital colonial a las montañas y las playas del este.</p>
                     </div>
                 </div>
                 <figure class="mapa-destinos" aria-labelledby="mapa-titulo">
                     <figcaption id="mapa-titulo" class="visualmente-oculto">Mapa de los destinos de BookingRD. Elige un destino para ver su clima y lo que puedes reservar.</figcaption>
-                    <div class="mapa-lienzo" id="mapa-lienzo"></div>
+                    <div class="mapa-lienzo vidrio" id="mapa-lienzo"></div>
                     <div class="campo mapa-selector">
                         <label for="selector-destino">Destino en el mapa</label>
                         <select id="selector-destino"></select>
@@ -160,70 +213,13 @@
             </div>
         </section>
 
-        <!-- Cifras de la plataforma -->
-        <section class="banda-cifras" aria-label="BookingRD en cifras">
-            <dl class="contenedor cifras">
-                <div><dd id="stat-hoteles">0</dd><dt>Alojamientos</dt></div>
-                <div><dd id="stat-actividades">0</dd><dt>Actividades</dt></div>
-                <div><dd id="stat-vehiculos">0</dd><dt>Autos de alquiler</dt></div>
-                <div><dd id="stat-empresas">0</dd><dt>Empresas dominicanas</dt></div>
-                <div><dd id="stat-valoracion">-</dd><dt id="stat-valoracion-texto">Valoración media</dt></div>
-            </dl>
-        </section>
-
-        <!-- Destinos con fotografía -->
-        <section class="seccion" id="destinos" aria-labelledby="titulo-destinos">
-            <div class="contenedor">
-                <div class="seccion-cabecera">
-                    <div>
-                        <p class="etiqueta-caribe">Destinos</p>
-                        <h2 id="titulo-destinos">Quince destinos, <em>cada uno distinto</em></h2>
-                        <p>De la capital colonial a las montañas de la Cordillera Central y las playas del este. Elige por dónde empezar.</p>
-                    </div>
-                </div>
-                <ul class="postales" id="postales"></ul>
-                <div class="otros-destinos">
-                    <h3>Más destinos</h3>
-                    <ul id="otros-destinos"></ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- Categorías -->
-        <section class="seccion seccion-categorias banda-arena" aria-labelledby="titulo-categorias">
-            <div class="contenedor">
-                <div class="seccion-cabecera">
-                    <div>
-                        <p class="etiqueta-caribe">Experiencias</p>
-                        <h2 id="titulo-categorias">Qué hacer <em>en la isla</em></h2>
-                        <p>Todo lo que ofrecen las empresas de BookingRD, agrupado como lo buscarías.</p>
-                    </div>
-                    <a class="btn-outline" href="explorar.html">Ver todo el catálogo</a>
-                </div>
-                <ul class="categorias" id="categorias">
-                    <li class="categoria categoria-ancha"><a href="explorar.html?categoria=hoteles-resorts"><img src="img/servicios/hoteles-resorts.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Hoteles y resorts</strong><small data-conteo="hoteles-resorts"></small></span></a></li>
-                    <li class="categoria"><a href="explorar.html?categoria=villas-cabanas"><img src="img/servicios/villas-cabanas.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Villas y cabañas</strong><small data-conteo="villas-cabanas"></small></span></a></li>
-                    <li class="categoria"><a href="explorar.html?categoria=tour-playa"><img src="img/servicios/tour-playa.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Tours de playa</strong><small data-conteo="tour-playa"></small></span></a></li>
-                    <li class="categoria categoria-alta"><a href="explorar.html?categoria=cultural"><img src="img/servicios/cultural.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Cultura e historia</strong><small data-conteo="cultural"></small></span></a></li>
-                    <li class="categoria"><a href="explorar.html?categoria=tour-montana"><img src="img/servicios/tour-montana.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Tours de montaña</strong><small data-conteo="tour-montana"></small></span></a></li>
-                    <li class="categoria"><a href="explorar.html?categoria=tour-gastronomico"><img src="img/servicios/tour-gastronomico.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Sabores dominicanos</strong><small data-conteo="tour-gastronomico"></small></span></a></li>
-                    <li class="categoria categoria-ancha"><a href="explorar.html?categoria=acuaticas"><img src="img/servicios/acuaticas.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>En el agua</strong><small data-conteo="acuaticas"></small></span></a></li>
-                    <li class="categoria"><a href="explorar.html?categoria=zip-line"><img src="img/servicios/zip-line.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Tirolesa y aventura aérea</strong><small data-conteo="zip-line"></small></span></a></li>
-                    <li class="categoria"><a href="explorar.html?categoria=motocross"><img src="img/servicios/motocross.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Buggies y cuatrimotos</strong><small data-conteo="motocross"></small></span></a></li>
-                    <li class="categoria categoria-ancha"><a href="explorar.html?categoria=golf"><img src="img/servicios/golf.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Golf</strong><small data-conteo="golf"></small></span></a></li>
-                    <li class="categoria categoria-ancha"><a href="autos.html"><img src="img/servicios/alquiler-autos.jpg" alt="" loading="lazy"><span class="categoria-texto"><strong>Alquiler de autos</strong><small data-conteo="vehiculo"></small></span></a></li>
-                </ul>
-            </div>
-        </section>
-
-        <!-- Recomendados -->
+        <!-- 4. Recomendados -->
         <section class="seccion" id="recomendados" aria-labelledby="titulo-recomendados">
             <div class="contenedor">
                 <div class="seccion-cabecera">
                     <div>
                         <p class="etiqueta-caribe">Lo mejor de la isla</p>
                         <h2 id="titulo-recomendados">Recomendados <em>por BookingRD</em></h2>
-                        <p>Elegidos por el equipo y por las reservas de otros viajeros.</p>
                     </div>
                     <div class="selector-tipo" role="radiogroup" aria-label="Tipo de publicación recomendada">
                         <label><input type="radio" name="tipo-destacados" value="hotel" checked><span>Alojamiento</span></label>
@@ -232,7 +228,7 @@
                     </div>
                 </div>
                 <div class="rejilla-tarjetas" id="grid-destacados" aria-live="polite"></div>
-                <p class="ver-todo"><a id="enlace-ver-todo" href="explorar.html?tipo=hotel">Ver todo el alojamiento</a></p>
+                <p class="ver-todo"><a class="btn-outline" id="enlace-ver-todo" href="explorar.html?tipo=hotel">Ver todo el alojamiento</a></p>
             </div>
         </section>
 
@@ -242,7 +238,6 @@
                 <div class="seccion-cabecera">
                     <div>
                         <h2 id="titulo-vistos">Lo que viste hace poco</h2>
-                        <p>Se guarda solo en este navegador.</p>
                     </div>
                     <button type="button" class="boton-enlace" id="boton-borrar-vistos">Borrar historial</button>
                 </div>
@@ -250,76 +245,37 @@
             </div>
         </section>
 
-        <!-- Opiniones verificadas -->
+        <!-- 5. Opiniones verificadas -->
         <section class="seccion seccion-opiniones banda-oscura" id="opiniones" aria-labelledby="titulo-opiniones" hidden>
             <div class="contenedor">
                 <div class="seccion-cabecera">
                     <div>
                         <p class="etiqueta-caribe">Opiniones verificadas</p>
                         <h2 id="titulo-opiniones">Lo que cuentan <em>quienes ya fueron</em></h2>
-                        <p>Solo puede opinar quien reservó y disfrutó la estancia, la excursión o el alquiler.</p>
+                        <p>Solo opina quien reservó y terminó su estancia, excursión o alquiler.</p>
                     </div>
                 </div>
                 <div class="opiniones" id="grid-opiniones"></div>
             </div>
         </section>
 
-        <!-- Sobre BookingRD -->
-        <section class="seccion seccion-nosotros" id="nosotros" aria-labelledby="titulo-nosotros">
-            <div class="contenedor nosotros-rejilla">
-                <div class="nosotros-texto">
-                    <p class="etiqueta-caribe">Nosotros</p>
-                    <h2 id="titulo-nosotros">Hecho en la isla, <em>para conocerla</em></h2>
-                    <p>BookingRD reúne en un solo lugar a hoteles, operadores de excursiones y agencias de alquiler de autos registradas en República Dominicana. Cada empresa publica sus precios y su disponibilidad; tú reservas y recibes la confirmación al momento.</p>
-                    <p>Las reseñas solo las escriben viajeros con una reserva terminada, y cada publicación muestra su política de cancelación antes de pagar.</p>
-                </div>
-                <div class="nosotros-fotos">
-                    <figure class="foto-principal">
-                        <img src="img/paginas/nosotros-malecon.jpg" alt="Malecón de Santo Domingo junto al mar Caribe" loading="lazy">
-                    </figure>
-                    <figure class="foto-simbolo">
-                        <img src="img/paginas/rosa-bayahibe.jpg" alt="Flor rosada de la rosa de Bayahíbe" loading="lazy">
-                        <figcaption>Rosa de Bayahíbe, la flor nacional.</figcaption>
-                    </figure>
-                    <figure class="foto-simbolo">
-                        <img src="img/paginas/cotorra.jpg" alt="Cotorra dominicana de plumaje verde posada en una rama" loading="lazy">
-                        <figcaption>Cotorra de La Española, ave endémica.</figcaption>
-                    </figure>
-                    <figure class="foto-viajera">
-                        <img src="img/paginas/nosotros-viajera.jpg" alt="Viajera con su maleta en un aeropuerto" loading="lazy">
-                    </figure>
-                </div>
-            </div>
-        </section>
-
-        <!-- Llamado a empresas -->
-        <section class="banda-empresas" aria-labelledby="titulo-empresas">
+        <!-- 6. Empresas y contacto -->
+        <section class="banda-empresas" id="nosotros" aria-labelledby="titulo-empresas">
+            <img class="banda-empresas-foto" src="img/paginas/nosotros-malecon.jpg" alt="" loading="lazy">
             <div class="contenedor banda-empresas-rejilla">
-                <div>
+                <div class="banda-empresas-texto">
                     <p class="etiqueta-caribe">Para empresas</p>
-                    <h2 id="titulo-empresas">¿Tienes un hotel, una excursión <em>o una flota de autos?</em></h2>
-                    <p>Publica gratis, recibe reservas confirmadas y gestiona tu disponibilidad, tus reseñas y tus ingresos desde un panel.</p>
+                    <h2 id="titulo-empresas">¿Tienes un hotel, un tour <em>o un rent a car?</em></h2>
+                    <p>Publica gratis, recibe reservas y pagos confirmados y gestiona tu disponibilidad, tus reseñas y tus ingresos desde un panel.</p>
+                    <div class="banda-empresas-acciones">
+                        <a class="btn-rojo" href="registro.html?tipo=empresa">Registrar mi empresa</a>
+                        <a class="enlace-claro" href="login.html">Ya tengo cuenta</a>
+                    </div>
                 </div>
-                <div class="banda-empresas-acciones">
-                    <a class="btn-claro" href="registro.html?tipo=empresa">Registrar mi empresa</a>
-                    <a class="enlace-claro" href="login.html">Ya tengo cuenta</a>
-                </div>
-            </div>
-        </section>
 
-        <!-- Contacto -->
-        <section class="seccion" id="contacto" aria-labelledby="titulo-contacto">
-            <div class="contenedor contacto-rejilla">
-                <div>
-                    <p class="etiqueta-caribe">Contacto</p>
-                    <h2 id="titulo-contacto">¿Tienes preguntas? <em>Escríbenos</em></h2>
-                    <p class="texto-secundario">Respondemos en un día laborable. Si tu consulta es sobre una reserva, incluye el código que empieza por BRD.</p>
-                    <ul class="contacto-datos">
-                        <li><strong>Correo</strong> <a href="mailto:hola@bookingrd.com">hola@bookingrd.com</a></li>
-                        <li><strong>Teléfono</strong> <a href="tel:+18095550100">809-555-0100</a></li>
-                        <li><strong>Horario</strong> Lunes a sábado, de 8:00 a. m. a 6:00 p. m.</li>
-                    </ul>
-                </div>
+                <div class="contacto vidrio" id="contacto">
+                    <h2 id="titulo-contacto">Escríbenos</h2>
+                    <p class="contacto-entrada">Respondemos en un día laborable. Si es sobre una reserva, incluye el código BRD.</p>
                 <form id="form-contacto" class="formulario-contacto" novalidate>
                     <div class="fila-campos dos">
                         <div class="campo">
@@ -347,7 +303,9 @@
                     <p class="mensaje-formulario" id="contacto-mensaje-estado" role="status" hidden></p>
                     <button type="submit" class="btn-primario" id="boton-contacto">Enviar mensaje</button>
                 </form>
+                </div>
             </div>
+            <div class="franja-tricolor portada-franja" aria-hidden="true"></div>
         </section>
     </main>
 

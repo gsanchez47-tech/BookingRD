@@ -278,6 +278,7 @@ button {
     gap: 8px;
     margin-bottom: var(--e-3);
     padding: 5px 14px;
+    border: 1px solid rgba(0, 180, 216, 0.3);
     border-radius: 999px;
     background: rgba(0, 180, 216, 0.14);
     color: var(--caribe-deep);
@@ -288,8 +289,10 @@ button {
 }
 
 .etiqueta-caribe.roja {
-    background: var(--rojo);
+    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(206, 17, 38, 0.92);
     color: #fff;
+    box-shadow: 0 8px 24px -8px rgba(206, 17, 38, 0.7);
 }
 
 /* Mini bandera dentro de la píldora roja (sin imágenes ni emojis). */
@@ -338,10 +341,25 @@ h2 em {
     background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
 }
 
-/* Bandas de color: azul noche (mar de noche) y arena. */
+/* Vidrio: panel translúcido azul noche con borde de luz, sobre fotos o
+   fondos oscuros. Es el elemento "futurista" de la identidad. */
+.vidrio {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 24px;
+    background: linear-gradient(160deg, rgba(10, 31, 68, 0.62) 0%, rgba(5, 19, 43, 0.5) 100%);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 30px 60px -30px rgba(0, 0, 0, 0.65);
+    color: #fff;
+}
+
+/* Bandas de color: azul noche (mar de noche) con retícula de puntos, y arena. */
 .banda-oscura {
+    position: relative;
     background:
-        radial-gradient(90% 120% at 100% 0%, rgba(0, 119, 168, 0.45) 0%, transparent 60%),
+        radial-gradient(rgba(127, 227, 245, 0.08) 1px, transparent 1.5px) 0 0 / 24px 24px,
+        radial-gradient(70% 90% at 100% 0%, rgba(0, 180, 216, 0.28) 0%, transparent 60%),
+        radial-gradient(60% 80% at 0% 100%, rgba(0, 48, 135, 0.6) 0%, transparent 60%),
         linear-gradient(180deg, var(--night-mid) 0%, var(--night) 100%);
     color: rgba(255, 255, 255, 0.86);
 }
@@ -369,6 +387,7 @@ h2 em {
     position: relative;
     padding: var(--e-7) 0 calc(var(--e-7) + 6px);
     background:
+        radial-gradient(rgba(127, 227, 245, 0.09) 1px, transparent 1.5px) 0 0 / 24px 24px,
         radial-gradient(70% 140% at 85% 10%, rgba(0, 180, 216, 0.38) 0%, transparent 65%),
         linear-gradient(120deg, var(--night) 0%, var(--night-mid) 45%, var(--caribe-deep) 100%);
     color: rgba(255, 255, 255, 0.86);
@@ -410,31 +429,36 @@ h2 em {
     min-height: 46px;
     padding: 0 var(--e-5);
     border: 1px solid transparent;
-    border-radius: var(--r-s);
+    border-radius: 12px;
     font-weight: 800;
     font-size: var(--t-s);
     line-height: 1.2;
     text-decoration: none;
     white-space: nowrap;
-    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.2s;
 }
 
+/* Botones con degradado y un brillo suave al pasar el cursor. */
 .btn-primario {
-    background: var(--azul);
+    background: linear-gradient(135deg, var(--caribe-deep) 0%, var(--azul) 100%);
     color: #fff;
+    box-shadow: 0 10px 24px -12px rgba(0, 48, 135, 0.8);
 }
 
 .btn-primario:hover {
-    background: var(--azul-oscuro);
+    background: linear-gradient(135deg, #0089C0 0%, var(--azul-oscuro) 100%);
+    box-shadow: 0 0 0 1px rgba(0, 180, 216, 0.5), 0 12px 30px -10px rgba(0, 180, 216, 0.6);
 }
 
 .btn-rojo {
-    background: var(--rojo);
+    background: linear-gradient(135deg, #E0263B 0%, var(--rojo) 55%, #A90E1F 100%);
     color: #fff;
+    box-shadow: 0 10px 24px -12px rgba(206, 17, 38, 0.8);
 }
 
 .btn-rojo:hover {
-    background: #A90E1F;
+    background: linear-gradient(135deg, #EA3A4E 0%, #B80F22 100%);
+    box-shadow: 0 0 0 1px rgba(255, 120, 135, 0.5), 0 12px 30px -10px rgba(206, 17, 38, 0.7);
 }
 
 .btn-outline {
@@ -1031,7 +1055,10 @@ select.control {
     position: relative;
     margin-top: var(--e-8);
     padding: var(--e-8) 0 var(--e-5);
-    background: var(--night);
+    background:
+        radial-gradient(rgba(127, 227, 245, 0.07) 1px, transparent 1.5px) 0 0 / 24px 24px,
+        radial-gradient(50% 80% at 100% 0%, rgba(0, 180, 216, 0.18) 0%, transparent 60%),
+        var(--night);
     color: rgba(255, 255, 255, 0.78);
     font-size: var(--t-s);
 }
@@ -2275,6 +2302,29 @@ dialog.modal-recibo {
     body.imprimiendo-recibo .modal-cerrar {
         display: none;
     }
+}
+
+/* El inicio termina en una banda a todo lo ancho: el pie va pegado. */
+body:has(.banda-empresas) .pie {
+    margin-top: 0;
+}
+
+/* Tarjetas de publicación: esquinas más amplias y un anillo turquesa al
+   pasar el cursor (respuesta a la acción del usuario). */
+.tarjeta-media {
+    border-radius: 18px;
+}
+
+.tarjeta-publicacion:hover .tarjeta-media {
+    box-shadow: 0 0 0 2px var(--caribe), 0 18px 36px -18px rgba(0, 119, 168, 0.6);
+}
+
+/* Campos dentro de un panel de vidrio: fondo blanco y texto oscuro. */
+.vidrio input,
+.vidrio select,
+.vidrio textarea {
+    background-color: #fff;
+    color: var(--tinta);
 }
 
 /* ==========================================================================
@@ -3640,4 +3690,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
 .pagina-explorar .pie {
     margin-top: 0;
+}
+
+/* Cabecera con la fotografía de la categoría bajo el velo azul noche. */
+.explorar-cabecera.con-foto {
+    background:
+        radial-gradient(rgba(127, 227, 245, 0.09) 1px, transparent 1.5px) 0 0 / 24px 24px,
+        radial-gradient(60% 120% at 90% 10%, rgba(0, 180, 216, 0.3) 0%, transparent 60%),
+        linear-gradient(90deg, rgba(5, 19, 43, 0.92) 0%, rgba(5, 19, 43, 0.7) 50%, rgba(0, 119, 168, 0.35) 100%),
+        var(--foto-cabecera) center / cover no-repeat,
+        var(--night);
 }

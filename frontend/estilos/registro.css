@@ -207,3 +207,24 @@
     gap: var(--e-3);
     padding-top: var(--e-2);
 }
+
+/* Acentos sobre el panel de vidrio oscuro (auth.css): turquesa en lugar de azul bandera. */
+.auth-formulario-contenido .opcion-cuenta input:checked + .opcion-cuenta-texto {
+    border-color: var(--caribe);
+}
+
+.auth-formulario-contenido .pasos .paso.activo {
+    border-color: var(--caribe);
+    color: var(--caribe);
+}
+
+.auth-formulario-contenido .pasos .paso.completado {
+    border-color: var(--jungle-light);
+    color: var(--jungle-light);
+}
+
+.auth-formulario-contenido .opcion-chip input:checked + span {
+    border-color: var(--caribe);
+    background: var(--caribe);
+    color: var(--night);
+}

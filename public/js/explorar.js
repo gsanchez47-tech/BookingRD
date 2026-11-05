@@ -407,8 +407,29 @@ function pintarClimaDestino() {
     pintarClimaCompacto(contenedor, estado.ciudad, `Ahora en ${estado.ciudad}`);
 }
 
+/**
+ * Fotografía de fondo de la cabecera para las categorías que la tienen
+ * (cada foto se usa solo aquí); el resto conserva el degradado del mar.
+ */
+const FOTOS_CATEGORIA = {
+    'villas-cabanas': 'img/servicios/villas-cabanas.jpg',
+    'tour-playa': 'img/servicios/tour-playa.jpg',
+    'tour-montana': 'img/servicios/tour-montana.jpg',
+    'tour-gastronomico': 'img/servicios/tour-gastronomico.jpg',
+    cultural: 'img/servicios/cultural.jpg',
+    'zip-line': 'img/servicios/zip-line.jpg',
+    motocross: 'img/servicios/motocross.jpg',
+    golf: 'img/servicios/golf.jpg'
+};
+
 /** Título y descripción según la categoría o el tipo (y el destino, si hay uno). */
 function actualizarBanner() {
+    const cabecera = document.querySelector('.explorar-cabecera');
+    const foto = FOTOS_CATEGORIA[estado.categoria];
+    cabecera.classList.toggle('con-foto', Boolean(foto));
+    // URL absoluta: dentro de var() la ruta se resolvería respecto a la hoja de estilos.
+    if (foto) cabecera.style.setProperty('--foto-cabecera', `url("${new URL(foto, location.href).href}")`);
+    else cabecera.style.removeProperty('--foto-cabecera');
     const categoria = estado.categoria ? CATALOGOS.categorias[estado.categoria] : null;
     const textos = TEXTOS_TIPO[estado.tipo];
     const base = categoria ? categoria.nombre : textos.titulo;

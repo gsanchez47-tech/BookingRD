@@ -4,7 +4,7 @@
 
 | Módulo | Contenido |
 |---|---|
-| Inicio | Portada con fotografía de playa y buscador; mapa SVG de la isla sobre azul noche con los 15 destinos (ficha con conteos por tipo y clima); banda de cifras; buscador (alojamiento, actividades o autos; destino con autocompletado; fechas, o recogida y devolución con hora; personas), postales de destinos, categorías, recomendados por tipo, *Vistos recientemente*, opiniones verificadas, *Nosotros*, llamado a empresas y *Contacto*. |
+| Inicio | Seis bloques: portada con fotografía, buscador sobre vidrio y cifras; accesos a alojamiento, actividades y autos; mapa SVG de la isla sobre azul noche con los 15 destinos (ficha con conteos por tipo y clima); banda de cifras; buscador (alojamiento, actividades o autos; destino con autocompletado; fechas, o recogida y devolución con hora; personas), postales de destinos, categorías, recomendados por tipo, *Vistos recientemente*, opiniones verificadas, *Nosotros*, llamado a empresas y *Contacto*. |
 | Alquiler de autos | `autos.html`: portada con buscador de autos, tipos de auto con su conteo, autos mejor valorados, pasos, lo que incluye, requisitos y preguntas frecuentes. |
 | Explorar | Todos los filtros en un panel a la izquierda (cajón lateral en móvil): tipo, categoría con conteo, destino, palabra clave, personas o pasajeros, transmisión, rango de precio (control de dos extremos sobre un histograma), valoración mínima y fechas; etiquetas de filtros activos; siete órdenes; vista de lista o de mapa; clima del destino; paginación incremental; filtros y fechas en la URL. |
 | Detalle | Valoración, guardar y compartir; barra de secciones; lo más destacado; información, servicios o lo que incluye; mapa de la zona; reseñas con distribución y respuestas; políticas; datos de la empresa; relacionadas y reserva con disponibilidad en tiempo real. |
@@ -243,9 +243,10 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 
 ### 6.2 Diseño
 
-- Estética caribeña dominante. Paleta de la bandera y del Caribe (azul `#003087`, rojo `#CE1126`, turquesa `#00B4D8` / `#0077A8`, selva `#2D6A4F` / `#52B788`, arena `#F4A261` / `#FDEBD0`, noche `#05132B` / `#0A1F44`) con fondo claro `#F8F5EF`.
+- Estética caribeña y futurista: azules profundos con paneles de vidrio translúcido (`.vidrio`: fondo azul noche semitransparente, `backdrop-filter`, borde de luz), brillos turquesa en botones, mapa y tarjetas, y retícula de puntos en las bandas oscuras. Paleta de la bandera y del Caribe (azul `#003087`, rojo `#CE1126`, turquesa `#00B4D8` / `#0077A8`, selva `#2D6A4F` / `#52B788`, arena `#F4A261` / `#FDEBD0`, noche `#05132B` / `#0A1F44`) con fondo claro `#F8F5EF`.
 - Elementos compartidos (`base.css`): encabezado azul noche con franja tricolor; `.etiqueta-caribe` (píldora sobre los títulos; `.roja` con mini bandera en CSS); `h1 em` / `h2 em` en cursiva turquesa para la segunda parte del titular; `.cabecera-caribe` (degradado azul noche a turquesa con franja tricolor) en Explorar, Autos, Mis reservas, panel y administración; `.banda-oscura` y `.banda-arena` para alternar secciones; `.franja-tricolor`.
-- Inicio: fotografía de playa a pantalla completa bajo un velo azul noche, píldora roja *República Dominicana*, titular blanco y buscador blanco en una fila; mapa sobre azul noche; banda azul de cifras; postales; experiencias sobre arena; opiniones sobre azul noche; banda de empresas con degradado del mar.
+- Inicio en seis bloques, uno por idea: portada (fotografía de playa, buscador sobre vidrio, cifras), qué reservar (tres tarjetas), destinos (mapa nocturno con contorno turquesa y ficha con la foto del destino), recomendados (cuatro por tipo), opiniones (vidrio sobre azul noche) y empresas con contacto (Malecón bajo velo azul).
+- Inicio de sesión y registro: fotografía a pantalla completa, bienvenida a la izquierda y formulario en un panel de vidrio oscuro; dentro del panel se redefinen las variables de color (`--tinta`, `--superficie`, `--linea`), así el formulario cambia a tema oscuro sin reescribir sus reglas.
 - Tipografía: Fraunces (titulares y precios) y Nunito (texto), servidas desde `public/fonts/` (licencia OFL) para no depender de Google Fonts. Sin emojis ni librerías de iconos: los pocos íconos son SVG en línea.
 - Movimiento: una sola animación, la aparición de los puntos del mapa al cargar. Sin carruseles, presentaciones de fotografías ni cintas que se desplacen; las transiciones solo responden a acciones del usuario. Con "reducir movimiento" no hay animación.
 - Mobile-first, verificado de 375 a 1440 px; en móvil el mapa agrega una lista de destinos, el panel de filtros es un cajón y las tablas de los paneles se convierten en tarjetas.
@@ -271,9 +272,9 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 | Carpeta | Uso |
 |---|---|
 | `img/publicaciones/` | Una fotografía por publicación de demostración (60) |
-| `img/destinos/` | Postales de 9 destinos en el inicio |
-| `img/servicios/` | Mosaico de categorías y tipos de auto |
-| `img/paginas/` | Portada del inicio, nosotros, autos, registro e inicio de sesión |
+| `img/destinos/` | Ficha de 9 destinos en el mapa del inicio |
+| `img/servicios/` | Tarjetas de *¿Qué quieres reservar?* y cabecera de Explorar de 8 categorías |
+| `img/paginas/` | Portada y banda de empresas del inicio, autos, registro e inicio de sesión |
 
 Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado con un inventario automático de referencias más revisión visual). En las fotografías de autos se difuminaron las placas y se retiraron marcas de agua. El panel de empresa reduce las fotografías subidas a 1600 px (JPEG) antes de enviarlas.
 

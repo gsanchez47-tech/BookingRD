@@ -278,6 +278,7 @@ button {
     gap: 8px;
     margin-bottom: var(--e-3);
     padding: 5px 14px;
+    border: 1px solid rgba(0, 180, 216, 0.3);
     border-radius: 999px;
     background: rgba(0, 180, 216, 0.14);
     color: var(--caribe-deep);
@@ -288,8 +289,10 @@ button {
 }
 
 .etiqueta-caribe.roja {
-    background: var(--rojo);
+    border-color: rgba(255, 255, 255, 0.25);
+    background: rgba(206, 17, 38, 0.92);
     color: #fff;
+    box-shadow: 0 8px 24px -8px rgba(206, 17, 38, 0.7);
 }
 
 /* Mini bandera dentro de la píldora roja (sin imágenes ni emojis). */
@@ -338,10 +341,25 @@ h2 em {
     background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
 }
 
-/* Bandas de color: azul noche (mar de noche) y arena. */
+/* Vidrio: panel translúcido azul noche con borde de luz, sobre fotos o
+   fondos oscuros. Es el elemento "futurista" de la identidad. */
+.vidrio {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 24px;
+    background: linear-gradient(160deg, rgba(10, 31, 68, 0.62) 0%, rgba(5, 19, 43, 0.5) 100%);
+    backdrop-filter: blur(18px) saturate(1.4);
+    -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 30px 60px -30px rgba(0, 0, 0, 0.65);
+    color: #fff;
+}
+
+/* Bandas de color: azul noche (mar de noche) con retícula de puntos, y arena. */
 .banda-oscura {
+    position: relative;
     background:
-        radial-gradient(90% 120% at 100% 0%, rgba(0, 119, 168, 0.45) 0%, transparent 60%),
+        radial-gradient(rgba(127, 227, 245, 0.08) 1px, transparent 1.5px) 0 0 / 24px 24px,
+        radial-gradient(70% 90% at 100% 0%, rgba(0, 180, 216, 0.28) 0%, transparent 60%),
+        radial-gradient(60% 80% at 0% 100%, rgba(0, 48, 135, 0.6) 0%, transparent 60%),
         linear-gradient(180deg, var(--night-mid) 0%, var(--night) 100%);
     color: rgba(255, 255, 255, 0.86);
 }
@@ -369,6 +387,7 @@ h2 em {
     position: relative;
     padding: var(--e-7) 0 calc(var(--e-7) + 6px);
     background:
+        radial-gradient(rgba(127, 227, 245, 0.09) 1px, transparent 1.5px) 0 0 / 24px 24px,
         radial-gradient(70% 140% at 85% 10%, rgba(0, 180, 216, 0.38) 0%, transparent 65%),
         linear-gradient(120deg, var(--night) 0%, var(--night-mid) 45%, var(--caribe-deep) 100%);
     color: rgba(255, 255, 255, 0.86);
@@ -410,31 +429,36 @@ h2 em {
     min-height: 46px;
     padding: 0 var(--e-5);
     border: 1px solid transparent;
-    border-radius: var(--r-s);
+    border-radius: 12px;
     font-weight: 800;
     font-size: var(--t-s);
     line-height: 1.2;
     text-decoration: none;
     white-space: nowrap;
-    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.2s;
 }
 
+/* Botones con degradado y un brillo suave al pasar el cursor. */
 .btn-primario {
-    background: var(--azul);
+    background: linear-gradient(135deg, var(--caribe-deep) 0%, var(--azul) 100%);
     color: #fff;
+    box-shadow: 0 10px 24px -12px rgba(0, 48, 135, 0.8);
 }
 
 .btn-primario:hover {
-    background: var(--azul-oscuro);
+    background: linear-gradient(135deg, #0089C0 0%, var(--azul-oscuro) 100%);
+    box-shadow: 0 0 0 1px rgba(0, 180, 216, 0.5), 0 12px 30px -10px rgba(0, 180, 216, 0.6);
 }
 
 .btn-rojo {
-    background: var(--rojo);
+    background: linear-gradient(135deg, #E0263B 0%, var(--rojo) 55%, #A90E1F 100%);
     color: #fff;
+    box-shadow: 0 10px 24px -12px rgba(206, 17, 38, 0.8);
 }
 
 .btn-rojo:hover {
-    background: #A90E1F;
+    background: linear-gradient(135deg, #EA3A4E 0%, #B80F22 100%);
+    box-shadow: 0 0 0 1px rgba(255, 120, 135, 0.5), 0 12px 30px -10px rgba(206, 17, 38, 0.7);
 }
 
 .btn-outline {
@@ -1031,7 +1055,10 @@ select.control {
     position: relative;
     margin-top: var(--e-8);
     padding: var(--e-8) 0 var(--e-5);
-    background: var(--night);
+    background:
+        radial-gradient(rgba(127, 227, 245, 0.07) 1px, transparent 1.5px) 0 0 / 24px 24px,
+        radial-gradient(50% 80% at 100% 0%, rgba(0, 180, 216, 0.18) 0%, transparent 60%),
+        var(--night);
     color: rgba(255, 255, 255, 0.78);
     font-size: var(--t-s);
 }
@@ -2277,83 +2304,236 @@ dialog.modal-recibo {
     }
 }
 
+/* El inicio termina en una banda a todo lo ancho: el pie va pegado. */
+body:has(.banda-empresas) .pie {
+    margin-top: 0;
+}
+
+/* Tarjetas de publicación: esquinas más amplias y un anillo turquesa al
+   pasar el cursor (respuesta a la acción del usuario). */
+.tarjeta-media {
+    border-radius: 18px;
+}
+
+.tarjeta-publicacion:hover .tarjeta-media {
+    box-shadow: 0 0 0 2px var(--caribe), 0 18px 36px -18px rgba(0, 119, 168, 0.6);
+}
+
+/* Campos dentro de un panel de vidrio: fondo blanco y texto oscuro. */
+.vidrio input,
+.vidrio select,
+.vidrio textarea {
+    background-color: #fff;
+    color: var(--tinta);
+}
+
 /* ==========================================================================
    Estilos propios de la página (frontend/estilos/registro.css)
    ======================================================================== */
 
 /* Registro de viajeros y empresas (tres pasos para empresas). */
 
-/* Pantallas de acceso (login.html y registro.html): fotografía a un lado y
-   formulario al otro. */
+/* Pantallas de acceso (login.html y registro.html). */
 
+/* Fotografía a pantalla completa bajo un velo azul noche; el texto de
+   bienvenida a la izquierda y el formulario en un panel de vidrio. */
 .auth-split {
+    position: relative;
+    isolation: isolate;
     display: grid;
+    gap: var(--e-6);
+    align-items: center;
     min-height: calc(100vh - var(--alto-header));
+    padding: var(--e-7) var(--margen) calc(var(--e-7) + 6px);
+    background: var(--night);
+    overflow: hidden;
+}
+
+.auth-split::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(60% 70% at 85% 10%, rgba(0, 180, 216, 0.3) 0%, transparent 60%),
+        linear-gradient(90deg, rgba(5, 19, 43, 0.88) 0%, rgba(5, 19, 43, 0.55) 55%, rgba(5, 19, 43, 0.7) 100%);
+}
+
+.auth-split::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
 }
 
 .auth-foto {
-    position: relative;
-    display: none;
-    overflow: hidden;
-    background: var(--night-mid);
+    display: contents;
     color: #fff;
 }
 
 .auth-foto-imagen {
     position: absolute;
     inset: 0;
+    z-index: -2;
     width: 100%;
     height: 100%;
     object-fit: cover;
     transition: opacity 0.25s;
 }
 
-/* Velo del mar Caribe: turquesa arriba, azul noche abajo para el texto. */
-.auth-foto::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, rgba(0, 119, 168, 0.42) 0%, rgba(5, 19, 43, 0.2) 40%, rgba(5, 19, 43, 0.9) 100%);
-}
-
-.auth-foto::before {
-    content: '';
-    position: absolute;
-    inset: auto 0 0;
-    z-index: 2;
-    height: 6px;
-    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
-}
-
 .auth-foto-texto {
-    position: absolute;
-    left: var(--e-7);
-    right: var(--e-7);
-    bottom: var(--e-7);
-    z-index: 1;
+    max-width: 600px;
+    color: #fff;
 }
 
 .auth-foto-texto h2 {
-    max-width: 16ch;
-    font-size: var(--t-2xl);
+    color: #fff;
+    font-size: clamp(2.5rem, 1.6rem + 3.6vw, 4.5rem);
+    line-height: 1.02;
 }
 
-.auth-foto-texto p {
+.auth-foto-texto h2 em {
+    display: block;
+    background: linear-gradient(90deg, #4FD8F0 0%, var(--caribe) 60%, #7FE3F5 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.auth-foto-texto > p:not(.etiqueta-caribe) {
     max-width: 44ch;
-    margin-top: var(--e-3);
+    margin-top: var(--e-4);
     color: rgba(255, 255, 255, 0.86);
+    font-size: var(--t-l);
+}
+
+.auth-destinos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+    margin: var(--e-5) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.auth-destinos a {
+    display: inline-block;
+    padding: 8px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: var(--t-s);
+    font-weight: 800;
+    text-decoration: none;
+    backdrop-filter: blur(8px);
+}
+
+.auth-destinos a:hover {
+    border-color: var(--caribe);
+    background: rgba(0, 180, 216, 0.2);
 }
 
 .auth-formulario {
     display: flex;
-    align-items: flex-start;
     justify-content: center;
-    padding: var(--e-7) var(--margen);
 }
 
+/* Panel de vidrio azul noche. Dentro del panel se redefinen los colores
+   de texto, superficie y línea, así los formularios (login y registro)
+   pasan a tema oscuro sin reescribir cada regla. */
 .auth-formulario-contenido {
+    --tinta: #fff;
+    --tinta-2: rgba(255, 255, 255, 0.82);
+    --tinta-3: rgba(255, 255, 255, 0.62);
+    --superficie: rgba(255, 255, 255, 0.07);
+    --superficie-suave: rgba(255, 255, 255, 0.12);
+    --linea: rgba(255, 255, 255, 0.16);
+    --linea-fuerte: rgba(255, 255, 255, 0.3);
+    --azul-tenue: rgba(0, 180, 216, 0.16);
     width: 100%;
-    max-width: 520px;
+    max-width: 540px;
+    padding: var(--e-6) var(--e-5);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 26px;
+    background: linear-gradient(160deg, rgba(10, 31, 68, 0.78) 0%, rgba(5, 19, 43, 0.72) 100%);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 0 0 1px rgba(0, 180, 216, 0.18), 0 40px 80px -30px rgba(0, 0, 0, 0.75);
+    color: var(--tinta);
+}
+
+.auth-formulario-contenido h1,
+.auth-formulario-contenido h2,
+.auth-formulario-contenido h3,
+.auth-formulario-contenido legend {
+    color: #fff;
+}
+
+.auth-formulario-contenido a,
+.auth-formulario-contenido .boton-enlace {
+    color: #5ED6EE;
+}
+
+/* Campos claros con texto oscuro sobre el vidrio. */
+.auth-formulario-contenido input:not([type='checkbox']):not([type='radio']),
+.auth-formulario-contenido select,
+.auth-formulario-contenido textarea {
+    border-color: transparent;
+    background: #fff;
+    color: #10203A;
+}
+
+.auth-formulario-contenido input::placeholder,
+.auth-formulario-contenido textarea::placeholder {
+    color: #6B7A90;
+}
+
+.auth-formulario-contenido .boton-mostrar {
+    background: #EEF3F8;
+    color: #10203A;
+}
+
+.auth-formulario-contenido input[type='checkbox'],
+.auth-formulario-contenido input[type='radio'] {
+    accent-color: var(--caribe);
+}
+
+@media (max-width: 959px) {
+    .auth-foto-texto {
+        text-align: center;
+        margin-inline: auto;
+    }
+
+    .auth-foto-texto > p:not(.etiqueta-caribe),
+    .auth-destinos {
+        display: none;
+    }
+
+    .auth-foto-texto h2 {
+        font-size: clamp(2rem, 1.4rem + 3vw, 2.75rem);
+    }
+}
+
+@media (min-width: 960px) {
+    .auth-split {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 540px);
+        gap: var(--e-8);
+        padding-inline: max(var(--margen), calc((100% - 1200px) / 2));
+    }
+
+    .auth-formulario {
+        align-self: start;
+        padding-top: var(--e-6);
+    }
+
+    .auth-foto-texto {
+        position: sticky;
+        top: calc(var(--alto-header) + var(--e-8));
+        align-self: start;
+        padding-top: var(--e-8);
+    }
 }
 
 .auth-formulario h1 {
@@ -2407,23 +2587,6 @@ dialog.modal-recibo {
     display: flex;
     flex-wrap: wrap;
     gap: var(--e-3);
-}
-
-@media (min-width: 960px) {
-    .auth-split {
-        grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-    }
-
-    .auth-foto {
-        display: block;
-        position: sticky;
-        top: var(--alto-header);
-        height: calc(100vh - var(--alto-header));
-    }
-
-    .auth-formulario {
-        padding-top: var(--e-8);
-    }
 }
 
 .pagina-login .pie,
@@ -2635,4 +2798,25 @@ dialog.modal-recibo {
     justify-content: flex-end;
     gap: var(--e-3);
     padding-top: var(--e-2);
+}
+
+/* Acentos sobre el panel de vidrio oscuro (auth.css): turquesa en lugar de azul bandera. */
+.auth-formulario-contenido .opcion-cuenta input:checked + .opcion-cuenta-texto {
+    border-color: var(--caribe);
+}
+
+.auth-formulario-contenido .pasos .paso.activo {
+    border-color: var(--caribe);
+    color: var(--caribe);
+}
+
+.auth-formulario-contenido .pasos .paso.completado {
+    border-color: var(--jungle-light);
+    color: var(--jungle-light);
+}
+
+.auth-formulario-contenido .opcion-chip input:checked + span {
+    border-color: var(--caribe);
+    background: var(--caribe);
+    color: var(--night);
 }

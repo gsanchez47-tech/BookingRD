@@ -21,10 +21,11 @@ Si algo se desordena durante los ensayos, detén el servidor con `Ctrl + C` y vu
 
 ## 1. El inicio (1 minuto)
 
-- Muestra la portada: foto de playa, buscador de alojamiento, actividades o autos.
+- Muestra la portada: foto de playa, buscador sobre vidrio y las cifras de la plataforma.
+- Baja a **¿Qué quieres reservar?**: las tres puertas de entrada (alojamiento, actividades, autos).
 - Baja al **mapa de la isla** y toca **Punta Cana**, luego **Jarabacoa**.
-  - *Qué decir:* la ficha cuenta en tiempo real cuántos alojamientos, actividades y autos hay en cada destino y muestra el clima del momento (Open-Meteo).
-- Baja hasta las cifras, los destinos y los recomendados.
+  - *Qué decir:* la ficha muestra la foto del destino, cuenta en tiempo real cuántos alojamientos, actividades y autos hay en cada destino y muestra el clima del momento (Open-Meteo).
+- Baja a los **recomendados** y cambia entre Alojamiento, Actividades y Autos.
 
 ## 2. Buscar con filtros (1 minuto)
 

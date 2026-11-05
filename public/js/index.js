@@ -1,15 +1,14 @@
 /**
  * @file public/js/index.js
- * @description Página de inicio: buscador, mapa de destinos con su ficha
- *   (clima y oferta), postales de destinos, conteo por categoría,
- *   recomendados por tipo, vistos recientemente, opiniones, cifras y
- *   formulario de contacto.
+ * @description Página de inicio: buscador y cifras, accesos por tipo,
+ *   mapa de destinos con su ficha (fotografía, oferta y clima),
+ *   recomendados por tipo, vistos recientemente, opiniones y contacto.
  */
 
-const RECOMENDADOS_POR_TIPO = 8;
+const RECOMENDADOS_POR_TIPO = 4;
 
-/** Destinos con fotografía propia en la sección de postales (cada foto se usa solo aquí). */
-const POSTALES = [
+/** Fotografía de la ficha de cada destino que la tiene (cada foto se usa solo aquí). */
+const FOTOS_DESTINO = [
     { ciudad: 'Santo Domingo', foto: 'img/destinos/santo-domingo.jpg', alt: 'Fachada de piedra del Alcázar de Colón en la Ciudad Colonial' },
     { ciudad: 'Punta Cana', foto: 'img/destinos/punta-cana.jpg', alt: 'Playa de arena blanca con cocoteros vista desde el aire' },
     { ciudad: 'Samaná', foto: 'img/destinos/samana.jpg', alt: 'Puente peatonal sobre el mar hacia los cayos de Samaná' },
@@ -53,7 +52,6 @@ const estado = {
 document.addEventListener('DOMContentLoaded', () => {
     iniciarBuscador();
     dibujarMapa();
-    pintarPostales();
     cargarEstadisticas();
     iniciarRecomendados();
     pintarVistos();
@@ -75,19 +73,16 @@ async function cargarEstadisticas() {
         animarNumero(document.getElementById('stat-hoteles'), datos.totalHoteles);
         animarNumero(document.getElementById('stat-actividades'), datos.totalActividades);
         animarNumero(document.getElementById('stat-vehiculos'), datos.totalVehiculos);
-        animarNumero(document.getElementById('stat-empresas'), datos.totalEmpresas);
         if (datos.puntuacionMedia !== null) {
             document.getElementById('stat-valoracion').textContent = formatoPuntuacion(datos.puntuacionMedia);
             document.getElementById('stat-valoracion-texto').textContent = `Valoración media (${textoResenas(datos.totalResenas)})`;
         }
 
+        const totales = { hotel: datos.totalHoteles, actividad: datos.totalActividades, vehiculo: datos.totalVehiculos };
         document.querySelectorAll('[data-conteo]').forEach((elemento) => {
-            const clave = elemento.dataset.conteo;
-            const total = clave === 'vehiculo' ? datos.totalVehiculos : datos.porCategoria[clave] || 0;
-            elemento.textContent = textoPublicaciones(total);
+            elemento.textContent = textoPublicaciones(totales[elemento.dataset.conteo] || 0);
         });
 
-        pintarPostales();
         pintarFicha(estado.destinoElegido);
     } catch (_) {
         document.querySelectorAll('[data-conteo]').forEach((elemento) => { elemento.textContent = ''; });
@@ -183,11 +178,13 @@ function marcarPunto(ciudad) {
     });
 }
 
-/** Ficha del destino elegido: provincia, oferta por tipo y clima actual. */
+/** Ficha del destino elegido: fotografía, provincia, oferta por tipo y clima actual. */
 function pintarFicha(ciudad) {
     marcarPunto(ciudad);
     const ficha = document.getElementById('ficha-destino');
     const oferta = ofertaDestino(ciudad);
+    const foto = FOTOS_DESTINO.find((p) => p.ciudad === ciudad);
+    const total = oferta.hotel + oferta.actividad + oferta.vehiculo;
     const enlace = (tipo, total, singular, plural) => (total
         ? `<li><a href="explorar.html?tipo=${tipo}&ciudad=${encodeURIComponent(ciudad)}"><strong>${total}</strong> ${total === 1 ? singular : plural}</a></li>`
         : '');
@@ -198,42 +195,19 @@ function pintarFicha(ciudad) {
     ].join('');
 
     ficha.innerHTML = `
-        <div class="ficha-cabecera">
-            <h3>${escaparHtml(ciudad)}</h3>
-            <span class="ficha-provincia">${escaparHtml(CATALOGOS.provincias[ciudad] || '')}</span>
+        <div class="ficha-foto${foto ? '' : ' sin-foto'}">
+            ${foto ? `<img src="${foto.foto}" alt="${escaparHtml(foto.alt)}">` : ''}
+            <div class="ficha-cabecera">
+                <h3 translate="no">${escaparHtml(ciudad)}</h3>
+                <span class="ficha-provincia" translate="no">${escaparHtml(CATALOGOS.provincias[ciudad] || '')}</span>
+            </div>
         </div>
         <div class="ficha-cuerpo">
             <ul class="ficha-conteos">${enlaces || '<li class="sin-oferta">Pronto habrá publicaciones en este destino.</li>'}</ul>
             <div class="ficha-clima" id="ficha-clima"></div>
+            ${total ? `<a class="btn-primario btn-bloque" href="explorar.html?ciudad=${encodeURIComponent(ciudad)}">Ver todo en ${escaparHtml(ciudad)}</a>` : ''}
         </div>`;
     pintarClimaCompacto(document.getElementById('ficha-clima'), ciudad);
-}
-
-/* ----------------------------------------------------------------------------
-   Postales de destinos y lista del resto
-   ------------------------------------------------------------------------- */
-
-function pintarPostales() {
-    const conteo = (ciudad) => (estado.estadisticas ? textoPublicaciones(estado.estadisticas.porCiudad[ciudad] || 0) : '');
-    document.getElementById('postales').innerHTML = POSTALES.map((p) => `
-        <li class="postal">
-            <a href="explorar.html?ciudad=${encodeURIComponent(p.ciudad)}">
-                <div class="postal-foto"><img src="${p.foto}" alt="${escaparHtml(p.alt)}" loading="lazy"></div>
-                <div class="postal-pie">
-                    <h3>${escaparHtml(p.ciudad)}</h3>
-                    <p>${conteo(p.ciudad)}</p>
-                </div>
-            </a>
-        </li>`).join('');
-
-    const conFoto = new Set(POSTALES.map((p) => p.ciudad));
-    document.getElementById('otros-destinos').innerHTML = CATALOGOS.destinos
-        .filter((ciudad) => !conFoto.has(ciudad))
-        .map((ciudad) => `
-            <li><a href="explorar.html?ciudad=${encodeURIComponent(ciudad)}">
-                <span>${escaparHtml(ciudad)} <small>${escaparHtml(CATALOGOS.provincias[ciudad] || '')}</small></span>
-                <small>${conteo(ciudad)}</small>
-            </a></li>`).join('');
 }
 
 /* ----------------------------------------------------------------------------
