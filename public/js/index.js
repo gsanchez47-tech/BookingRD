@@ -14,7 +14,6 @@ const POSTALES = [
     { ciudad: 'Punta Cana', foto: 'img/destinos/punta-cana.jpg', alt: 'Playa de arena blanca con cocoteros vista desde el aire' },
     { ciudad: 'Samaná', foto: 'img/destinos/samana.jpg', alt: 'Puente peatonal sobre el mar hacia los cayos de Samaná' },
     { ciudad: 'Puerto Plata', foto: 'img/destinos/puerto-plata.jpg', alt: 'Cañones de la Fortaleza San Felipe frente al Atlántico' },
-    { ciudad: 'Las Terrenas', foto: 'img/destinos/las-terrenas.jpg', alt: 'Playa de aguas turquesa en la península de Samaná' },
     { ciudad: 'Juan Dolio', foto: 'img/destinos/juan-dolio.jpg', alt: 'Costa de Juan Dolio iluminada de noche' },
     { ciudad: 'La Romana', foto: 'img/destinos/la-romana.jpg', alt: 'Iglesia de piedra de Altos de Chavón' },
     { ciudad: 'Jarabacoa', foto: 'img/destinos/jarabacoa.jpg', alt: 'Casa de campo y vacas en las montañas de Jarabacoa' },

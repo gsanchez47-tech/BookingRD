@@ -3,17 +3,6 @@
 
 /* @incluir cuenta.css */
 
-@media (min-width: 1040px) {
-    .cabecera-cuenta:not(:has(.cabecera-cuenta-foto)) .cabecera-cuenta-contenido {
-        grid-template-columns: 1.4fr 1fr;
-        grid-template-areas: 'texto cifras';
-    }
-
-    .cabecera-cuenta:not(:has(.cabecera-cuenta-foto)) .cifras-cuenta {
-        justify-content: end;
-    }
-}
-
 .seccion-panel {
     padding-bottom: var(--e-8);
 }

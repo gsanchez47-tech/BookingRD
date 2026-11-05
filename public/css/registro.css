@@ -269,6 +269,132 @@ button {
     color: var(--tinta-2);
 }
 
+/* Identidad caribeña compartida -------------------------------------------- */
+
+/* Píldora sobre los títulos de sección. */
+.etiqueta-caribe {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: var(--e-3);
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(0, 180, 216, 0.14);
+    color: var(--caribe-deep);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.etiqueta-caribe.roja {
+    background: var(--rojo);
+    color: #fff;
+}
+
+/* Mini bandera dentro de la píldora roja (sin imágenes ni emojis). */
+.bandera-mini {
+    display: inline-grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5px;
+    width: 14px;
+    height: 10px;
+    padding: 1px;
+    border-radius: 2px;
+    background: #fff;
+}
+
+.bandera-mini::before,
+.bandera-mini::after,
+.bandera-mini i,
+.bandera-mini b {
+    content: '';
+    display: block;
+}
+
+/* Orden en la rejilla: ::before, i, b, ::after (cuarteles de la bandera). */
+.bandera-mini::before,
+.bandera-mini::after { background: var(--azul); }
+.bandera-mini i,
+.bandera-mini b { background: var(--rojo); }
+
+/* Segunda línea de los titulares: cursiva turquesa. */
+h1 em,
+h2 em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--caribe-deep);
+}
+
+.banda-oscura h1 em,
+.banda-oscura h2 em,
+.portada h1 em {
+    color: var(--caribe);
+}
+
+/* Franja tricolor como separador entre bandas. */
+.franja-tricolor {
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
+}
+
+/* Bandas de color: azul noche (mar de noche) y arena. */
+.banda-oscura {
+    background:
+        radial-gradient(90% 120% at 100% 0%, rgba(0, 119, 168, 0.45) 0%, transparent 60%),
+        linear-gradient(180deg, var(--night-mid) 0%, var(--night) 100%);
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.banda-oscura h2,
+.banda-oscura h3 {
+    color: #fff;
+}
+
+.banda-oscura .seccion-cabecera p {
+    color: rgba(255, 255, 255, 0.74);
+}
+
+.banda-oscura .etiqueta-caribe {
+    background: rgba(0, 180, 216, 0.18);
+    color: var(--caribe);
+}
+
+.banda-arena {
+    background: linear-gradient(180deg, #FFF4E3 0%, var(--sand-light) 100%);
+}
+
+/* Cabecera de página con el degradado del mar: Explorar, Autos y cuentas. */
+.cabecera-caribe {
+    position: relative;
+    padding: var(--e-7) 0 calc(var(--e-7) + 6px);
+    background:
+        radial-gradient(70% 140% at 85% 10%, rgba(0, 180, 216, 0.38) 0%, transparent 65%),
+        linear-gradient(120deg, var(--night) 0%, var(--night-mid) 45%, var(--caribe-deep) 100%);
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.cabecera-caribe::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
+}
+
+.cabecera-caribe h1 {
+    color: #fff;
+}
+
+.cabecera-caribe h1 em {
+    color: var(--caribe);
+}
+
+.cabecera-caribe .migas,
+.cabecera-caribe .migas a {
+    color: rgba(255, 255, 255, 0.74);
+}
+
 /* ----------------------------------------------------------------------------
    4. Botones
    ------------------------------------------------------------------------- */
@@ -621,14 +747,24 @@ select.control {
    6. Encabezado del sitio
    ------------------------------------------------------------------------- */
 
+/* Encabezado azul noche, como el cielo del Caribe al anochecer, con la
+   franja tricolor de la bandera en su borde inferior. */
 .header-principal {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(248, 245, 239, 0.94);
-    border-bottom: 1px solid var(--linea);
+    background: rgba(5, 19, 43, 0.97);
+    color: #fff;
     backdrop-filter: saturate(1.4) blur(10px);
     -webkit-backdrop-filter: saturate(1.4) blur(10px);
+}
+
+.header-principal::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
 }
 
 .header-fila {
@@ -643,7 +779,7 @@ select.control {
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
-    color: var(--tinta);
+    color: #fff;
     text-decoration: none;
     font-family: var(--f-display);
     font-size: 1.375rem;
@@ -653,7 +789,7 @@ select.control {
 }
 
 .marca b {
-    color: var(--rojo);
+    color: #FF5468;
     font-weight: 700;
 }
 
@@ -662,9 +798,11 @@ select.control {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 3px;
-    width: 26px;
-    height: 26px;
-    padding: 0;
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+    border-radius: 5px;
+    background: #fff;   /* la cruz blanca de la bandera */
     flex-shrink: 0;
 }
 
@@ -687,20 +825,20 @@ select.control {
 .nav-principal a {
     padding: 8px 12px;
     border-radius: var(--r-s);
-    color: var(--tinta-2);
+    color: rgba(255, 255, 255, 0.8);
     font-size: var(--t-s);
     font-weight: 700;
     text-decoration: none;
 }
 
 .nav-principal a:hover {
-    color: var(--tinta);
-    background: var(--superficie-suave);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .nav-principal a[aria-current='page'] {
-    color: var(--azul);
-    box-shadow: inset 0 -2px 0 var(--azul);
+    color: #fff;
+    box-shadow: inset 0 -3px 0 var(--caribe);
     border-radius: 0;
 }
 
@@ -718,14 +856,32 @@ select.control {
 }
 
 .enlace-header {
-    color: var(--tinta);
+    color: #fff;
     font-size: var(--t-s);
     font-weight: 700;
     text-decoration: none;
 }
 
 .enlace-header:hover {
-    color: var(--azul);
+    color: var(--caribe);
+}
+
+.header-principal .boton-enlace {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.header-principal .boton-enlace:hover {
+    color: #fff;
+}
+
+/* Botón principal del encabezado: turquesa sobre el azul noche. */
+.header-principal .btn-primario {
+    background: var(--caribe);
+    color: var(--night);
+}
+
+.header-principal .btn-primario:hover {
+    background: #3CCBE6;
 }
 
 .enlace-guardados {
@@ -775,8 +931,8 @@ select.control {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--azul);
-    color: #fff;
+    background: var(--caribe);
+    color: var(--night);
     font-size: var(--t-xs);
     font-weight: 800;
 }
@@ -787,17 +943,17 @@ select.control {
     width: 44px;
     height: 44px;
     padding: 0;
-    border: 1px solid var(--linea);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: var(--r-s);
-    background: var(--superficie);
+    background: transparent;
 }
 
 .boton-menu-movil span {
     display: block;
     width: 18px;
     height: 2px;
-    background: var(--tinta);
-    box-shadow: 0 -6px 0 var(--tinta), 0 6px 0 var(--tinta);
+    background: #fff;
+    box-shadow: 0 -6px 0 #fff, 0 6px 0 #fff;
     transition: box-shadow 0.15s, transform 0.15s;
 }
 
@@ -811,14 +967,14 @@ select.control {
     display: block;
     width: 18px;
     height: 2px;
-    background: var(--tinta);
+    background: #fff;
     transform: rotate(-90deg);
 }
 
 .menu-movil {
     display: none;
-    border-top: 1px solid var(--linea);
-    background: var(--papel);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--night);
     padding: var(--e-3) var(--margen) var(--e-5);
 }
 
@@ -836,9 +992,9 @@ select.control {
     display: block;
     padding: 14px 0;
     border: 0;
-    border-bottom: 1px solid var(--linea);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     background: none;
-    color: var(--tinta);
+    color: #fff;
     font-size: var(--t-m);
     font-weight: 700;
     text-align: left;
@@ -846,7 +1002,7 @@ select.control {
 }
 
 .menu-movil .enlace-destacado {
-    color: var(--azul);
+    color: var(--caribe);
 }
 
 @keyframes aparecer-abajo {
@@ -1790,6 +1946,12 @@ dialog.modal.cerrando {
     font-weight: 800;
 }
 
+.header-principal .preferencias-boton {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: transparent;
+    color: #fff;
+}
+
 .preferencias-boton svg {
     width: 16px;
     height: 16px;
@@ -2010,11 +2172,21 @@ html.idioma-cargando body {
     transition: opacity 0.25s;
 }
 
+/* Velo del mar Caribe: turquesa arriba, azul noche abajo para el texto. */
 .auth-foto::after {
     content: '';
     position: absolute;
-    inset: 45% 0 0;
-    background: linear-gradient(180deg, rgba(5, 19, 43, 0) 0%, rgba(5, 19, 43, 0.85) 100%);
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0, 119, 168, 0.42) 0%, rgba(5, 19, 43, 0.2) 40%, rgba(5, 19, 43, 0.9) 100%);
+}
+
+.auth-foto::before {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 2;
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
 }
 
 .auth-foto-texto {

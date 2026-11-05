@@ -269,6 +269,132 @@ button {
     color: var(--tinta-2);
 }
 
+/* Identidad caribeña compartida -------------------------------------------- */
+
+/* Píldora sobre los títulos de sección. */
+.etiqueta-caribe {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: var(--e-3);
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(0, 180, 216, 0.14);
+    color: var(--caribe-deep);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.etiqueta-caribe.roja {
+    background: var(--rojo);
+    color: #fff;
+}
+
+/* Mini bandera dentro de la píldora roja (sin imágenes ni emojis). */
+.bandera-mini {
+    display: inline-grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5px;
+    width: 14px;
+    height: 10px;
+    padding: 1px;
+    border-radius: 2px;
+    background: #fff;
+}
+
+.bandera-mini::before,
+.bandera-mini::after,
+.bandera-mini i,
+.bandera-mini b {
+    content: '';
+    display: block;
+}
+
+/* Orden en la rejilla: ::before, i, b, ::after (cuarteles de la bandera). */
+.bandera-mini::before,
+.bandera-mini::after { background: var(--azul); }
+.bandera-mini i,
+.bandera-mini b { background: var(--rojo); }
+
+/* Segunda línea de los titulares: cursiva turquesa. */
+h1 em,
+h2 em {
+    font-style: italic;
+    font-weight: 500;
+    color: var(--caribe-deep);
+}
+
+.banda-oscura h1 em,
+.banda-oscura h2 em,
+.portada h1 em {
+    color: var(--caribe);
+}
+
+/* Franja tricolor como separador entre bandas. */
+.franja-tricolor {
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
+}
+
+/* Bandas de color: azul noche (mar de noche) y arena. */
+.banda-oscura {
+    background:
+        radial-gradient(90% 120% at 100% 0%, rgba(0, 119, 168, 0.45) 0%, transparent 60%),
+        linear-gradient(180deg, var(--night-mid) 0%, var(--night) 100%);
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.banda-oscura h2,
+.banda-oscura h3 {
+    color: #fff;
+}
+
+.banda-oscura .seccion-cabecera p {
+    color: rgba(255, 255, 255, 0.74);
+}
+
+.banda-oscura .etiqueta-caribe {
+    background: rgba(0, 180, 216, 0.18);
+    color: var(--caribe);
+}
+
+.banda-arena {
+    background: linear-gradient(180deg, #FFF4E3 0%, var(--sand-light) 100%);
+}
+
+/* Cabecera de página con el degradado del mar: Explorar, Autos y cuentas. */
+.cabecera-caribe {
+    position: relative;
+    padding: var(--e-7) 0 calc(var(--e-7) + 6px);
+    background:
+        radial-gradient(70% 140% at 85% 10%, rgba(0, 180, 216, 0.38) 0%, transparent 65%),
+        linear-gradient(120deg, var(--night) 0%, var(--night-mid) 45%, var(--caribe-deep) 100%);
+    color: rgba(255, 255, 255, 0.86);
+}
+
+.cabecera-caribe::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
+}
+
+.cabecera-caribe h1 {
+    color: #fff;
+}
+
+.cabecera-caribe h1 em {
+    color: var(--caribe);
+}
+
+.cabecera-caribe .migas,
+.cabecera-caribe .migas a {
+    color: rgba(255, 255, 255, 0.74);
+}
+
 /* ----------------------------------------------------------------------------
    4. Botones
    ------------------------------------------------------------------------- */
@@ -621,14 +747,24 @@ select.control {
    6. Encabezado del sitio
    ------------------------------------------------------------------------- */
 
+/* Encabezado azul noche, como el cielo del Caribe al anochecer, con la
+   franja tricolor de la bandera en su borde inferior. */
 .header-principal {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(248, 245, 239, 0.94);
-    border-bottom: 1px solid var(--linea);
+    background: rgba(5, 19, 43, 0.97);
+    color: #fff;
     backdrop-filter: saturate(1.4) blur(10px);
     -webkit-backdrop-filter: saturate(1.4) blur(10px);
+}
+
+.header-principal::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
 }
 
 .header-fila {
@@ -643,7 +779,7 @@ select.control {
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
-    color: var(--tinta);
+    color: #fff;
     text-decoration: none;
     font-family: var(--f-display);
     font-size: 1.375rem;
@@ -653,7 +789,7 @@ select.control {
 }
 
 .marca b {
-    color: var(--rojo);
+    color: #FF5468;
     font-weight: 700;
 }
 
@@ -662,9 +798,11 @@ select.control {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 3px;
-    width: 26px;
-    height: 26px;
-    padding: 0;
+    width: 28px;
+    height: 28px;
+    padding: 3px;
+    border-radius: 5px;
+    background: #fff;   /* la cruz blanca de la bandera */
     flex-shrink: 0;
 }
 
@@ -687,20 +825,20 @@ select.control {
 .nav-principal a {
     padding: 8px 12px;
     border-radius: var(--r-s);
-    color: var(--tinta-2);
+    color: rgba(255, 255, 255, 0.8);
     font-size: var(--t-s);
     font-weight: 700;
     text-decoration: none;
 }
 
 .nav-principal a:hover {
-    color: var(--tinta);
-    background: var(--superficie-suave);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .nav-principal a[aria-current='page'] {
-    color: var(--azul);
-    box-shadow: inset 0 -2px 0 var(--azul);
+    color: #fff;
+    box-shadow: inset 0 -3px 0 var(--caribe);
     border-radius: 0;
 }
 
@@ -718,14 +856,32 @@ select.control {
 }
 
 .enlace-header {
-    color: var(--tinta);
+    color: #fff;
     font-size: var(--t-s);
     font-weight: 700;
     text-decoration: none;
 }
 
 .enlace-header:hover {
-    color: var(--azul);
+    color: var(--caribe);
+}
+
+.header-principal .boton-enlace {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.header-principal .boton-enlace:hover {
+    color: #fff;
+}
+
+/* Botón principal del encabezado: turquesa sobre el azul noche. */
+.header-principal .btn-primario {
+    background: var(--caribe);
+    color: var(--night);
+}
+
+.header-principal .btn-primario:hover {
+    background: #3CCBE6;
 }
 
 .enlace-guardados {
@@ -775,8 +931,8 @@ select.control {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: var(--azul);
-    color: #fff;
+    background: var(--caribe);
+    color: var(--night);
     font-size: var(--t-xs);
     font-weight: 800;
 }
@@ -787,17 +943,17 @@ select.control {
     width: 44px;
     height: 44px;
     padding: 0;
-    border: 1px solid var(--linea);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     border-radius: var(--r-s);
-    background: var(--superficie);
+    background: transparent;
 }
 
 .boton-menu-movil span {
     display: block;
     width: 18px;
     height: 2px;
-    background: var(--tinta);
-    box-shadow: 0 -6px 0 var(--tinta), 0 6px 0 var(--tinta);
+    background: #fff;
+    box-shadow: 0 -6px 0 #fff, 0 6px 0 #fff;
     transition: box-shadow 0.15s, transform 0.15s;
 }
 
@@ -811,14 +967,14 @@ select.control {
     display: block;
     width: 18px;
     height: 2px;
-    background: var(--tinta);
+    background: #fff;
     transform: rotate(-90deg);
 }
 
 .menu-movil {
     display: none;
-    border-top: 1px solid var(--linea);
-    background: var(--papel);
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--night);
     padding: var(--e-3) var(--margen) var(--e-5);
 }
 
@@ -836,9 +992,9 @@ select.control {
     display: block;
     padding: 14px 0;
     border: 0;
-    border-bottom: 1px solid var(--linea);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     background: none;
-    color: var(--tinta);
+    color: #fff;
     font-size: var(--t-m);
     font-weight: 700;
     text-align: left;
@@ -846,7 +1002,7 @@ select.control {
 }
 
 .menu-movil .enlace-destacado {
-    color: var(--azul);
+    color: var(--caribe);
 }
 
 @keyframes aparecer-abajo {
@@ -1790,6 +1946,12 @@ dialog.modal.cerrando {
     font-weight: 800;
 }
 
+.header-principal .preferencias-boton {
+    border-color: rgba(255, 255, 255, 0.22);
+    background: transparent;
+    color: #fff;
+}
+
 .preferencias-boton svg {
     width: 16px;
     height: 16px;
@@ -1990,38 +2152,122 @@ html.idioma-cargando body {
    Portada
    ------------------------------------------------------------------------- */
 
+/* Fotografía de playa a pantalla completa bajo un velo azul noche: el texto
+   blanco y el buscador quedan legibles en cualquier recorte de la foto. */
 .portada {
-    padding: var(--e-7) 0 var(--e-8);
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    min-height: min(88vh, 760px);
+    padding: var(--e-8) 0 calc(var(--e-8) + 6px);
+    background: var(--night);   /* respaldo si la fotografía no carga */
+    color: #fff;
+    overflow: hidden;
 }
 
-.portada-rejilla {
-    display: grid;
-    gap: var(--e-7);
-    align-items: start;
+.portada-foto {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 65% center;
+}
+
+.portada::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(90deg, rgba(5, 19, 43, 0.86) 0%, rgba(5, 19, 43, 0.62) 45%, rgba(5, 19, 43, 0.18) 100%),
+        linear-gradient(0deg, rgba(5, 19, 43, 0.7) 0%, transparent 45%);
+}
+
+.portada-franja {
+    position: absolute;
+    inset: auto 0 0;
+}
+
+.portada-contenido {
+    width: 100%;
+}
+
+.portada-texto {
+    max-width: 640px;
 }
 
 .portada h1 {
-    max-width: 15ch;
-    font-size: clamp(2.5rem, 1.5rem + 3.4vw, 4.125rem);
+    color: #fff;
+    font-size: clamp(2.75rem, 1.6rem + 4.4vw, 5rem);
+    line-height: 1.02;
+    text-shadow: 0 2px 24px rgba(5, 19, 43, 0.35);
+}
+
+.portada h1 em {
+    display: block;
 }
 
 .portada-entrada {
     max-width: 46ch;
     margin-top: var(--e-4);
-    color: var(--tinta-2);
+    color: rgba(255, 255, 255, 0.88);
     font-size: var(--t-l);
     line-height: 1.45;
 }
 
-@media (min-width: 1040px) {
-    .portada-rejilla {
-        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-        gap: var(--e-7);
+.portada .buscador {
+    max-width: 1080px;
+    border: 0;
+    color: var(--tinta);
+    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 699px) {
+    .portada {
+        text-align: center;
     }
 
-    .portada-texto {
-        position: sticky;
-        top: calc(var(--alto-header) + var(--e-5));
+    .portada-texto,
+    .portada-entrada {
+        margin-inline: auto;
+    }
+
+    .portada .buscador {
+        text-align: left;
+    }
+
+    .portada::before {
+        background: linear-gradient(180deg, rgba(5, 19, 43, 0.72) 0%, rgba(5, 19, 43, 0.55) 50%, rgba(5, 19, 43, 0.85) 100%);
+    }
+}
+
+/* En escritorio el buscador es una sola fila. */
+@media (min-width: 1040px) {
+    .portada .buscador-campos {
+        display: flex;
+        align-items: flex-end;
+    }
+
+    .portada .buscador-campos > .campo {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .portada .buscador-campos > .campo-destino {
+        flex-grow: 1.6;
+    }
+
+    .portada .buscador-campos > .campo-personas {
+        flex: 0 0 110px;
+    }
+
+    .portada .buscador-enviar {
+        flex: 0 0 auto;
+        min-width: 150px;
+        min-height: 48px;
     }
 }
 
@@ -2330,6 +2576,7 @@ html.idioma-cargando body {
 }
 
 .ficha-cabecera h3 {
+    color: var(--azul);
     font-size: var(--t-xl);
 }
 
@@ -2390,18 +2637,86 @@ html.idioma-cargando body {
     }
 }
 
+.ficha-destino {
+    color: var(--tinta);
+    border: 0;
+    border-top: 5px solid var(--caribe);
+    box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.55);
+}
+
+.seccion-mapa .mapa-selector label {
+    color: rgba(255, 255, 255, 0.86);
+}
+
 @media (min-width: 1040px) {
-    .ficha-destino {
-        position: absolute;
-        left: var(--e-4);
-        right: var(--e-4);
-        bottom: var(--e-4);
-        margin: 0;
-        box-shadow: var(--sombra-flotante);
+    .mapa-destinos {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: var(--e-5);
+        align-items: start;
     }
 
-    .mapa-lienzo {
-        padding-bottom: 150px;
+    .ficha-destino {
+        margin: 0;
+    }
+
+    .ficha-cuerpo {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   Cifras: banda azul de la bandera
+   ------------------------------------------------------------------------- */
+
+.banda-cifras {
+    position: relative;
+    padding: var(--e-7) 0 calc(var(--e-7) + 6px);
+    background:
+        radial-gradient(60% 160% at 0% 100%, rgba(0, 180, 216, 0.28) 0%, transparent 60%),
+        var(--azul);
+    color: #fff;
+}
+
+.banda-cifras::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
+}
+
+.cifras {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e-5);
+    margin: 0 auto;
+    text-align: center;
+}
+
+.cifras div {
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.cifras dd {
+    margin: 0;
+    font-family: var(--f-display);
+    font-size: clamp(2.25rem, 1.6rem + 2.4vw, 3.25rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.cifras dt {
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: var(--t-s);
+    font-weight: 700;
+}
+
+@media (min-width: 760px) {
+    .cifras {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 }
 
@@ -2436,9 +2751,7 @@ html.idioma-cargando body {
     transition: border-color 0.15s;
 }
 
-.postal a:hover {
-    border-color: var(--tinta-3);
-}
+
 
 .postal-foto {
     aspect-ratio: 5 / 4;
@@ -2472,10 +2785,22 @@ html.idioma-cargando body {
     font-weight: 700;
 }
 
-@media (min-width: 1040px) {
-    .postales {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
+/* Postales con marco blanco y una franja turquesa de mar al pie. */
+.postal a {
+    border: 0;
+    box-shadow: 0 1px 0 var(--linea), 0 18px 36px -24px rgba(5, 19, 43, 0.45);
+}
+
+.postal a:hover {
+    box-shadow: 0 0 0 2px var(--caribe), 0 18px 36px -24px rgba(5, 19, 43, 0.45);
+}
+
+.postal-pie h3 {
+    color: var(--azul);
+}
+
+.postal-pie p {
+    color: var(--caribe-deep);
 }
 
 .otros-destinos {
@@ -2527,9 +2852,7 @@ html.idioma-cargando body {
    Categorías
    ------------------------------------------------------------------------- */
 
-.seccion-categorias {
-    background: var(--superficie-suave);
-}
+/* Fondo arena: la sección de experiencias se lee como la playa. */
 
 .categorias {
     display: grid;
@@ -2627,8 +2950,26 @@ html.idioma-cargando body {
 }
 
 .opiniones .opinion {
-    padding-top: var(--e-5);
-    border-top: 2px solid var(--tinta);
+    padding: var(--e-5);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 4px solid var(--caribe);
+    border-radius: var(--r-m);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.banda-oscura .opinion blockquote p:not(.opinion-titulo),
+.banda-oscura .opinion figcaption {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.banda-oscura .opinion-titulo,
+.banda-oscura .opinion-etiqueta,
+.banda-oscura .opinion figcaption strong {
+    color: #fff;
+}
+
+.banda-oscura .opinion figcaption a {
+    color: var(--caribe);
 }
 
 @media (min-width: 900px) {
@@ -2652,31 +2993,6 @@ html.idioma-cargando body {
     max-width: 58ch;
     margin-top: var(--e-4);
     color: var(--tinta-2);
-}
-
-.cifras {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: var(--e-4);
-    margin: var(--e-6) 0 0;
-}
-
-.cifras div {
-    padding-top: var(--e-3);
-    border-top: 1px solid var(--linea-fuerte);
-}
-
-.cifras dt {
-    color: var(--tinta-3);
-    font-size: var(--t-xs);
-    font-weight: 700;
-}
-
-.cifras dd {
-    margin: 2px 0 0;
-    font-family: var(--f-display);
-    font-size: var(--t-2xl);
-    font-weight: 600;
 }
 
 .nosotros-fotos {
@@ -2755,9 +3071,21 @@ html.idioma-cargando body {
    ------------------------------------------------------------------------- */
 
 .banda-empresas {
+    position: relative;
     padding: var(--e-8) 0;
-    background: var(--azul);
+    background:
+        radial-gradient(70% 140% at 100% 50%, rgba(0, 180, 216, 0.45) 0%, transparent 60%),
+        linear-gradient(110deg, var(--azul) 0%, var(--azul-oscuro) 55%, var(--caribe-deep) 100%);
     color: #fff;
+}
+
+.banda-empresas .etiqueta-caribe {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+}
+
+.banda-empresas h2 em {
+    color: #7FE3F5;
 }
 
 .banda-empresas-rejilla {

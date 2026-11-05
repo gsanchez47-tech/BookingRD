@@ -21,7 +21,7 @@ Sin `.env`, arranca en modo de demostración con todos los datos de ejemplo. Con
 
 | Parte | Detalle |
 |---|---|
-| Inicio | Mapa de la isla con 15 destinos (ficha con conteos y clima), buscador, postales de destinos, categorías, recomendados, opiniones, *Nosotros*, contacto. Sin carruseles ni movimiento automático. |
+| Inicio | Portada con foto de playa, píldora *República Dominicana* y buscador; mapa de la isla sobre azul noche con 15 destinos (ficha con conteos y clima); cifras; postales de destinos, categorías, recomendados, opiniones, *Nosotros*, contacto. Sin carruseles ni movimiento automático. |
 | Explorar | Todos los filtros en un panel a la izquierda; lista o mapa; siete órdenes; clima del destino; búsqueda en la URL. |
 | Detalle y reserva | Fotografía, características, ubicación y pronóstico, reseñas, políticas, disponibilidad y total en tiempo real, control de cupo en transacción. |
 | Alquiler de autos | Recogida y devolución con hora, ciudad de devolución, edad del conductor, extras, precio por bloques de 24 horas con desglose, disponibilidad por flota. |
@@ -48,7 +48,8 @@ Sin `.env`, arranca en modo de demostración con todos los datos de ejemplo. Con
 - 34 de 34 comprobaciones en navegador automatizado, sin errores de JavaScript.
 - Recorrido completo en inglés y dólares sin textos de interfaz pendientes.
 - Script SQL emulado: todas las inserciones resuelven sus claves y los conteos coinciden.
-- 94 fotografías, cada una usada una sola vez.
+- 93 fotografías, cada una usada una sola vez.
+- Estética caribeña en todo el sitio: encabezado azul noche con franja tricolor, cabeceras con el degradado del mar, píldoras y cursivas turquesa.
 
 ## Pendientes
 

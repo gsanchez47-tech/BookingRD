@@ -5,38 +5,122 @@
    Portada
    ------------------------------------------------------------------------- */
 
+/* Fotografía de playa a pantalla completa bajo un velo azul noche: el texto
+   blanco y el buscador quedan legibles en cualquier recorte de la foto. */
 .portada {
-    padding: var(--e-7) 0 var(--e-8);
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    min-height: min(88vh, 760px);
+    padding: var(--e-8) 0 calc(var(--e-8) + 6px);
+    background: var(--night);   /* respaldo si la fotografía no carga */
+    color: #fff;
+    overflow: hidden;
 }
 
-.portada-rejilla {
-    display: grid;
-    gap: var(--e-7);
-    align-items: start;
+.portada-foto {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 65% center;
+}
+
+.portada::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(90deg, rgba(5, 19, 43, 0.86) 0%, rgba(5, 19, 43, 0.62) 45%, rgba(5, 19, 43, 0.18) 100%),
+        linear-gradient(0deg, rgba(5, 19, 43, 0.7) 0%, transparent 45%);
+}
+
+.portada-franja {
+    position: absolute;
+    inset: auto 0 0;
+}
+
+.portada-contenido {
+    width: 100%;
+}
+
+.portada-texto {
+    max-width: 640px;
 }
 
 .portada h1 {
-    max-width: 15ch;
-    font-size: clamp(2.5rem, 1.5rem + 3.4vw, 4.125rem);
+    color: #fff;
+    font-size: clamp(2.75rem, 1.6rem + 4.4vw, 5rem);
+    line-height: 1.02;
+    text-shadow: 0 2px 24px rgba(5, 19, 43, 0.35);
+}
+
+.portada h1 em {
+    display: block;
 }
 
 .portada-entrada {
     max-width: 46ch;
     margin-top: var(--e-4);
-    color: var(--tinta-2);
+    color: rgba(255, 255, 255, 0.88);
     font-size: var(--t-l);
     line-height: 1.45;
 }
 
-@media (min-width: 1040px) {
-    .portada-rejilla {
-        grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-        gap: var(--e-7);
+.portada .buscador {
+    max-width: 1080px;
+    border: 0;
+    color: var(--tinta);
+    box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 699px) {
+    .portada {
+        text-align: center;
     }
 
-    .portada-texto {
-        position: sticky;
-        top: calc(var(--alto-header) + var(--e-5));
+    .portada-texto,
+    .portada-entrada {
+        margin-inline: auto;
+    }
+
+    .portada .buscador {
+        text-align: left;
+    }
+
+    .portada::before {
+        background: linear-gradient(180deg, rgba(5, 19, 43, 0.72) 0%, rgba(5, 19, 43, 0.55) 50%, rgba(5, 19, 43, 0.85) 100%);
+    }
+}
+
+/* En escritorio el buscador es una sola fila. */
+@media (min-width: 1040px) {
+    .portada .buscador-campos {
+        display: flex;
+        align-items: flex-end;
+    }
+
+    .portada .buscador-campos > .campo {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .portada .buscador-campos > .campo-destino {
+        flex-grow: 1.6;
+    }
+
+    .portada .buscador-campos > .campo-personas {
+        flex: 0 0 110px;
+    }
+
+    .portada .buscador-enviar {
+        flex: 0 0 auto;
+        min-width: 150px;
+        min-height: 48px;
     }
 }
 
@@ -192,6 +276,7 @@
 }
 
 .ficha-cabecera h3 {
+    color: var(--azul);
     font-size: var(--t-xl);
 }
 
@@ -252,18 +337,86 @@
     }
 }
 
+.ficha-destino {
+    color: var(--tinta);
+    border: 0;
+    border-top: 5px solid var(--caribe);
+    box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.55);
+}
+
+.seccion-mapa .mapa-selector label {
+    color: rgba(255, 255, 255, 0.86);
+}
+
 @media (min-width: 1040px) {
-    .ficha-destino {
-        position: absolute;
-        left: var(--e-4);
-        right: var(--e-4);
-        bottom: var(--e-4);
-        margin: 0;
-        box-shadow: var(--sombra-flotante);
+    .mapa-destinos {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: var(--e-5);
+        align-items: start;
     }
 
-    .mapa-lienzo {
-        padding-bottom: 150px;
+    .ficha-destino {
+        margin: 0;
+    }
+
+    .ficha-cuerpo {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   Cifras: banda azul de la bandera
+   ------------------------------------------------------------------------- */
+
+.banda-cifras {
+    position: relative;
+    padding: var(--e-7) 0 calc(var(--e-7) + 6px);
+    background:
+        radial-gradient(60% 160% at 0% 100%, rgba(0, 180, 216, 0.28) 0%, transparent 60%),
+        var(--azul);
+    color: #fff;
+}
+
+.banda-cifras::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
+}
+
+.cifras {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--e-5);
+    margin: 0 auto;
+    text-align: center;
+}
+
+.cifras div {
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.cifras dd {
+    margin: 0;
+    font-family: var(--f-display);
+    font-size: clamp(2.25rem, 1.6rem + 2.4vw, 3.25rem);
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.cifras dt {
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: var(--t-s);
+    font-weight: 700;
+}
+
+@media (min-width: 760px) {
+    .cifras {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 }
 
@@ -298,9 +451,7 @@
     transition: border-color 0.15s;
 }
 
-.postal a:hover {
-    border-color: var(--tinta-3);
-}
+
 
 .postal-foto {
     aspect-ratio: 5 / 4;
@@ -334,10 +485,22 @@
     font-weight: 700;
 }
 
-@media (min-width: 1040px) {
-    .postales {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
+/* Postales con marco blanco y una franja turquesa de mar al pie. */
+.postal a {
+    border: 0;
+    box-shadow: 0 1px 0 var(--linea), 0 18px 36px -24px rgba(5, 19, 43, 0.45);
+}
+
+.postal a:hover {
+    box-shadow: 0 0 0 2px var(--caribe), 0 18px 36px -24px rgba(5, 19, 43, 0.45);
+}
+
+.postal-pie h3 {
+    color: var(--azul);
+}
+
+.postal-pie p {
+    color: var(--caribe-deep);
 }
 
 .otros-destinos {
@@ -389,9 +552,7 @@
    Categorías
    ------------------------------------------------------------------------- */
 
-.seccion-categorias {
-    background: var(--superficie-suave);
-}
+/* Fondo arena: la sección de experiencias se lee como la playa. */
 
 .categorias {
     display: grid;
@@ -489,8 +650,26 @@
 }
 
 .opiniones .opinion {
-    padding-top: var(--e-5);
-    border-top: 2px solid var(--tinta);
+    padding: var(--e-5);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-top: 4px solid var(--caribe);
+    border-radius: var(--r-m);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.banda-oscura .opinion blockquote p:not(.opinion-titulo),
+.banda-oscura .opinion figcaption {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.banda-oscura .opinion-titulo,
+.banda-oscura .opinion-etiqueta,
+.banda-oscura .opinion figcaption strong {
+    color: #fff;
+}
+
+.banda-oscura .opinion figcaption a {
+    color: var(--caribe);
 }
 
 @media (min-width: 900px) {
@@ -514,31 +693,6 @@
     max-width: 58ch;
     margin-top: var(--e-4);
     color: var(--tinta-2);
-}
-
-.cifras {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: var(--e-4);
-    margin: var(--e-6) 0 0;
-}
-
-.cifras div {
-    padding-top: var(--e-3);
-    border-top: 1px solid var(--linea-fuerte);
-}
-
-.cifras dt {
-    color: var(--tinta-3);
-    font-size: var(--t-xs);
-    font-weight: 700;
-}
-
-.cifras dd {
-    margin: 2px 0 0;
-    font-family: var(--f-display);
-    font-size: var(--t-2xl);
-    font-weight: 600;
 }
 
 .nosotros-fotos {
@@ -617,9 +771,21 @@
    ------------------------------------------------------------------------- */
 
 .banda-empresas {
+    position: relative;
     padding: var(--e-8) 0;
-    background: var(--azul);
+    background:
+        radial-gradient(70% 140% at 100% 50%, rgba(0, 180, 216, 0.45) 0%, transparent 60%),
+        linear-gradient(110deg, var(--azul) 0%, var(--azul-oscuro) 55%, var(--caribe-deep) 100%);
     color: #fff;
+}
+
+.banda-empresas .etiqueta-caribe {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+}
+
+.banda-empresas h2 em {
+    color: #7FE3F5;
 }
 
 .banda-empresas-rejilla {

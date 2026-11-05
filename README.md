@@ -79,7 +79,7 @@ Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@co
 
 | Página | Contenido |
 |---|---|
-| Inicio | **Mapa de la isla** con los 15 destinos: al elegir uno, una ficha muestra sus alojamientos, actividades y autos, y el clima del momento. Buscador de alojamiento, actividades o autos con autocompletado. Postales de 10 destinos con su fotografía, categorías, recomendados por tipo, lo visto recientemente, opiniones verificadas, *Nosotros*, llamado a empresas y contacto. |
+| Inicio | Portada con fotografía de playa a pantalla completa, píldora roja *República Dominicana*, titular con cursiva turquesa y buscador de alojamiento, actividades o autos. **Mapa de la isla** sobre azul noche con los 15 destinos: al elegir uno, una ficha muestra sus alojamientos, actividades y autos, y el clima del momento. Banda azul con las cifras de la plataforma. Postales de 9 destinos con su fotografía, categorías, recomendados por tipo, lo visto recientemente, opiniones verificadas, *Nosotros*, llamado a empresas y contacto. |
 | Explorar | **Todos los filtros en un panel a la izquierda** (cajón en móvil): qué buscas, categoría con su conteo, destino, palabra clave, personas o pasajeros, transmisión, rango de precio sobre un histograma, valoración y fechas del viaje. Etiquetas de filtros aplicados, siete órdenes, vista de lista o de mapa, clima del destino elegido y búsqueda compartible por URL. |
 | Detalle | Valoración, guardar y compartir, lo más destacado, descripción, características, ubicación con clima y pronóstico, reseñas con distribución y respuesta de la empresa, lo que debes saber, relacionadas y reserva con disponibilidad y total en tiempo real. |
 | Autos | Buscador con fecha y hora de recogida y devolución, tipos de auto, flota mejor valorada, cómo reservar, precio y requisitos, otras formas de moverse y preguntas frecuentes. |
@@ -90,7 +90,7 @@ Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@co
 
 **Idioma y moneda.** El sitio está en español y se puede ver en inglés. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia); el pago siempre es en pesos y la reserva lo indica. Los textos escritos por usuarios y empresas no se traducen.
 
-**Diseño.** Fondo papel, tipografías Fraunces y Nunito (incluidas en `public/fonts/`, sin depender de Google Fonts), paleta de la bandera y del Caribe, y una sola animación: los puntos del mapa al cargar. Sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (94) se usa en un solo lugar del sitio.
+**Diseño caribeño.** Encabezado azul noche con la franja tricolor de la bandera; portada con fotografía de playa; cabeceras de página con el degradado del mar (azul noche a turquesa); píldoras sobre los títulos y segunda línea en cursiva turquesa; bandas azul noche, azul bandera y arena alternadas con el fondo claro. Tipografías Fraunces y Nunito (incluidas en `public/fonts/`). Una sola animación: los puntos del mapa al cargar; sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (93) se usa en un solo lugar del sitio.
 
 **Correos.** Bienvenida al registrarse y confirmación de cada reserva por SMTP. Sin `SMTP_HOST` en `.env`, cada correo se guarda como HTML en `correos-enviados/`.
 

@@ -3,10 +3,11 @@
 
     <main id="contenido">
         <!-- Portada con buscador de autos (js/buscador.js, tipo fijo "vehiculo") -->
-        <section class="portada-autos" aria-labelledby="titulo-autos">
+        <section class="portada-autos cabecera-caribe" aria-labelledby="titulo-autos">
             <div class="contenedor portada-autos-rejilla">
                 <div>
-                    <h1 id="titulo-autos">Alquila un auto y recorre la isla a tu ritmo.</h1>
+                    <p class="etiqueta-caribe roja"><span class="bandera-mini" aria-hidden="true"><i></i><b></b></span>Alquiler de autos</p>
+                    <h1 id="titulo-autos">Alquila un auto y <em>recorre la isla a tu ritmo</em></h1>
                     <p class="portada-entrada">Recógelo en el aeropuerto o en la ciudad. El precio por día ya incluye seguro básico, asistencia en carretera e impuestos, y puedes cancelar gratis hasta un día antes.</p>
 
                     <form id="form-busqueda" class="buscador" action="explorar.html" autocomplete="off" aria-label="Buscar autos de alquiler" data-tipo="vehiculo">
@@ -44,10 +45,11 @@
         </section>
 
         <!-- Tipos de auto (conteo por categoría: GET /api/estadisticas) -->
-        <section class="seccion" id="tipos" aria-labelledby="titulo-tipos">
+        <section class="seccion banda-arena" id="tipos" aria-labelledby="titulo-tipos">
             <div class="contenedor tipos-rejilla">
                 <div>
-                    <h2 id="titulo-tipos">¿Qué auto necesitas?</h2>
+                    <p class="etiqueta-caribe">Tipos de auto</p>
+                    <h2 id="titulo-tipos">¿Qué auto <em>necesitas?</em></h2>
                     <p class="texto-secundario">Cada modelo se reserva "o similar", como en todo el sector: recibes ese modelo u otro de la misma categoría.</p>
                 </div>
                 <ul class="tipos-auto">
@@ -68,7 +70,8 @@
             <div class="contenedor">
                 <div class="seccion-cabecera">
                     <div>
-                        <h2 id="titulo-flota">Autos mejor valorados</h2>
+                        <p class="etiqueta-caribe">La flota</p>
+                        <h2 id="titulo-flota">Los autos <em>mejor valorados</em></h2>
                         <p>Según las reseñas de quienes ya los alquilaron.</p>
                     </div>
                     <a href="explorar.html?tipo=vehiculo" class="btn-outline">Ver todos los autos</a>
@@ -96,11 +99,12 @@
         </section>
 
         <!-- Cómo funciona: es una secuencia real, por eso va numerada -->
-        <section class="seccion seccion-pasos" aria-labelledby="titulo-pasos">
+        <section class="seccion seccion-pasos banda-oscura" aria-labelledby="titulo-pasos">
             <div class="contenedor">
                 <div class="seccion-cabecera">
                     <div>
-                        <h2 id="titulo-pasos">Reserva en tres pasos</h2>
+                        <p class="etiqueta-caribe">Cómo funciona</p>
+                        <h2 id="titulo-pasos">Reserva <em>en tres pasos</em></h2>
                         <p>Sin pagos por adelantado: pagas en el mostrador de la empresa al recoger.</p>
                     </div>
                 </div>
@@ -146,11 +150,12 @@
         </section>
 
         <!-- Otras formas de moverse (información) -->
-        <section class="seccion seccion-moverse" aria-labelledby="titulo-moverse">
+        <section class="seccion seccion-moverse banda-arena" aria-labelledby="titulo-moverse">
             <div class="contenedor">
                 <div class="seccion-cabecera">
                     <div>
-                        <h2 id="titulo-moverse">Otras formas de moverte</h2>
+                        <p class="etiqueta-caribe">Sin manejar</p>
+                        <h2 id="titulo-moverse">Otras formas <em>de moverte</em></h2>
                         <p>Si prefieres no manejar, estas opciones funcionan bien entre los destinos.</p>
                     </div>
                 </div>
@@ -177,7 +182,8 @@
         <!-- Preguntas frecuentes (acordeón nativo details/summary) -->
         <section class="seccion" id="preguntas" aria-labelledby="titulo-preguntas">
             <div class="contenedor preguntas-rejilla">
-                <h2 id="titulo-preguntas">Dudas sobre el alquiler</h2>
+                <p class="etiqueta-caribe">Preguntas frecuentes</p>
+                <h2 id="titulo-preguntas">Dudas <em>sobre el alquiler</em></h2>
                 <div class="lista-preguntas">
                     <details>
                         <summary>¿Cómo se cuentan los días?</summary>

@@ -33,10 +33,16 @@
 }
 
 .portada-categoria {
-    margin-bottom: var(--e-2);
-    color: var(--rojo);
-    font-size: var(--t-s);
+    display: inline-block;
+    margin-bottom: var(--e-3);
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(0, 180, 216, 0.14);
+    color: var(--caribe-deep);
+    font-size: var(--t-xs);
     font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .portada-cabecera h1 {

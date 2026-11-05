@@ -1,7 +1,8 @@
 /* Encabezado de las páginas de cuenta (Mis reservas, panel de empresa y administración). */
 
 .cabecera-cuenta {
-    padding: var(--e-6) 0 var(--e-5);
+    padding: var(--e-7) 0 calc(var(--e-6) + 6px);
+    margin-bottom: var(--e-5);
 }
 
 .cabecera-cuenta-contenido {
@@ -11,9 +12,15 @@
 }
 
 .cabecera-cuenta-etiqueta {
-    color: var(--rojo);
-    font-size: var(--t-s);
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(0, 180, 216, 0.18);
+    color: var(--caribe);
+    font-size: var(--t-xs);
     font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 
 .cabecera-cuenta h1 {
@@ -24,7 +31,7 @@
 .cabecera-cuenta-texto > p:last-child {
     max-width: 52ch;
     margin-top: var(--e-3);
-    color: var(--tinta-2);
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .cifras-cuenta {
@@ -36,14 +43,29 @@
 }
 
 .cifras-cuenta dt {
-    color: var(--tinta-3);
+    color: rgba(255, 255, 255, 0.72);
     font-size: var(--t-xs);
     font-weight: 800;
 }
 
 .cifras-cuenta dd {
     margin: 0;
+    color: #fff;
     font-family: var(--f-display);
     font-size: var(--t-2xl);
     font-weight: 600;
+}
+
+@media (min-width: 1040px) {
+    .cabecera-cuenta-contenido {
+        grid-template-columns: 1.4fr 1fr;
+        grid-template-areas: 'texto cifras';
+    }
+
+    .cabecera-cuenta-texto { grid-area: texto; }
+
+    .cifras-cuenta {
+        grid-area: cifras;
+        justify-content: end;
+    }
 }

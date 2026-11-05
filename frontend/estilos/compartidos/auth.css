@@ -23,11 +23,21 @@
     transition: opacity 0.25s;
 }
 
+/* Velo del mar Caribe: turquesa arriba, azul noche abajo para el texto. */
 .auth-foto::after {
     content: '';
     position: absolute;
-    inset: 45% 0 0;
-    background: linear-gradient(180deg, rgba(5, 19, 43, 0) 0%, rgba(5, 19, 43, 0.85) 100%);
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0, 119, 168, 0.42) 0%, rgba(5, 19, 43, 0.2) 40%, rgba(5, 19, 43, 0.9) 100%);
+}
+
+.auth-foto::before {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 2;
+    height: 6px;
+    background: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%);
 }
 
 .auth-foto-texto {
