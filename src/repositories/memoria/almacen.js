@@ -5,13 +5,18 @@
  *   database/datos-demo.js, con las fechas de las reservas relativas al día
  *   de hoy, y ofrece las uniones que los repositorios necesitan.
  *
- *   Los datos viven mientras el servidor esté encendido: al reiniciarlo se
- *   vuelve al estado inicial de la demostración.
+ *   Base local: si el modo no es efímero (DB_MODO=demo), las tablas se
+ *   guardan en database/local/bookingrd-local.json después de cada cambio y
+ *   se recuperan al arrancar. Para volver a los datos de ejemplo basta con
+ *   borrar ese archivo (npm run local:reiniciar).
  */
 
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const datos = require('../../../database/datos-demo');
+const { MODO_EFIMERO } = require('../../config/modo');
 const { hoy, sumarDias } = require('../../utils/fechas');
 
 const TABLAS = {
@@ -204,7 +209,83 @@ function cargar() {
     });
 }
 
-cargar();
+/* ---------------------------------------------------------------------------
+ * Persistencia en archivo (base local)
+ * ------------------------------------------------------------------------- */
+
+const ARCHIVO_LOCAL = process.env.DB_ARCHIVO
+    || path.join(__dirname, '..', '..', '..', 'database', 'local', 'bookingrd-local.json');
+const ISO_INSTANTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
+/** Fechas y contenidos binarios a JSON y de vuelta. */
+function aJson() {
+    return JSON.stringify({ version: 1, secuencias, bd }, (clave, valor) => {
+        if (valor && valor.type === 'Buffer' && Array.isArray(valor.data)) return { __base64: Buffer.from(valor.data).toString('base64') };
+        return valor;
+    });
+}
+
+function revivir(clave, valor) {
+    if (typeof valor === 'string' && ISO_INSTANTE.test(valor)) return new Date(valor);
+    if (valor && typeof valor === 'object' && typeof valor.__base64 === 'string') return Buffer.from(valor.__base64, 'base64');
+    return valor;
+}
+
+/** Recupera las tablas guardadas. @returns {boolean} false si no hay archivo válido */
+function recuperar() {
+    try {
+        const guardado = JSON.parse(fs.readFileSync(ARCHIVO_LOCAL, 'utf8'), revivir);
+        if (!guardado || guardado.version !== 1) return false;
+        for (const tabla of Object.keys(bd)) bd[tabla] = Array.isArray(guardado.bd[tabla]) ? guardado.bd[tabla] : [];
+        Object.assign(secuencias, guardado.secuencias);
+        return true;
+    } catch (error) {
+        if (error.code !== 'ENOENT') console.error(`No se pudo leer la base local (${ARCHIVO_LOCAL}): ${error.message}. Se usan los datos de ejemplo.`);
+        return false;
+    }
+}
+
+/** Escribe el archivo de forma atómica (temporal y renombrado). */
+function guardarAhora() {
+    if (MODO_EFIMERO) return;
+    fs.mkdirSync(path.dirname(ARCHIVO_LOCAL), { recursive: true });
+    const temporal = `${ARCHIVO_LOCAL}.tmp`;
+    fs.writeFileSync(temporal, aJson());
+    fs.renameSync(temporal, ARCHIVO_LOCAL);
+}
+
+let guardadoPendiente = null;
+
+/** Programa el guardado (agrupa varios cambios seguidos en una escritura). */
+function guardar() {
+    if (MODO_EFIMERO || guardadoPendiente) return;
+    guardadoPendiente = setTimeout(() => {
+        guardadoPendiente = null;
+        try {
+            guardarAhora();
+        } catch (error) {
+            console.error(`No se pudo guardar la base local: ${error.message}`);
+        }
+    }, 250);
+}
+
+/** Guarda lo pendiente antes de apagar (Ctrl + C). */
+function guardarAlSalir() {
+    if (guardadoPendiente) {
+        clearTimeout(guardadoPendiente);
+        guardadoPendiente = null;
+        try { guardarAhora(); } catch (error) { /* el proceso termina de todos modos */ }
+    }
+}
+
+let recuperada = false;
+if (!MODO_EFIMERO) recuperada = recuperar();
+if (!recuperada) {
+    cargar();
+    if (!MODO_EFIMERO) {
+        try { guardarAhora(); } catch (error) { console.error(`No se pudo crear la base local: ${error.message}`); }
+    }
+}
 
 /* ---------------------------------------------------------------------------
  * Consultas comunes
@@ -275,6 +356,10 @@ const tiempo = (fecha) => (fecha instanceof Date ? fecha.getTime() : fecha ? Dat
 
 module.exports = {
     bd,
+    ARCHIVO_LOCAL,
+    recuperada,
+    guardar,
+    guardarAlSalir,
     TABLAS,
     insertar,
     errorDuplicado,

@@ -2,3 +2,7 @@
 * text=auto
 *.jpg binary
 *.png binary
+
+# Scripts de Windows con fin de línea CRLF (cmd y PowerShell lo necesitan).
+*.bat text eol=crlf
+*.ps1 text eol=crlf

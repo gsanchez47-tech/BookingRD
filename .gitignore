@@ -4,6 +4,9 @@ node_modules/
 # Variables de entorno con credenciales
 .env
 
+# Base local en archivo (se crea al usar BookingRD sin SQL Server)
+database/local/
+
 # Correos guardados en desarrollo cuando no hay SMTP configurado
 correos-enviados/
 

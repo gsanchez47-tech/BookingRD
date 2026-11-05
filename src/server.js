@@ -28,7 +28,7 @@ const rutasExternos = require('./routes/externos.routes');
 const { ErrorHttp } = require('./utils/errores');
 
 const crypto = require('crypto');
-const { MODO_DEMO } = require('./config/modo');
+const { MODO_DEMO, MODO_EFIMERO } = require('./config/modo');
 
 // JWT_SECRET firma las sesiones. Es obligatorio con base de datos; en modo de
 // demostración, si falta, se genera uno temporal (las sesiones se cierran al
@@ -38,11 +38,45 @@ if (!process.env.JWT_SECRET) {
         console.error('Configuración incompleta: falta JWT_SECRET en .env (ver .env.example o ejecutar npm run configurar).');
         process.exit(1);
     }
-    process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex');
+    // Base local: la clave se guarda junto a los datos para que las sesiones
+    // sigan abiertas después de reiniciar; en la demostración efímera es temporal.
+    process.env.JWT_SECRET = MODO_EFIMERO ? crypto.randomBytes(32).toString('hex') : claveLocalDeSesiones();
+}
+
+/** Lee o crea database/local/clave-sesiones.txt. */
+function claveLocalDeSesiones() {
+    const fs = require('fs');
+    const archivo = path.join(__dirname, '..', 'database', 'local', 'clave-sesiones.txt');
+    try {
+        const guardada = fs.readFileSync(archivo, 'utf8').trim();
+        if (guardada.length >= 32) return guardada;
+    } catch (error) {
+        // Primera vez: se crea abajo.
+    }
+    const nueva = crypto.randomBytes(48).toString('hex');
+    fs.mkdirSync(path.dirname(archivo), { recursive: true });
+    fs.writeFileSync(archivo, nueva);
+    return nueva;
 }
 
 const app = express();
 app.disable('x-powered-by');
+
+// Base local en archivo: guarda después de cada petición que modifica datos
+// y antes de apagar el servidor.
+const almacenLocal = MODO_DEMO && !MODO_EFIMERO ? require('./repositories/memoria/almacen') : null;
+if (almacenLocal) {
+    app.use((req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'HEAD') res.on('finish', almacenLocal.guardar);
+        next();
+    });
+    for (const senal of ['SIGINT', 'SIGTERM']) {
+        process.on(senal, () => {
+            almacenLocal.guardarAlSalir();
+            process.exit(0);
+        });
+    }
+}
 
 // Encabezados de seguridad. La política CSP se omite porque las páginas
 // también se abren con file:// y cargan tipografías de Google Fonts; la
@@ -79,7 +113,7 @@ app.use('/api', rutasViajero);
 app.use('/api', rutasExternos);
 
 // Estado del servidor (comprobaciones y guía de instalación).
-app.get('/api/salud', (req, res) => res.json({ estado: 'ok', modo: MODO_DEMO ? 'demostracion' : 'base-de-datos' }));
+app.get('/api/salud', (req, res) => res.json({ estado: 'ok', modo: !MODO_DEMO ? 'sql-server' : MODO_EFIMERO ? 'demostracion' : 'local' }));
 
 // Rutas /api inexistentes: respuesta JSON uniforme.
 app.use('/api', (req, res) => {
@@ -118,10 +152,44 @@ app.use((error, req, res, next) => {
 });
 
 const PUERTO = Number(process.env.PORT || 3000);
-app.listen(PUERTO, () => {
-    console.log(`BookingRD disponible en http://localhost:${PUERTO}`);
-    if (MODO_DEMO) {
-        console.log('Modo de demostración: datos en memoria (database/datos-demo.js). Los cambios se pierden al reiniciar.');
-        console.log('Para usar Azure SQL o SQL Server, completa DB_SERVER y los demás datos en .env (npm run configurar).');
+const servidor = app.listen(PUERTO, () => {
+    const direccion = `http://localhost:${PUERTO}`;
+    console.log('');
+    console.log(`  BookingRD está funcionando en ${direccion}`);
+    if (!MODO_DEMO) {
+        const instancia = process.env.DB_INSTANCE ? `\\${process.env.DB_INSTANCE}` : '';
+        console.log(`  Base de datos: SQL Server ${process.env.DB_SERVER}${instancia}, base ${process.env.DB_DATABASE || 'BookingRD'}.`);
+    } else if (MODO_EFIMERO) {
+        console.log('  Modo de demostración: datos de ejemplo en memoria; los cambios se pierden al apagar.');
+    } else {
+        console.log(`  Base de datos local: ${almacenLocal.ARCHIVO_LOCAL}`);
+        console.log('  Los cambios se guardan. Para usar SQL Server: npm run sqlserver (o Azure: npm run configurar).');
     }
+    console.log('  Para apagar el servidor, pulsa Ctrl + C.');
+    console.log('');
+    if (process.env.ABRIR_NAVEGADOR === '1') abrirNavegador(direccion);
 });
+
+servidor.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+        console.error(`El puerto ${PUERTO} ya está en uso: probablemente BookingRD ya está abierto en otra ventana.`);
+        console.error(`Usa esa ventana o ciérrala y vuelve a intentarlo. La página está en http://localhost:${PUERTO}`);
+        if (process.env.ABRIR_NAVEGADOR === '1') abrirNavegador(`http://localhost:${PUERTO}`);
+        process.exitCode = 1;
+        return;
+    }
+    throw error;
+});
+
+/** Abre la página en el navegador predeterminado (Windows, macOS o Linux). */
+function abrirNavegador(direccion) {
+    const { spawn } = require('child_process');
+    const [comando, argumentos] = process.platform === 'win32'
+        ? ['cmd', ['/c', 'start', '', direccion]]
+        : process.platform === 'darwin' ? ['open', [direccion]] : ['xdg-open', [direccion]];
+    try {
+        spawn(comando, argumentos, { detached: true, stdio: 'ignore' }).on('error', () => {}).unref();
+    } catch (error) {
+        // Sin navegador disponible: la dirección ya está en la consola.
+    }
+}

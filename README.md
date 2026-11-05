@@ -5,7 +5,7 @@ Plataforma web de alojamiento, excursiones, actividades y alquiler de autos en R
 | Capa | Tecnología |
 |---|---|
 | Backend | Node.js 18+ y Express 4, por capas (rutas, controladores, servicios, validadores y repositorios) |
-| Base de datos | Azure SQL Database o SQL Server 2019+ mediante `mssql`; **modo de demostración en memoria** sin instalar nada |
+| Base de datos | Azure SQL Database o SQL Server 2019+ mediante `mssql`; si no hay SQL Server, una base local en archivo que también guarda los datos |
 | Frontend | HTML, CSS y JavaScript sin frameworks; una hoja de estilos por página |
 | Seguridad | bcrypt, JWT, helmet, límite de intentos de acceso, consultas parametrizadas |
 | Servicios externos | Clima de [Open-Meteo](https://open-meteo.com) y tasas de cambio de [ExchangeRate-API](https://www.exchangerate-api.com), ambos gratuitos y sin clave |
@@ -14,14 +14,9 @@ Plataforma web de alojamiento, excursiones, actividades y alquiler de autos en R
 
 ## 1. Ponerlo a funcionar en tu PC (Windows)
 
-### 1.1 Requisitos
+### 1.1 Obtener el proyecto
 
-- **Node.js 18 o superior** (versión LTS): <https://nodejs.org>. Durante la instalación deja marcadas las opciones por defecto. Para comprobarlo, abre *Símbolo del sistema* o *PowerShell* y escribe `node -v`.
-- Nada más para la demostración. SQL Server o Azure solo hacen falta para guardar los datos de forma permanente (sección 3).
-
-### 1.2 Obtener el proyecto
-
-Con el `.zip`: haz clic derecho sobre él, **Extraer todo**, y entra a la carpeta extraída (la que contiene `package.json`).
+Con el `.zip`: haz clic derecho sobre él, **Extraer todo**, y entra a la carpeta extraída (la que contiene `INICIAR-BookingRD.bat`). No lo ejecutes desde dentro del `.zip`.
 
 Con Git:
 
@@ -30,30 +25,51 @@ git clone https://github.com/gsanchez47-tech/BookingRD.git
 cd BookingRD
 ```
 
-### 1.3 Instalar y arrancar
+### 1.2 Instalar y arrancar con doble clic
 
-En la carpeta del proyecto, abre una terminal (en el Explorador de archivos, escribe `cmd` en la barra de direcciones y pulsa Enter) y ejecuta:
+Haz doble clic en **`INICIAR-BookingRD.bat`**. Se encarga de todo:
+
+1. Si no tienes **Node.js**, lo instala con `winget` (o abre <https://nodejs.org> si tu Windows no tiene `winget`; instálalo y vuelve a hacer doble clic).
+2. Instala las dependencias (`npm install`), solo la primera vez.
+3. La primera vez configura **SQL Server**. Windows pide permiso de administrador: acéptalo. El instalador:
+   - busca SQL Server en el equipo y, si no hay, ofrece instalar **SQL Server 2022 Express** (gratuito, unos 10 minutos);
+   - habilita TCP/IP en el puerto 1433 y la autenticación de SQL Server;
+   - crea la base **BookingRD** con sus tablas y los datos de ejemplo, y el usuario `bookingrd_app` con una contraseña nueva;
+   - escribe el archivo `.env` con esa conexión.
+4. Arranca el servidor y abre <http://localhost:3000> en el navegador.
+
+Las siguientes veces solo arranca y abre el navegador. **No cierres la ventana negra** mientras usas la página; para apagar BookingRD, ciérrala o pulsa `Ctrl + C`.
+
+Todo lo que se haga en la página (registros, publicaciones, reservas, reseñas, moderación) se guarda en la base de datos. **Lo único simulado son los pagos con tarjeta** (sección 1.4).
+
+**Si no se pudo configurar SQL Server** (cancelaste el permiso, no quisiste instalarlo o dio un error), BookingRD se abre igual con una **base local en archivo** (`database/local/`), que también guarda todos los cambios entre un arranque y otro. Puedes volver a intentar SQL Server cuando quieras con `npm run sqlserver`. Si `.env` apunta a SQL Server y el servicio no responde, el arranque lo avisa y usa la base local mientras tanto.
+
+Para ver la base en SQL Server Management Studio: servidor `localhost` (o `.\SQLEXPRESS`), autenticación de Windows, base `BookingRD`.
+
+> **Importante:** no abras los archivos `.html` con doble clic (la barra de direcciones diría `C:/Users/.../public/index.html`). Así el navegador no habla con el servidor: los contadores salen en 0 y no se puede iniciar sesión. Entra siempre por <http://localhost:3000> con BookingRD en ejecución.
+
+**Desde una terminal** (también en macOS o Linux, con Node.js 18+):
 
 ```bash
 npm install
-npm start
+npm run iniciar
 ```
-
-Abre <http://localhost:3000> en el navegador. Para detener el servidor, pulsa `Ctrl + C` en la terminal.
-
-> **Importante:** no abras los archivos `.html` con doble clic (la barra de direcciones diría `C:/Users/.../public/index.html`). Así el navegador no habla con el servidor: los contadores salen en 0, no hay publicaciones y no se puede iniciar sesión. Entra siempre por <http://localhost:3000> con `npm start` en ejecución.
-
-Sin archivo `.env`, el servidor arranca en **modo de demostración**: carga en memoria los datos de `database/datos-demo.js` (20 cuentas, 7 empresas, 60 publicaciones, 90 reservas con su pago y 74 reseñas) y todo el sitio funciona: registrarse, reservar, cancelar, reseñar, publicar desde el panel de empresa y moderar desde la administración. Los cambios se pierden al detener el servidor. La consola lo indica al arrancar.
 
 | Comando | Para qué |
 |---|---|
-| `npm start` | Arranca el servidor (demostración si no hay base configurada) |
-| `npm run demo` | Fuerza el modo de demostración aunque `.env` tenga una base |
+| `npm run iniciar` | Lo mismo que el doble clic: configura SQL Server la primera vez (Windows), prueba la conexión y abre el navegador |
+| `npm start` | Arranca el servidor con lo que diga `.env` (SQL Server o Azure; sin `DB_SERVER`, la base local en archivo) |
+| `npm run sqlserver` | Vuelve a configurar SQL Server local y a crear la base BookingRD (Windows) |
+| `npm run configurar` | Asistente para conectar con Azure SQL Database (sección 3.A) |
+| `npm run local:reiniciar` | Borra la base local en archivo; el próximo arranque carga de nuevo los datos de ejemplo |
+| `npm run demo` | Demostración en memoria con datos nuevos que no se guardan (no toca ninguna base) |
 | `npm run dev` | Igual que `start`, con reinicio automático al guardar cambios |
 | `npm run probar` | Pruebas automáticas de la API (26 casos) |
 | `npm run construir` | Regenera `public/*.html` y `public/css/` desde `frontend/` (sección 6) |
 
-### 1.4 Cuentas de demostración
+Los datos de ejemplo (`database/datos-demo.js`) traen 20 cuentas, 7 empresas, 60 publicaciones, 90 reservas con su pago y 74 reseñas.
+
+### 1.3 Cuentas de demostración
 
 | Rol | Correo | Contraseña |
 |---|---|---|
@@ -65,7 +81,7 @@ Sin archivo `.env`, el servidor arranca en **modo de demostración**: carga en m
 
 Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@correo.com`) usan `Cliente123!`; las demás empresas (`aventura@`, `montana@`, `cultura@`, `rentacar@bookingrd.com`) usan `Empresa123!`. En la página de inicio de sesión, los botones de *Cuentas de demostración* completan el formulario con un clic.
 
-### 1.5 Tarjetas de prueba (pagos simulados)
+### 1.4 Tarjetas de prueba (pagos simulados)
 
 Al reservar se elige pagar con tarjeta o en el destino. La pasarela es una **simulación**: no se conecta a ningún banco, no cobra nada y no guarda el número completo ni el CVV (solo la marca, los últimos 4 dígitos y el titular). Usa cualquier nombre y un vencimiento futuro; en la ventana de pago, *Tarjetas de prueba* completa el formulario con un clic.
 
@@ -78,7 +94,7 @@ Al reservar se elige pagar con tarjeta o en el destino. La pasarela es una **sim
 | 4000 0000 0000 9995 | Visa | Fondos insuficientes |
 | Un número con un dígito cambiado | | Número inválido (algoritmo de Luhn) |
 
-### 1.6 Guion para la demostración en clase
+### 1.5 Guion para la demostración en clase
 
 Unos 10 minutos. Guion completo con lo que se dice en cada paso: [`docs/GUIA-DEMOSTRACION.md`](docs/GUIA-DEMOSTRACION.md).
 
@@ -91,7 +107,7 @@ Unos 10 minutos. Guion completo con lo que se dice en cada paso: [`docs/GUIA-DEM
 7. **Administración:** entra como `admin@bookingrd.com`; el resumen muestra lo cobrado en línea, lo pendiente y lo reembolsado. Suspende una empresa y comprueba que sus publicaciones salen del catálogo; reactívala.
 8. **Idioma y moneda:** cambia a inglés y dólares con *ES / RD$*.
 
-Para empezar la demostración con los datos originales, detén el servidor (`Ctrl + C`) y vuelve a ejecutar `npm start`.
+Para empezar la demostración con los datos originales: con SQL Server, `npm run bd:reiniciar` (o `npm run sqlserver` y responder *s* a crear la base de nuevo); con la base local, cierra BookingRD y ejecuta `npm run local:reiniciar`. Si prefieres ensayar sin tocar la base, `npm run demo` usa datos en memoria que se descartan al cerrar.
 
 ---
 
@@ -168,9 +184,15 @@ Con la pausa automática, la primera conexión tras un rato sin uso puede tardar
 
 ### 3.B SQL Server local
 
-1. Instala SQL Server Express o Developer y SQL Server Management Studio.
-2. Abre `database/instalacion-completa.sql` en SSMS con un usuario administrador y ejecútalo (F5). Crea la base `BookingRD`, el login `bookingrd_app` (contraseña `BookingRD#2026!`), las tablas y los datos.
-3. Copia la plantilla de configuración y complétala con los valores de SQL Server local que trae comentados:
+**Automático (Windows):** `INICIAR-BookingRD.bat` lo hace la primera vez, y `npm run sqlserver` lo repite cuando quieras (sección 1.2). Usa `scripts/sqlserver-windows.ps1`.
+
+**A mano, con SQL Server Management Studio:**
+
+1. Instala SQL Server Express o Developer y SSMS.
+2. Conectado con tu cuenta de Windows, abre y ejecuta (F5) `database/habilitar-sqlserver.sql`: activa la autenticación de SQL Server y TCP/IP en el puerto 1433.
+3. Reinicia el servicio de SQL Server (en SSMS, clic derecho sobre el servidor > *Reiniciar*, o en *Servicios* de Windows).
+4. Abre y ejecuta `database/instalacion-completa.sql`. Crea la base `BookingRD`, el login `bookingrd_app` (contraseña `BookingRD#2026!`), las tablas y los datos.
+5. Copia la plantilla de configuración y completa los valores de SQL Server local que trae comentados:
 
    ```bash
    copy .env.example .env
@@ -199,8 +221,8 @@ La plantilla comentada está en `.env.example`. Variables principales:
 
 | Variable | Uso |
 |---|---|
-| `DB_SERVER`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `DB_INSTANCE`, `DB_TRUST_CERT` | Conexión a la base. Sin `DB_SERVER`, modo de demostración |
-| `DB_MODO=demo` | Fuerza el modo de demostración |
+| `DB_SERVER`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`, `DB_PORT`, `DB_INSTANCE`, `DB_TRUST_CERT` | Conexión a la base. Sin `DB_SERVER`, base local en archivo (`database/local/`) |
+| `DB_MODO=demo` | Demostración en memoria que no guarda cambios (lo usan `npm run demo` y las pruebas) |
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | Firma y duración de las sesiones |
 | `PORT` | Puerto del servidor (3000) |
 | `LIMITE_INTENTOS_AUTH` | Intentos de inicio de sesión por IP cada 10 minutos |
@@ -218,7 +240,7 @@ git commit -m "Descripción del cambio"
 git push -u origin nombre-de-rama   # y abrir un Pull Request
 ```
 
-Fuera del repositorio (`.gitignore`): `node_modules/`, `.env`, `correos-enviados/` y registros.
+Fuera del repositorio (`.gitignore`): `node_modules/`, `.env`, `correos-enviados/`, `database/local/` y registros.
 
 ## 6. Estructura
 
@@ -239,15 +261,19 @@ BookingRD/
 │   └── vendor/leaflet/       Mapa de resultados (Leaflet 1.9.4)
 ├── src/
 │   ├── server.js             Express: seguridad, rutas, estáticos y errores
-│   ├── config/               Conexión SQL, modo de demostración y correo
+│   ├── config/               Conexión SQL, modo de datos y correo
 │   ├── routes/ controllers/ services/ validators/ middleware/ utils/
-│   └── repositories/         SQL (*.repo.js) y memoria/ (modo de demostración)
+│   └── repositories/         SQL (*.repo.js) y memoria/ (base local en archivo)
 ├── database/
 │   ├── esquema.sql           Tablas e índices
 │   ├── datos-demo.js         Datos de ejemplo (fuente única)
+│   ├── habilitar-sqlserver.sql    TCP/IP y autenticación mixta en SQL Server local
 │   ├── instalacion-completa.sql   SQL Server local (crea base y login)
-│   └── instalacion-azure.sql      Azure SQL Database
-├── scripts/                  configurar, bd, demo, generar-sql, construir-frontend
+│   ├── instalacion-azure.sql      Azure SQL Database
+│   └── local/                Base local en archivo (se crea al usarla; no se versiona)
+├── scripts/                  iniciar, sqlserver-windows.ps1, configurar, bd,
+│                             local-reiniciar, demo, generar-sql, construir-frontend
+├── INICIAR-BookingRD.bat     Instalación y arranque con doble clic (Windows)
 ├── pruebas/api.test.js       Pruebas de la API
 └── docs/                     Documentación técnica, resumen y capturas
 ```
@@ -262,12 +288,16 @@ Documentación técnica: [`docs/DOCUMENTACION.md`](docs/DOCUMENTACION.md). Guion
 |---|---|---|
 | `'npm' no se reconoce como un comando` | Node.js no está instalado o la terminal se abrió antes de instalarlo | Instala Node.js LTS y abre una terminal nueva |
 | `Error: listen EADDRINUSE :::3000` | Ya hay un servidor en el puerto 3000 | Cierra la otra terminal o pon `PORT=3001` en `.env` |
-| Aviso "El servidor de BookingRD no está en ejecución" | Se abrió un HTML con doble clic | Ejecuta `npm start` y entra a <http://localhost:3000> |
-| Página sin estilos | HTML abierto desde dentro del `.zip` | Extrae el `.zip` primero |
+| Aviso "El servidor de BookingRD no está en ejecución" | Se abrió un HTML con doble clic, o se cerró la ventana negra | Doble clic en `INICIAR-BookingRD.bat` y entra a <http://localhost:3000> |
+| Página sin estilos o el `.bat` no encuentra archivos | Se abrió desde dentro del `.zip` | Extrae el `.zip` primero |
+| La consola dice "Base de datos local" en lugar de SQL Server | No se configuró SQL Server o el servicio no respondió | `npm run sqlserver`; revisa que el servicio *SQL Server (SQLEXPRESS)* esté iniciado en *Servicios* |
+| "Se canceló el permiso de administrador" | Se respondió *No* a la ventana de Windows | `npm run sqlserver` y acepta el permiso |
+| "SQL Server no acepta conexiones en el puerto 1433" | Otra instancia de SQL Server ya usa ese puerto | Usa esa instancia (configúrala a mano, sección 3.B) o detén la otra en *Servicios* y repite `npm run sqlserver` |
+| "No se pudo entrar a SQL Server con tu cuenta de Windows" | Tu usuario no es administrador de esa instancia | Ejecuta con el usuario que instaló SQL Server, o sigue la sección 3.B con un administrador |
 | Clima sin datos o moneda con tasa de referencia | Sin conexión a internet o servicio externo caído | El sitio sigue funcionando; se actualiza cuando vuelva la conexión |
 | "El servicio no está disponible en este momento" | Sin conexión con la base, o Azure reanudándose | Reintenta en un minuto; si sigue, `npm run bd:probar` |
 | `Cannot open server ... requested by the login` | Tu IP no está autorizada en Azure | Agrégala en *Networking > Firewall rules* |
 | `Login failed for user` | Usuario o contraseña incorrectos | Revisa `DB_USER` y `DB_PASSWORD` |
 | `Invalid column name` tras instalar | La base tiene tablas de una versión anterior | `npm run bd:reiniciar` |
-| `Failed to connect to localhost:1433` | TCP/IP deshabilitado en SQL Server Express | Habilítalo en *SQL Server Configuration Manager*, o usa `DB_INSTANCE=SQLEXPRESS` con `DB_PORT` vacío |
+| `Failed to connect to localhost:1433` | TCP/IP deshabilitado o servicio detenido | `npm run sqlserver`, o ejecuta `database/habilitar-sqlserver.sql` y reinicia el servicio |
 | "Demasiados intentos" | Límite de inicios de sesión por IP | Espera 10 minutos o sube `LIMITE_INTENTOS_AUTH` |

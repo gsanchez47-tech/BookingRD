@@ -44,7 +44,7 @@ before(async () => {
     await new Promise((resolver, rechazar) => {
         const tiempo = setTimeout(() => rechazar(new Error('El servidor no inició a tiempo.')), 15000);
         servidor.stdout.on('data', (datos) => {
-            if (String(datos).includes('disponible en')) {
+            if (String(datos).includes('funcionando en')) {
                 clearTimeout(tiempo);
                 resolver();
             }

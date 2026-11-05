@@ -14,7 +14,10 @@
     "bd:reiniciar": "node scripts/bd.js reiniciar",
     "bd:generar": "node scripts/generar-sql.js",
     "construir": "node scripts/construir-frontend.js",
-    "probar": "node --test pruebas/api.test.js"
+    "probar": "node --test pruebas/api.test.js",
+    "iniciar": "node scripts/iniciar.js",
+    "sqlserver": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sqlserver-windows.ps1",
+    "local:reiniciar": "node scripts/local-reiniciar.js"
   },
   "engines": {
     "node": ">=18"
