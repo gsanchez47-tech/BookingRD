@@ -11,6 +11,7 @@
  *   DELETE /publicaciones/:tipo/:id              Eliminar (solo sin reservas).
  *   POST   /imagenes                             Subir fotografía (JSON con data URL).
  *   GET    /reservas                             Reservas recibidas.
+ *   PATCH  /reservas/:id/cobro                   Registrar el cobro de un pago en destino.
  *   GET    /resenas                              Reseñas de las publicaciones propias.
  *   PUT    /resenas/:id/respuesta                Responder (o retirar la respuesta de) una reseña.
  */
@@ -35,6 +36,7 @@ router.patch('/publicaciones/:tipo/:id/estado', asyncHandler(empresaController.c
 router.delete('/publicaciones/:tipo/:id', asyncHandler(empresaController.eliminarPublicacion));
 router.post('/imagenes', asyncHandler(empresaController.subirImagen));
 router.get('/reservas', asyncHandler(empresaController.listarReservas));
+router.patch('/reservas/:id/cobro', asyncHandler(empresaController.marcarCobrado));
 router.get('/resenas', asyncHandler(empresaController.listarResenas));
 router.put('/resenas/:id/respuesta', asyncHandler(empresaController.responderResena));
 

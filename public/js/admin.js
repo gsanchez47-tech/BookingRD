@@ -135,7 +135,7 @@ async function cargarResumen() {
         ['Empresas', t.empresas, `${t.suspendidas} ${t.suspendidas === 1 ? 'cuenta suspendida' : 'cuentas suspendidas'}`, t.suspendidas ? 'es-alerta' : ''],
         ['Publicaciones', t.hoteles + t.actividades + (t.vehiculos || 0), `${t.hoteles} alojamientos, ${t.actividades} actividades, ${t.vehiculos || 0} autos`, ''],
         ['Ingresos confirmados', formatoMoneda.format(t.ingresos), `${t.confirmadas} reservas vigentes`, 'es-positivo'],
-        ['Ticket promedio', formatoMoneda.format(t.confirmadas ? t.ingresos / t.confirmadas : 0), 'Por reserva confirmada', ''],
+        ['Cobrado en línea', formatoMoneda.format(t.cobradoEnLinea || 0), `${formatoMoneda.format(t.porCobrarEnDestino || 0)} por cobrar en destino, ${formatoMoneda.format(t.reembolsado || 0)} reembolsado`, ''],
         ['Cancelaciones', `${totalReservas ? Math.round((t.canceladas / totalReservas) * 100) : 0}%`, `${t.canceladas} de ${totalReservas} reservas`, ''],
         ['Mensajes pendientes', t.mensajesPendientes, 'Formulario de contacto', t.mensajesPendientes ? 'es-alerta' : 'es-positivo'],
         ['Valoración media', t.puntuacionMedia ? formatoPuntuacion(t.puntuacionMedia) : 'Sin datos', `${textoResenas(t.resenas)}, ${t.resenasOcultas} ${t.resenasOcultas === 1 ? 'oculta' : 'ocultas'}`, t.puntuacionMedia >= 8 ? 'es-positivo' : '']
@@ -451,6 +451,7 @@ function pintarReservas() {
             <td data-titulo="Fechas">${escaparHtml(textoFechasReserva(r))}
                 <span class="dato-secundario">${r.tipo === 'vehiculo' ? `Alquiler de auto, devuelve en ${escaparHtml(r.alquiler.ciudadDevolucion || '')}` : `${r.tipo === 'hotel' ? `${r.habitaciones} hab., ` : ''}${r.personas} pers.`}</span></td>
             <td data-titulo="Total"><strong>${formatoMoneda.format(r.total)}</strong></td>
+            <td data-titulo="Pago">${chipPago(r.pago, 'empresa')}${r.pago ? `<span class="dato-secundario" translate="no">${escaparHtml(r.pago.referencia)}</span>` : ''}</td>
             <td data-titulo="Estado"><span class="estado-reserva es-${r.estado}">${r.estado === 'confirmada' ? 'Confirmada' : 'Cancelada'}</span></td>
         </tr>`).join('');
 }

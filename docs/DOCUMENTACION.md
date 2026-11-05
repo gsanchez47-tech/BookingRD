@@ -16,6 +16,7 @@
 | Cuentas | Registro de viajero (sencillo) y de empresa (tres pasos), inicio de sesión con *Recordarme*, cierre de sesión, expiración del token. |
 | Contacto | Mensajes guardados en `dbo.mensajes_contacto`. |
 | Correos | Bienvenida al registrarse (viajero o empresa) y confirmación de cada reserva, por SMTP con nodemailer (sección 7.1). |
+| Pagos (simulados) | Al reservar: tarjeta (Visa, Mastercard, American Express) o pago en el destino. Validación de Luhn, vencimiento y CVV; tarjetas de prueba aprobadas y rechazadas; recibo imprimible; reembolso automático al cancelar; la empresa registra los cobros en destino (sección 4.2). |
 | Idioma y moneda | Interfaz en español o inglés; precios en RD$, US$ o € con la tasa del día (el pago siempre en pesos); clima actual y pronóstico de cada destino (sección 6.8). |
 
 Fuera de alcance: pagos en línea, recuperación automática de contraseña por correo y edición de datos legales de la empresa desde el panel (RNC, razón social y tipo de servicio quedan a cargo de la administración).
@@ -97,9 +98,9 @@ Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`camp
 
 | Método y ruta | Descripción |
 |---|---|
-| `POST /api/reservas` | Hotel `{ tipo, idPublicacion, entrada, salida, habitaciones, personas, comentario? }`; actividad `{ tipo, idPublicacion, fecha, personas, comentario? }`; auto `{ tipo: "vehiculo", idPublicacion, recogida, horaRecogida, devolucion, horaDevolucion, edadConductor, ciudadDevolucion?, extras[], comentario? }`. 201 `{ id, codigo, total, publicacion }`; 409 sin cupo; 403 si la cuenta es de empresa |
-| `GET /api/reservas` | Reservas propias; los alquileres incluyen `alquiler { horaRecogida, horaDevolucion, lugarRecogida, ciudadDevolucion, edadConductor, extras[], deposito }` |
-| `PATCH /api/reservas/:id/cancelar` | Cancela una reserva propia confirmada que empieza al menos mañana |
+| `POST /api/reservas` | Hotel `{ tipo, idPublicacion, entrada, salida, habitaciones, personas, comentario? }`; actividad `{ tipo, idPublicacion, fecha, personas, comentario? }`; auto `{ tipo: "vehiculo", idPublicacion, recogida, horaRecogida, devolucion, horaDevolucion, edadConductor, ciudadDevolucion?, extras[], comentario? }`. Todas aceptan `pago`: `{ metodo: "tarjeta", titular, numero, vencimiento: "MM/AA", cvv }` o `{ metodo: "en_destino" }` (por defecto). 201 `{ id, codigo, total, publicacion, pago { metodo, estado, monto, marca, ultimos4, titular, referencia, autorizacion, fechaPago } }`; 400 tarjeta inválida (campo `pago-*`); 402 tarjeta rechazada (la reserva no se crea); 409 sin cupo; 403 si la cuenta es de empresa |
+| `GET /api/reservas` | Reservas propias, cada una con su `pago`; los alquileres incluyen `alquiler { horaRecogida, horaDevolucion, lugarRecogida, ciudadDevolucion, edadConductor, extras[], deposito }` |
+| `PATCH /api/reservas/:id/cancelar` | Cancela una reserva propia confirmada que empieza al menos mañana. `{ estado, reembolso: { monto, marca, ultimos4 } \| null }`: la tarjeta se reembolsa y el pago en destino se anula |
 | `GET /api/favoritos` · `GET /api/favoritos/claves` | Publicaciones guardadas (completas) o solo `[{ tipo, id }]` para marcar los corazones |
 | `PUT /api/favoritos/:tipo/:id` · `DELETE /api/favoritos/:tipo/:id` | Guardar (404 si la publicación no está visible; repetir no duplica) o quitar |
 | `GET /api/resenas` | `{ resenas[], pendientes[] }`: reseñas propias y reservas confirmadas ya terminadas sin reseña |
@@ -123,6 +124,7 @@ Cada consulta filtra por el `id_empresa` del token: una empresa no puede leer ni
 | `DELETE /api/empresa/publicaciones/:tipo/:id` | 204; 409 si tiene reservas (se sugiere ocultarla) |
 | `POST /api/empresa/imagenes` | `{ imagen: "data:image/jpeg;base64,..." }`. JPG, PNG o WEBP, hasta 3 MB, verificado por firma binaria. 201 `{ id, url }` |
 | `GET /api/empresa/reservas` | Reservas recibidas con nombre, correo y teléfono del cliente |
+| `PATCH /api/empresa/reservas/:id/cobro` | Registra el cobro de un pago en destino pendiente de una reserva confirmada propia. 409 si no hay cobro pendiente o la reserva es de otra empresa |
 | `GET /api/empresa/resenas` | Reseñas de sus publicaciones, primero las sin responder |
 | `PUT /api/empresa/resenas/:id/respuesta` | `{ respuesta }` (hasta 1000); vacía la retira. 404 si la reseña es de otra empresa |
 
@@ -180,6 +182,17 @@ El usuario y la empresa se insertan en una sola transacción.
 
 El precio se guarda en la reserva (`precio_unitario`), por lo que un cambio posterior de precio no altera reservas existentes. Las fechas "hoy" se calculan en la zona horaria de República Dominicana.
 
+### 4.2 Pagos (pasarela simulada)
+
+`src/services/pagos.service.js` imita una pasarela de pago para la demostración. No se conecta con ningún banco ni procesador y no guarda el número de la tarjeta ni el CVV: en `dbo.pagos` quedan la marca, los últimos 4 dígitos, el titular, una referencia (`PAY` + 8 caracteres) y un código de autorización de 6 dígitos.
+
+1. **Validación** (también en el navegador, `public/js/pagos.js`): titular con letras; número de 13 a 19 dígitos que supera el algoritmo de Luhn; marca por los primeros dígitos (Visa `4`, Mastercard `51-55` y `2221-2720`, American Express `34`/`37`); vencimiento `MM/AA` no vencido; CVV de 3 dígitos, o 4 en American Express.
+2. **Cobro** dentro de la transacción de la reserva, después de comprobar el cupo: las tarjetas `4000 0000 0000 0002` (rechazada), `4000 0000 0000 9995` (fondos insuficientes) y `4000 0000 0000 0127` (CVV incorrecto) responden 402 y la transacción se deshace, así que no queda reserva sin pago. Cualquier otra tarjeta válida se aprueba.
+3. **Pago en el destino:** la reserva se crea con el pago `pendiente`; la empresa lo marca como `pagado` desde *Reservas recibidas* (`PATCH /api/empresa/reservas/:id/cobro`).
+4. **Cancelación:** en la misma transacción, la tarjeta pasa a `reembolsado` (con fecha de reembolso) y el pago en destino a `anulado`.
+
+Estados: `pagado`, `pendiente`, `reembolsado`, `anulado`. El viajero ve el estado y el recibo (imprimible o en PDF desde el navegador) en *Mis reservas*; la empresa y la administración, en sus tablas de reservas; la administración suma lo cobrado en línea, lo pendiente en destino y lo reembolsado.
+
 ## 5. Base de datos
 
 Scripts generados por `npm run bd:generar` a partir de `database/esquema.sql` (tablas e índices) y `database/datos-demo.js` (datos): `database/instalacion-completa.sql` (SQL Server local: crea la base y el login `bookingrd_app`) y `database/instalacion-azure.sql` (Azure SQL Database: se ejecuta sobre la base de la conexión). Ambos son idempotentes y UTF-8. `npm run bd:instalar` ejecuta el primero desde el marcador `-- @inicio-esquema`; `npm run bd:reiniciar` elimina las tablas y reinstala.
@@ -192,6 +205,7 @@ Scripts generados por `npm run bd:generar` a partir de `database/esquema.sql` (t
 | `hoteles` | Alojamientos | FK a `empresas` e `imagenes`; `tipo_alojamiento` y `ciudad` de catálogo; precio, capacidad (1-30) y habitaciones (1-5000) |
 | `actividades` | Tours y actividades | `categoria` y `ciudad` de catálogo (incluye `golf`); duración, precio y cupo diario positivos |
 | `vehiculos` | Autos de alquiler | FK a `empresas` e `imagenes`; `categoria`, `transmision`, `combustible` y `ciudad` de catálogo; pasajeros, puertas, maletas, año, edad mínima y unidades en rango; `km_por_dia` y cargos opcionales |
+| `pagos` | Pago de cada reserva (1:1) | `id_reserva` único y FK; `metodo` ∈ {tarjeta, en_destino}; `estado` ∈ {pagado, pendiente, reembolsado, anulado}; `referencia` única; con tarjeta son obligatorios marca, últimos 4, titular y autorización. Nunca guarda el número completo ni el CVV |
 | `reservas` | Reservas | `codigo` único; exactamente uno de `id_hotel` / `id_actividad` / `id_vehiculo`; hotel con fecha de salida posterior; alquiler con fecha de devolución, horas y edad del conductor (`hora_inicio`, `hora_fin`, `ciudad_devolucion`, `edad_conductor`, `extras`, `deposito`); total positivo; `estado` ∈ {confirmada, cancelada} |
 | `mensajes_contacto` | Formulario de contacto | `asunto` de catálogo |
 | `resenas` | Reseñas de viajeros | `id_reserva` único (una reseña por reserva) y FK a `reservas`; `puntuacion` de 1 a 10; respuesta de la empresa y `visible` para la moderación. La publicación y el autor se obtienen de la reserva |
@@ -201,7 +215,7 @@ Scripts generados por `npm run bd:generar` a partir de `database/esquema.sql` (t
 
 **Bases de una versión anterior:** el script solo crea lo que falta y no altera tablas existentes. Si la base tiene tablas de una versión previa con otra estructura, usar `npm run bd:reiniciar` (borra los datos de BookingRD).
 
-**Datos de demostración:** 1 cuenta de administración (`admin@bookingrd.com`, `Admin123!`), 12 viajeros (`Cliente123!`), 7 empresas (`Empresa123!`; dos de alquiler de autos), 15 alojamientos, 34 actividades y 11 autos en los 15 destinos, 90 reservas con fechas relativas a la instalación (próximas, realizadas y canceladas), 74 reseñas con respuestas de las empresas, 6 favoritos y 2 mensajes de contacto. Las relaciones se expresan con claves naturales (correo, RNC y nombre de la publicación) y el script las resuelve con subconsultas, así que no depende de los identificadores generados. Cada inserción comprueba antes que el registro no exista. Las fotografías de demostración son archivos estáticos (`public/img/publicaciones/`, columna `imagen_url`); las subidas desde el panel van a `dbo.imagenes`.
+**Datos de demostración:** 1 cuenta de administración (`admin@bookingrd.com`, `Admin123!`), 12 viajeros (`Cliente123!`), 7 empresas (`Empresa123!`; dos de alquiler de autos), 15 alojamientos, 34 actividades y 11 autos en los 15 destinos, 90 reservas con fechas relativas a la instalación (próximas, realizadas y canceladas) y su pago (`datosDemo.pagoDemo`: 72 con tarjeta de prueba, 18 en el destino), 74 reseñas con respuestas de las empresas, 6 favoritos y 2 mensajes de contacto. Las relaciones se expresan con claves naturales (correo, RNC y nombre de la publicación) y el script las resuelve con subconsultas, así que no depende de los identificadores generados. Cada inserción comprueba antes que el registro no exista. Las fotografías de demostración son archivos estáticos (`public/img/publicaciones/`, columna `imagen_url`); las subidas desde el panel van a `dbo.imagenes`.
 
 ## 6. Frontend
 
@@ -312,10 +326,10 @@ El entorno de desarrollo no disponía de SQL Server ni de acceso a Azure, ni de 
 
 | Prueba | Resultado |
 |---|---|
-| `npm run probar`: catálogo, filtros, detalle, disponibilidad, reservas (sin cupo, fechas pasadas, empresa que intenta reservar), cancelación, reseñas, favoritos, panel de empresa, administración (suspensión con efecto en catálogo, login y token), clima y monedas | 24 de 24 |
-| Recorrido en navegador automatizado: mapa del inicio (15 destinos, ficha), recomendados, buscador hacia Explorar, panel de filtros, vista de mapa, detalle, reserva de hotel, actividad y auto, mis reservas, cancelación, reseña, respuesta de la empresa, publicación nueva, administración, registro de viajero y de empresa | 34 de 34, sin errores de JavaScript |
+| `npm run probar`: catálogo, filtros, detalle, disponibilidad, reservas (sin cupo, fechas pasadas, empresa que intenta reservar), pagos (aprobado, Luhn inválido, vencida, CVV de American Express, rechazada, fondos insuficientes sin crear la reserva, pago en destino, cobro registrado por la empresa y no por otra), cancelación con reembolso, reseñas, favoritos, panel de empresa, administración (suspensión con efecto en catálogo, login y token), clima y monedas | 26 de 26 |
+| Recorrido en navegador automatizado: mapa del inicio (15 destinos, ficha), recomendados, buscador hacia Explorar, panel de filtros, vista de mapa, detalle, reserva de actividad con pago en destino, alquiler de auto con tarjeta inválida, rechazada y aprobada, recibo, mis reservas, cancelación con aviso de reembolso, reseña, respuesta de la empresa, publicación nueva, administración, registro de viajero y de empresa | 39 de 39, sin errores de JavaScript |
 | Recorrido en inglés con dólares: textos de la interfaz sin traducir (excluidos nombres propios y contenido de usuarios) | 0 pendientes |
-| Script SQL: esquema y 259 lotes de inserción emulados; cada clave natural resuelve y los conteos coinciden con `datos-demo.js` | Correcto |
+| Script SQL: esquema y lotes de inserción emulados; cada clave natural resuelve y los conteos coinciden con `datos-demo.js`. El lote de pagos se ejecutó dos veces sobre una emulación: 90 pagos, 90 referencias distintas, sin duplicados | Correcto |
 | Desbordamiento horizontal en 375, 768 y 1440 px y revisión visual de las 9 páginas | Sin incidencias |
 
-**Pendiente de verificar con un motor real:** ejecutar `npm run configurar` (o `npm run bd:instalar`) contra Azure SQL Database y comprobar con `npm run bd:probar` que los conteos coinciden: 20 usuarios, 7 empresas, 15 hoteles, 34 actividades, 11 vehículos, 90 reservas, 74 reseñas, 6 favoritos y 2 mensajes.
+**Pendiente de verificar con un motor real:** ejecutar `npm run configurar` (o `npm run bd:instalar`) contra Azure SQL Database y comprobar con `npm run bd:probar` que los conteos coinciden: 20 usuarios, 7 empresas, 15 hoteles, 34 actividades, 11 vehículos, 90 reservas, 90 pagos, 74 reseñas, 6 favoritos y 2 mensajes.

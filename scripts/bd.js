@@ -22,10 +22,10 @@ const { obtenerPool, configuracionDB } = require('../src/config/db');
 
 const ARCHIVO_SQL = path.join(__dirname, '..', 'database', 'instalacion-completa.sql');
 const MARCADOR = '-- @inicio-esquema';
-const TABLAS = ['usuarios', 'empresas', 'imagenes', 'hoteles', 'actividades', 'vehiculos', 'reservas', 'resenas', 'favoritos', 'mensajes_contacto'];
+const TABLAS = ['usuarios', 'empresas', 'imagenes', 'hoteles', 'actividades', 'vehiculos', 'reservas', 'pagos', 'resenas', 'favoritos', 'mensajes_contacto'];
 
 /** Orden de eliminación: primero las tablas que referencian a otras. */
-const ORDEN_ELIMINACION = ['resenas', 'favoritos', 'reservas', 'hoteles', 'actividades', 'vehiculos', 'imagenes', 'empresas', 'mensajes_contacto', 'usuarios'];
+const ORDEN_ELIMINACION = ['resenas', 'favoritos', 'pagos', 'reservas', 'hoteles', 'actividades', 'vehiculos', 'imagenes', 'empresas', 'mensajes_contacto', 'usuarios'];
 
 /**
  * Extrae los lotes (batches) a ejecutar: contenido posterior al marcador,

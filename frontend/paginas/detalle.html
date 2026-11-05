@@ -128,7 +128,7 @@
                     </div>
                     <a class="reserva-valoracion" id="reserva-valoracion" href="#resenas" hidden></a>
                 </div>
-                <p class="reserva-garantia" id="reserva-garantia">Cancelación gratuita hasta un día antes. Sin pagos por adelantado.</p>
+                <p class="reserva-garantia" id="reserva-garantia">Cancelación gratuita hasta un día antes. Paga con tarjeta o en el destino.</p>
 
                 <form id="form-reserva" novalidate>
                     <div class="fila-campos dos" data-solo-tipo="hotel">
@@ -227,6 +227,93 @@
         </section>
     </main>
 
+    <!-- Pago de la reserva (pasarela SIMULADA: no se realiza ningún cargo real).
+         La reserva se envía con el pago en POST /api/reservas. -->
+    <dialog class="modal modal-pago" id="modal-pago" aria-labelledby="pago-titulo">
+        <form class="pago" id="form-pago" novalidate>
+            <header class="pago-cabecera">
+                <div>
+                    <p class="etiqueta-caribe">Modo de prueba</p>
+                    <h2 id="pago-titulo">Pago seguro</h2>
+                </div>
+                <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+            </header>
+
+            <div class="pago-pedido">
+                <img id="pago-imagen" alt="" width="72" height="72">
+                <div>
+                    <strong id="pago-publicacion" translate="no"></strong>
+                    <span id="pago-fechas"></span>
+                </div>
+                <p class="pago-total"><span>Total</span><strong id="pago-total"></strong></p>
+            </div>
+
+            <fieldset class="pago-metodos">
+                <legend>Cómo quieres pagar</legend>
+                <label class="pago-metodo">
+                    <input type="radio" name="pago-metodo" value="tarjeta" checked>
+                    <span><strong>Tarjeta de crédito o débito</strong><small>Se cobra ahora y recibes el recibo al instante.</small></span>
+                </label>
+                <label class="pago-metodo">
+                    <input type="radio" name="pago-metodo" value="en_destino">
+                    <span><strong id="pago-destino-titulo">Pagar en el destino</strong><small id="pago-destino-texto">Pagas al llegar, directamente a la empresa.</small></span>
+                </label>
+            </fieldset>
+
+            <div class="pago-tarjeta" id="pago-tarjeta">
+                <div class="tarjeta-visual" id="tarjeta-visual" aria-hidden="true" translate="no">
+                    <span class="tarjeta-chip"></span>
+                    <span class="tarjeta-marca" id="tarjeta-visual-marca">BookingRD</span>
+                    <span class="tarjeta-numero" id="tarjeta-visual-numero">•••• •••• •••• ••••</span>
+                    <span class="tarjeta-pie">
+                        <span id="tarjeta-visual-titular">NOMBRE DEL TITULAR</span>
+                        <span id="tarjeta-visual-vence">MM/AA</span>
+                    </span>
+                </div>
+
+                <div class="campo">
+                    <label for="pago-titular">Nombre en la tarjeta</label>
+                    <input type="text" id="pago-titular" autocomplete="cc-name" maxlength="100" placeholder="Como aparece en la tarjeta">
+                </div>
+                <div class="campo">
+                    <label for="pago-numero">Número de tarjeta</label>
+                    <input type="text" id="pago-numero" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="1234 5678 9012 3456">
+                    <small class="campo-ayuda" id="pago-marca-texto">Visa, Mastercard o American Express.</small>
+                </div>
+                <div class="fila-campos dos">
+                    <div class="campo">
+                        <label for="pago-vencimiento">Vencimiento</label>
+                        <input type="text" id="pago-vencimiento" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/AA">
+                    </div>
+                    <div class="campo">
+                        <label for="pago-cvv">Código de seguridad</label>
+                        <input type="password" id="pago-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="CVV">
+                    </div>
+                </div>
+
+                <details class="tarjetas-prueba">
+                    <summary>Tarjetas de prueba para la demostración</summary>
+                    <ul id="lista-tarjetas-prueba"></ul>
+                    <p>Cualquier nombre, un vencimiento futuro y cualquier CVV.</p>
+                </details>
+            </div>
+
+            <p class="mensaje-formulario error" id="pago-error" role="alert" hidden></p>
+
+            <p class="pago-aviso">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z"></path></svg>
+                Simulación académica: no se realiza ningún cargo y BookingRD no guarda el número completo ni el código de seguridad.
+            </p>
+
+            <button type="submit" class="btn-primario btn-bloque" id="boton-pagar">Pagar</button>
+
+            <div class="pago-procesando" id="pago-procesando" hidden>
+                <span class="spinner spinner-grande" aria-hidden="true"></span>
+                <p id="pago-procesando-texto" aria-live="polite">Conectando con el banco...</p>
+            </div>
+        </form>
+    </dialog>
+
     <!-- Confirmación de reserva -->
     <dialog class="modal" id="modal-confirmacion" aria-labelledby="confirmacion-titulo">
         <div class="confirmacion">
@@ -237,9 +324,11 @@
             <h2 id="confirmacion-titulo">Reserva confirmada</h2>
             <p id="confirmacion-texto"></p>
             <p class="confirmacion-codigo" id="confirmacion-codigo" translate="no"></p>
+            <p class="confirmacion-pago" id="confirmacion-pago"></p>
             <p class="nota-reserva">Guarda este código. La empresa recibe tu reserva de inmediato y te llegará un correo de confirmación.</p>
             <div class="modal-acciones">
                 <button type="button" class="btn-outline" data-cerrar-modal>Seguir explorando</button>
+                <button type="button" class="btn-outline" id="boton-ver-recibo">Ver recibo</button>
                 <a href="mis-reservas.html" class="btn-primario">Ver mis reservas</a>
             </div>
         </div>
@@ -251,5 +340,6 @@
     <script src="js/comun.js"></script>
     <script src="js/preferencias.js"></script>
     <script src="js/clima.js"></script>
+    <script src="js/pagos.js"></script>
     <script src="js/mapa.js"></script>
     <script src="js/detalle.js"></script>

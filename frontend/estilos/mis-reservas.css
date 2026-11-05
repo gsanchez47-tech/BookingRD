@@ -150,6 +150,39 @@
     text-underline-offset: 3px;
 }
 
+.reserva-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e-3) var(--e-5);
+}
+
+.reserva-acciones:empty {
+    display: none;
+}
+
+.boton-recibo {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--caribe-deep);
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.cancelar-reembolso {
+    padding: var(--e-3);
+    border-radius: var(--r-s);
+    background: rgba(0, 180, 216, 0.08);
+    color: var(--caribe-deep);
+    font-weight: 700;
+}
+
+.cancelar-reembolso:empty {
+    display: none;
+}
+
 .reserva-resenada {
     display: inline-flex;
     align-items: center;

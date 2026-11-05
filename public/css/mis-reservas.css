@@ -2141,6 +2141,142 @@ html.idioma-cargando body {
     margin-top: var(--e-3);
 }
 
+/* ----------------------------------------------------------------------------
+   Pagos simulados: estado del pago y recibo (public/js/pagos.js)
+   ------------------------------------------------------------------------- */
+
+.chip-pago {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: var(--t-xs);
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.chip-pago::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.chip-pago.es-pagado { background: rgba(45, 106, 79, 0.12); color: var(--jungle); }
+.chip-pago.es-pendiente { background: rgba(244, 162, 97, 0.2); color: #8A4B12; }
+.chip-pago.es-reembolsado { background: rgba(0, 119, 168, 0.12); color: var(--caribe-deep); }
+.chip-pago.es-neutro { background: var(--superficie-suave); color: var(--tinta-2); }
+
+dialog.modal-recibo {
+    width: min(96vw, 480px);
+}
+
+.recibo {
+    position: relative;
+    display: grid;
+    gap: var(--e-4);
+    padding: var(--e-5);
+    border-top: 6px solid transparent;
+    border-image: linear-gradient(90deg, var(--azul) 0 44%, #fff 44% 56%, var(--rojo) 56% 100%) 1;
+}
+
+.recibo-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.recibo-marca {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--f-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--azul);
+}
+
+.recibo-marca b {
+    color: var(--rojo);
+}
+
+.recibo h2 {
+    font-size: var(--t-l);
+    color: var(--tinta-2);
+}
+
+.recibo-monto {
+    font-family: var(--f-display);
+    font-size: clamp(2rem, 1.6rem + 1.6vw, 2.6rem);
+    font-weight: 700;
+    color: var(--azul);
+    line-height: 1;
+}
+
+.recibo-datos {
+    display: grid;
+    margin: 0;
+    border-top: 1px dashed var(--linea);
+}
+
+.recibo-datos div {
+    display: grid;
+    grid-template-columns: 9.5em minmax(0, 1fr);
+    gap: var(--e-3);
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--linea);
+    font-size: var(--t-s);
+}
+
+.recibo-datos dt {
+    color: var(--tinta-3);
+    font-weight: 700;
+}
+
+.recibo-datos dd {
+    margin: 0;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.recibo-aviso {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.recibo-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--e-3);
+}
+
+/* Al imprimir el recibo solo se imprime el recibo. */
+@media print {
+    body.imprimiendo-recibo > *:not(#modal-recibo) {
+        display: none !important;
+    }
+
+    body.imprimiendo-recibo #modal-recibo {
+        position: static;
+        width: 100%;
+        max-height: none;
+        box-shadow: none;
+    }
+
+    body.imprimiendo-recibo #modal-recibo::backdrop {
+        background: none;
+    }
+
+    body.imprimiendo-recibo .recibo-acciones,
+    body.imprimiendo-recibo .modal-cerrar {
+        display: none;
+    }
+}
+
 /* ==========================================================================
    Estilos propios de la página (frontend/estilos/mis-reservas.css)
    ======================================================================== */
@@ -2365,6 +2501,39 @@ html.idioma-cargando body {
     font-weight: 800;
     text-decoration: underline;
     text-underline-offset: 3px;
+}
+
+.reserva-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e-3) var(--e-5);
+}
+
+.reserva-acciones:empty {
+    display: none;
+}
+
+.boton-recibo {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--caribe-deep);
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.cancelar-reembolso {
+    padding: var(--e-3);
+    border-radius: var(--r-s);
+    background: rgba(0, 180, 216, 0.08);
+    color: var(--caribe-deep);
+    font-weight: 700;
+}
+
+.cancelar-reembolso:empty {
+    display: none;
 }
 
 .reserva-resenada {

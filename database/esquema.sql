@@ -12,7 +12,7 @@
     2. Login y usuario de aplicación  (solo servidor local)
     3. Tablas e índices               (cualquier servidor)
        usuarios, empresas, imagenes, hoteles, actividades, vehiculos,
-       reservas, mensajes_contacto, resenas, favoritos
+       reservas, pagos, mensajes_contacto, resenas, favoritos
     4. Datos de demostración          (cualquier servidor)
 
   Modos de ejecución
@@ -340,6 +340,41 @@ BEGIN
         CONSTRAINT CK_reservas_personas CHECK (personas > 0),
         CONSTRAINT CK_reservas_total CHECK (total > 0),
         CONSTRAINT CK_reservas_estado CHECK (estado IN ('confirmada', 'cancelada'))
+    );
+END
+GO
+
+-- pagos: un registro por reserva (relación 1 a 1). Pasarela SIMULADA: solo se
+-- guardan la marca, los últimos cuatro dígitos y el titular de la tarjeta,
+-- nunca el número completo ni el CVV.
+--   metodo:  'tarjeta' (cobrado al reservar) o 'en_destino' (se paga al llegar).
+--   estado:  'pagado', 'pendiente' (en destino, por cobrar), 'reembolsado'
+--            (tarjeta de una reserva cancelada) o 'anulado' (en destino cancelado).
+--   referencia: identificador del pago (PAY + 8 caracteres); autorizacion: código
+--            de 6 dígitos que devuelve la pasarela al aprobar una tarjeta.
+IF OBJECT_ID(N'dbo.pagos', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.pagos (
+        id_pago             INT IDENTITY(1,1) PRIMARY KEY,
+        id_reserva          INT             NOT NULL CONSTRAINT UQ_pagos_reserva UNIQUE
+                                            CONSTRAINT FK_pagos_reservas REFERENCES dbo.reservas(id_reserva),
+        metodo              VARCHAR(12)     NOT NULL,
+        estado              VARCHAR(12)     NOT NULL,
+        monto               DECIMAL(12,2)   NOT NULL,
+        moneda              CHAR(3)         NOT NULL CONSTRAINT DF_pagos_moneda DEFAULT 'DOP',
+        marca               VARCHAR(20)     NULL,
+        ultimos4            CHAR(4)         NULL,
+        titular             NVARCHAR(100)   NULL,
+        referencia          CHAR(11)        NOT NULL CONSTRAINT UQ_pagos_referencia UNIQUE,
+        autorizacion        CHAR(6)         NULL,
+        fecha_pago          DATETIME2(0)    NOT NULL CONSTRAINT DF_pagos_fecha DEFAULT SYSUTCDATETIME(),
+        fecha_reembolso     DATETIME2(0)    NULL,
+        CONSTRAINT CK_pagos_metodo CHECK (metodo IN ('tarjeta', 'en_destino')),
+        CONSTRAINT CK_pagos_estado CHECK (estado IN ('pagado', 'pendiente', 'reembolsado', 'anulado')),
+        CONSTRAINT CK_pagos_monto CHECK (monto > 0),
+        CONSTRAINT CK_pagos_tarjeta CHECK (
+            metodo = 'en_destino'
+            OR (marca IS NOT NULL AND ultimos4 IS NOT NULL AND titular IS NOT NULL AND autorizacion IS NOT NULL))
     );
 END
 GO

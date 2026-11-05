@@ -142,8 +142,34 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = ${sql(r.codigo)})
     }
 }
 
+/**
+ * Pagos de demostración (datos.pagoDemo): un solo lote con todas las filas.
+ * La fecha del pago es la de creación de la reserva; la del reembolso, la de
+ * cancelación. El titular es el nombre del viajero.
+ */
+function pagos() {
+    lotes.push('-- 4.7 Pagos de las reservas (pasarela simulada: solo marca y últimos 4 dígitos)');
+    const filas = datos.reservas.map((r) => {
+        const p = datos.pagoDemo(r);
+        const { creacion, cancelacion } = fechasRegistro(r);
+        return `        (${sql(r.codigo)}, ${sql(p.metodo)}, ${sql(p.estado)}, ${sql(p.monto)}, ${sql(p.marca)}, ${sql(p.ultimos4)}, `
+            + `${sql(p.referencia)}, ${sql(p.autorizacion)}, ${instante(creacion, 15)}, `
+            + `${p.estado === 'reembolsado' ? instante(cancelacion, 10) : 'NULL'})`;
+    });
+    agregar(null, `
+INSERT INTO dbo.pagos (id_reserva, metodo, estado, monto, marca, ultimos4, titular, referencia, autorizacion, fecha_pago, fecha_reembolso)
+SELECT r.id_reserva, v.metodo, v.estado, v.monto, v.marca, v.ultimos4,
+       CASE WHEN v.metodo = 'tarjeta' THEN u.nombre END, v.referencia, v.autorizacion, v.fecha_pago, v.fecha_reembolso
+FROM (VALUES
+${filas.join(',\n')}
+) AS v (codigo, metodo, estado, monto, marca, ultimos4, referencia, autorizacion, fecha_pago, fecha_reembolso)
+INNER JOIN dbo.reservas r ON r.codigo = v.codigo
+INNER JOIN dbo.usuarios u ON u.id_usuario = r.id_usuario
+WHERE NOT EXISTS (SELECT 1 FROM dbo.pagos p WHERE p.id_reserva = r.id_reserva);`);
+}
+
 function resenas() {
-    lotes.push('-- 4.7 Reseñas de reservas ya disfrutadas (dos días después de terminar)');
+    lotes.push('-- 4.8 Reseñas de reservas ya disfrutadas (dos días después de terminar)');
     const porCodigo = new Map(datos.reservas.map((r) => [r.codigo, r]));
     for (const s of datos.resenas) {
         const r = porCodigo.get(s.reserva);
@@ -161,7 +187,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_re
 }
 
 function favoritos() {
-    lotes.push('-- 4.8 Publicaciones guardadas por los viajeros');
+    lotes.push('-- 4.9 Publicaciones guardadas por los viajeros');
     datos.favoritos.forEach((f, indice) => {
         const p = f.tipo.charAt(0);
         agregar(null, `
@@ -176,7 +202,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_u
 }
 
 function mensajes() {
-    lotes.push('-- 4.9 Mensajes del formulario de contacto');
+    lotes.push('-- 4.10 Mensajes del formulario de contacto');
     datos.mensajes.forEach((m, indice) => {
         agregar(null, `
 IF NOT EXISTS (SELECT 1 FROM dbo.mensajes_contacto WHERE correo = ${sql(m.correo)} AND asunto = ${sql(m.asunto)})
@@ -195,6 +221,7 @@ publicaciones('hotel', '4.3 Alojamiento');
 publicaciones('actividad', '4.4 Actividades');
 publicaciones('vehiculo', '4.5 Autos de alquiler');
 reservas();
+pagos();
 resenas();
 favoritos();
 mensajes();

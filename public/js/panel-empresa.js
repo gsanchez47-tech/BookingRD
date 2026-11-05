@@ -364,6 +364,27 @@ function iniciarReservas() {
     document.getElementById('buscar-reservas').addEventListener('input', actualizar);
     document.getElementById('estado-reservas').addEventListener('change', pintarTablaReservas);
     document.getElementById('boton-exportar').addEventListener('click', exportarReservas);
+    document.getElementById('tabla-reservas').addEventListener('click', (evento) => {
+        const boton = evento.target.closest('[data-cobro]');
+        if (boton) registrarCobro(boton, Number(boton.dataset.cobro));
+    });
+}
+
+/** Registra que la empresa cobró en el destino (PATCH /api/empresa/reservas/:id/cobro). */
+async function registrarCobro(boton, id) {
+    const reserva = estado.reservas.find((r) => r.id === id);
+    if (!reserva) return;
+    botonCargando(boton, 'Registrando...');
+    try {
+        await apiFetch(`/empresa/reservas/${id}/cobro`, { method: 'PATCH' });
+        reserva.pago.estado = 'pagado';
+        reserva.pago.fechaPago = new Date().toISOString();
+        mostrarAviso(`Cobro de ${formatoMoneda.format(reserva.total)} registrado para ${reserva.codigo}.`, 'exito');
+        pintarTablaReservas();
+    } catch (error) {
+        mostrarAviso(error.message, 'error');
+        botonNormal(boton, 'Marcar cobrado');
+    }
 }
 
 /** Reservas que cumplen la búsqueda y el estado elegidos. */
@@ -414,6 +435,11 @@ function pintarTablaReservas() {
                 <td data-titulo="Fechas">${escaparHtml(textoFechas(reserva))}</td>
                 <td data-titulo="Grupo">${escaparHtml(grupo)}</td>
                 <td data-titulo="Total"><strong>${formatoMoneda.format(reserva.total)}</strong></td>
+                <td data-titulo="Pago">
+                    ${chipPago(reserva.pago, 'empresa')}
+                    ${reserva.estado === 'confirmada' && reserva.pago && reserva.pago.estado === 'pendiente'
+                        ? `<button type="button" class="btn-outline btn-chico boton-cobro" data-cobro="${reserva.id}">Marcar cobrado</button>` : ''}
+                </td>
                 <td data-titulo="Estado"><span class="estado-reserva es-${reserva.estado}">${reserva.estado === 'confirmada' ? 'Confirmada' : 'Cancelada'}</span></td>
             </tr>`;
     }).join('');
@@ -422,14 +448,16 @@ function pintarTablaReservas() {
 /** Descarga las reservas filtradas como CSV (separador ";" y BOM para Excel en español). */
 function exportarReservas() {
     const celda = (valor) => `"${String(valor == null ? '' : valor).replace(/"/g, '""')}"`;
-    const encabezado = ['Código', 'Publicación', 'Tipo', 'Cliente', 'Correo', 'Teléfono', 'Inicio', 'Hora inicio', 'Fin', 'Hora fin', 'Personas', 'Habitaciones', 'Devolución', 'Edad conductor', 'Extras', 'Total RD$', 'Estado', 'Comentario'];
+    const encabezado = ['Código', 'Publicación', 'Tipo', 'Cliente', 'Correo', 'Teléfono', 'Inicio', 'Hora inicio', 'Fin', 'Hora fin', 'Personas', 'Habitaciones', 'Devolución', 'Edad conductor', 'Extras', 'Total RD$', 'Método de pago', 'Estado del pago', 'Referencia', 'Estado', 'Comentario'];
     const filas = reservasFiltradas().map((r) => {
         const a = r.alquiler || {};
         return [
             r.codigo, r.publicacion, NOMBRE_TIPO[r.tipo],
             r.cliente && r.cliente.nombre, r.cliente && r.cliente.correo, r.cliente && r.cliente.telefono,
             r.fechaInicio, a.horaRecogida || '', r.fechaFin || '', a.horaDevolucion || '', r.personas, r.habitaciones || '',
-            a.ciudadDevolucion || '', a.edadConductor || '', (a.extras || []).join(', '), r.total, r.estado, r.comentario
+            a.ciudadDevolucion || '', a.edadConductor || '', (a.extras || []).join(', '), r.total,
+            r.pago ? (r.pago.metodo === 'tarjeta' ? `${r.pago.marca} ${r.pago.ultimos4}` : 'En destino') : '',
+            r.pago ? r.pago.estado : '', r.pago ? r.pago.referencia : '', r.estado, r.comentario
         ];
     });
     const contenido = '\ufeff' + [encabezado, ...filas].map((fila) => fila.map(celda).join(';')).join('\r\n');

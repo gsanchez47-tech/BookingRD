@@ -38,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cancelar) pedirCancelacion(Number(cancelar.dataset.cancelar));
         const resenar = evento.target.closest('[data-resenar]');
         if (resenar) abrirFormularioResena(Number(resenar.dataset.resenar));
+        const recibo = evento.target.closest('[data-recibo]');
+        if (recibo) verRecibo(Number(recibo.dataset.recibo));
     });
     document.getElementById('aviso-resenas').addEventListener('click', (evento) => {
         const resenar = evento.target.closest('[data-resenar]');
@@ -260,8 +262,12 @@ function crearTarjetaReserva(reserva) {
                     <li><span>${esHotel ? 'Estancia' : esAuto ? 'Alquiler' : 'Fecha'}</span>${escaparHtml(fechas)}</li>
                     ${esAuto ? detallesAlquiler(reserva) : `<li><span>Grupo</span>${escaparHtml(cantidad)}</li>`}
                     <li><span>Total</span><strong>${formatoMoneda.format(reserva.total)}</strong></li>
+                    <li><span>Pago</span>${chipPago(reserva.pago)}</li>
                 </ul>
-                ${accion}
+                <div class="reserva-acciones">
+                    ${accion}
+                    ${reserva.pago ? `<button type="button" class="boton-recibo" data-recibo="${reserva.id}">Ver recibo</button>` : ''}
+                </div>
             </div>
         </article>`;
 }
@@ -282,11 +288,31 @@ function detallesAlquiler(reserva) {
    CANCELACIÓN
    ---------------------------------------------------------------------------- */
 
+/** Recibo del pago de una reserva. */
+function verRecibo(id) {
+    const reserva = reservas.find((r) => r.id === id);
+    if (!reserva) return;
+    const usuario = obtenerUsuario();
+    abrirRecibo({
+        codigo: reserva.codigo,
+        publicacion: reserva.publicacion,
+        proveedor: reserva.proveedor,
+        fechas: textoFechasReserva(reserva),
+        cliente: usuario ? usuario.nombre : '',
+        total: reserva.total,
+        pago: reserva.pago
+    });
+}
+
 function pedirCancelacion(id) {
     reservaPorCancelar = reservas.find((reserva) => reserva.id === id);
     if (!reservaPorCancelar) return;
     document.getElementById('cancelar-codigo').textContent = reservaPorCancelar.codigo;
     document.getElementById('cancelar-nombre').textContent = reservaPorCancelar.publicacion;
+    const pago = reservaPorCancelar.pago;
+    document.getElementById('cancelar-reembolso').textContent = pago && pago.metodo === 'tarjeta' && pago.estado === 'pagado'
+        ? `Te reembolsaremos ${formatoMoneda.format(reservaPorCancelar.total)} a tu ${pago.marca} terminada en ${pago.ultimos4}.`
+        : 'No se realizó ningún cobro por adelantado, así que no hay nada que reembolsar.';
     document.getElementById('cancelar-error').classList.remove('visible');
     abrirModal('modal-cancelar');
 }
@@ -297,10 +323,18 @@ async function confirmarCancelacion() {
     const mensaje = document.getElementById('cancelar-error');
     botonCargando(boton, 'Cancelando...');
     try {
-        await apiFetch(`/reservas/${reservaPorCancelar.id}/cancelar`, { method: 'PATCH' });
+        const resultado = await apiFetch(`/reservas/${reservaPorCancelar.id}/cancelar`, { method: 'PATCH' });
         reservaPorCancelar.estado = 'cancelada';
+        const pago = reservaPorCancelar.pago;
+        if (pago) {
+            pago.estado = pago.metodo === 'tarjeta' ? 'reembolsado' : 'anulado';
+            if (pago.metodo === 'tarjeta') pago.fechaReembolso = new Date().toISOString();
+        }
         cerrarModal('modal-cancelar');
-        mostrarAviso(`Reserva ${reservaPorCancelar.codigo} cancelada.`, 'exito');
+        const r = resultado && resultado.reembolso;
+        mostrarAviso(r
+            ? `Reserva ${reservaPorCancelar.codigo} cancelada. Reembolso de ${formatoMoneda.format(r.monto)} a ${r.marca} •••• ${r.ultimos4}.`
+            : `Reserva ${reservaPorCancelar.codigo} cancelada.`, 'exito', 7000);
         pintarCifras();
         pintarConteos();
         pintarLista();

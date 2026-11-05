@@ -9,6 +9,7 @@
 
 const { cuentasRepo, publicacionesRepo, reservasRepo, imagenesRepo, resenasRepo } = require('../repositories');
 const { validarPublicacion } = require('../validators/publicaciones.validator');
+const reservasService = require('../services/reservas.service');
 const { validarPerfilEmpresa } = require('../validators/empresa.validator');
 const { validarRespuesta } = require('../validators/resenas.validator');
 const { solicitudInvalida, noEncontrado, conflicto, prohibido } = require('../utils/errores');
@@ -181,7 +182,14 @@ async function responderResena(req, res) {
     res.json({ respuesta: respuesta || null });
 }
 
+/** PATCH /api/empresa/reservas/:id/cobro: registra el cobro de un pago en destino. */
+async function marcarCobrado(req, res) {
+    await reservasService.marcarCobrado(req.usuario, req.params.id);
+    res.json({ estado: 'pagado' });
+}
+
 module.exports = {
+    marcarCobrado,
     obtenerPerfil,
     actualizarPerfil,
     listarPublicaciones,

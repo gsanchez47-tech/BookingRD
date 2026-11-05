@@ -59,6 +59,11 @@ function confirmacionReserva(cliente, reserva, publicacion) {
         fechas = fecha(reserva.fechaInicio);
         detalle.push(['Personas', String(reserva.personas)]);
     }
+    if (reserva.pago && reserva.pago.metodo === 'tarjeta') {
+        detalle.push(['Pago', `${reserva.pago.marca} terminada en ${reserva.pago.ultimos4} (simulado)`], ['Referencia del pago', reserva.pago.referencia]);
+    } else if (reserva.pago) {
+        detalle.push(['Pago', 'En el destino, al llegar']);
+    }
     const mensaje = plantillas.confirmacionReserva({
         nombre: cliente.nombre, codigo: reserva.codigo, publicacion: publicacion.nombre,
         fechas, detalle, total: reserva.total, avisos, urlSitio: correo.urlSitio()

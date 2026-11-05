@@ -9,6 +9,10 @@
 const A = require('./almacen');
 const { filaReserva } = require('./reservas');
 const { horaIso } = require('../../utils/fechas');
+const { aPago } = require('../../services/pagos.service');
+
+/** Suma de los montos de una lista de pagos. */
+const suma = (pagos) => pagos.reduce((total, p) => total + Number(p.monto), 0);
 
 async function resumen(desde, hasta) {
     const { bd } = A;
@@ -54,7 +58,10 @@ async function resumen(desde, hasta) {
             mensajesPendientes: bd.mensajes_contacto.filter((m) => !m.atendido).length,
             resenas: bd.resenas.length,
             resenasOcultas: bd.resenas.filter((rs) => !rs.visible).length,
-            puntuacionMedia: A.media(visibles)
+            puntuacionMedia: A.media(visibles),
+            cobradoEnLinea: suma(bd.pagos.filter((p) => p.metodo === 'tarjeta' && p.estado === 'pagado')),
+            porCobrarEnDestino: suma(bd.pagos.filter((p) => p.estado === 'pendiente')),
+            reembolsado: suma(bd.pagos.filter((p) => p.estado === 'reembolsado'))
         },
         meses: [...meses.values()],
         categorias: [...categorias].map(([categoria, reservas]) => ({ categoria, reservas })),
@@ -151,6 +158,7 @@ async function listarReservas({ estado }) {
                 total: Number(f.total),
                 estado: f.estado,
                 fechaCreacion: f.fecha_creacion,
+                pago: aPago(f, 'pago_'),
                 alquiler: f.tipo === 'vehiculo'
                     ? { horaRecogida: horaIso(f.hora_inicio), horaDevolucion: horaIso(f.hora_fin), ciudadDevolucion: f.ciudad_devolucion }
                     : undefined

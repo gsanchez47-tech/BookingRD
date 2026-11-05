@@ -38,6 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     prepararFormulario();
     cargarPublicacion();
+    document.getElementById('boton-ver-recibo').addEventListener('click', () => {
+        if (ultimoRecibo) abrirRecibo(ultimoRecibo);
+    });
 });
 
 /* ----------------------------------------------------------------------------
@@ -368,7 +371,7 @@ function prepararFormularioAuto() {
             <span class="extra-texto"><strong>${escaparHtml(extra.nombre)}</strong><small>${escaparHtml(extra.detalle)}</small></span>
             <span class="extra-precio">${formatearPrecio(extra.precio)}<small>${extra.porDia ? 'por día' : 'por alquiler'}</small></span>
         </label>`).join('');
-    document.getElementById('reserva-garantia').textContent = 'Cancelación gratuita hasta un día antes de la recogida. Sin pagos por adelantado.';
+    document.getElementById('reserva-garantia').textContent = 'Cancelación gratuita hasta un día antes de la recogida. Paga con tarjeta o en el mostrador.';
     document.getElementById('reserva-comentario').placeholder = 'Número de vuelo, hora estimada de llegada, silla para bebé...';
 }
 
@@ -466,6 +469,24 @@ function textoDisponibilidad(libres) {
         : `Disponible: quedan ${libres} ${unidad}`;
 }
 
+/** Fechas de la solicitud en texto, para el pago y el recibo. */
+function textoFechasSolicitud(datos) {
+    if (ES_AUTO) {
+        return `${formatearFecha(datos.recogida)}, ${formatearHora(datos.horaRecogida)} al ${formatearFecha(datos.devolucion)}, ${formatearHora(datos.horaDevolucion)}`;
+    }
+    const personas = `${datos.personas} ${datos.personas === 1 ? 'persona' : 'personas'}`;
+    if (TIPO === 'actividad') return `${formatearFecha(datos.fecha)}, ${personas}`;
+    return `${formatearFecha(datos.entrada)} al ${formatearFecha(datos.salida)}, ${personas}`;
+}
+
+/** Datos de la reserva y del pago recién confirmados (para el recibo). */
+let ultimoRecibo = null;
+let checkout = null;
+
+/**
+ * Primer paso: comprueba la sesión y la disponibilidad y abre el pago.
+ * La reserva se crea al confirmar el pago (enviarReserva).
+ */
 async function reservar(evento) {
     evento.preventDefault();
     const mensaje = document.getElementById('mensaje-error');
@@ -474,31 +495,77 @@ async function reservar(evento) {
         irAlLogin();
         return;
     }
+    const usuario = obtenerUsuario();
+    if (usuario && usuario.rol !== 'cliente') {
+        mensaje.textContent = 'Las reservas se realizan con una cuenta de viajero.';
+        mensaje.hidden = false;
+        return;
+    }
 
+    // Disponibilidad y total actualizados antes de pagar.
     const boton = document.getElementById('boton-reservar');
+    botonCargando(boton, 'Consultando disponibilidad...');
+    try {
+        await actualizarResumen();
+    } finally {
+        botonNormal(boton, 'Reservar ahora');
+    }
+    if (!ultimaEvaluacion) {
+        const estado = document.querySelector('#reserva-resumen .resumen-estado');
+        mensaje.textContent = estado ? estado.textContent.trim() : 'Revisa los datos de la reserva.';
+        mensaje.hidden = false;
+        return;
+    }
+    if (!ultimaEvaluacion.disponible) {
+        mensaje.textContent = ultimaEvaluacion.mensaje || 'No hay disponibilidad para esos datos.';
+        mensaje.hidden = false;
+        return;
+    }
+
+    if (!checkout) checkout = prepararPago({ alPagar: enviarReserva });
+    checkout.abrir({
+        imagen: publicacion.imagen,
+        publicacion: publicacion.nombre,
+        fechas: textoFechasSolicitud(leerSolicitud()),
+        total: ultimaEvaluacion.total,
+        destino: ES_AUTO
+            ? ['Pagar en el mostrador', 'Pagas al recoger el auto, junto con el depósito.']
+            : TIPO === 'hotel'
+                ? ['Pagar en el hotel', 'Pagas al llegar, directamente al alojamiento.']
+                : ['Pagar el día de la actividad', 'Pagas al operador en el punto de encuentro.']
+    });
+}
+
+/** Segundo paso: envía la reserva con el pago y muestra la confirmación. */
+async function enviarReserva(pago) {
     const datos = leerSolicitud();
+    const fechas = textoFechasSolicitud(datos);
     if (ES_AUTO) datos.extras = datos.extras ? datos.extras.split(',') : [];
     const solicitud = Object.assign(datos, {
         tipo: TIPO,
         idPublicacion: ID,
-        comentario: document.getElementById('reserva-comentario').value.trim()
+        comentario: document.getElementById('reserva-comentario').value.trim(),
+        pago
     });
 
-    botonCargando(boton, 'Confirmando...');
-    try {
-        const reserva = await apiFetch('/reservas', { method: 'POST', body: solicitud });
-        document.getElementById('confirmacion-codigo').textContent = reserva.codigo;
-        document.getElementById('confirmacion-texto').textContent =
-            `${reserva.publicacion}. Total: ${formatoMoneda.format(reserva.total)}`;
-        abrirModal('modal-confirmacion');
-        actualizarResumen();
-    } catch (error) {
-        mensaje.textContent = error.message;
-        mensaje.hidden = false;
-        if (error.campo) marcarCampo(error.campo);
-    } finally {
-        botonNormal(boton, 'Reservar ahora');
-    }
+    const reserva = await apiFetch('/reservas', { method: 'POST', body: solicitud });
+    const usuario = obtenerUsuario();
+    ultimoRecibo = {
+        codigo: reserva.codigo,
+        publicacion: reserva.publicacion,
+        proveedor: publicacion.empresa ? publicacion.empresa.nombre : '',
+        fechas,
+        cliente: usuario ? usuario.nombre : '',
+        total: reserva.total,
+        pago: reserva.pago
+    };
+    document.getElementById('confirmacion-codigo').textContent = reserva.codigo;
+    document.getElementById('confirmacion-texto').textContent =
+        `${reserva.publicacion}. Total: ${formatoMoneda.format(reserva.total)}`;
+    document.getElementById('confirmacion-pago').innerHTML = chipPago(reserva.pago);
+    actualizarResumen();
+    // La confirmación se abre cuando se cierra la ventana de pago.
+    return () => abrirModal('modal-confirmacion');
 }
 
 /* ----------------------------------------------------------------------------
@@ -536,7 +603,7 @@ function pintarPoliticas() {
     const politicas = ES_AUTO
         ? [
             ['Cancelación', 'Gratuita hasta un día antes de la recogida, desde Mis reservas.'],
-            ['Pago', 'BookingRD no cobra por adelantado. El alquiler se paga en el mostrador de la empresa.'],
+            ['Pago', 'Con tarjeta al reservar o en el mostrador al recoger el auto. Si cancelas a tiempo, el pago con tarjeta se reembolsa completo.'],
             ['Depósito', `${formatoMoneda.format(publicacion.deposito)} retenidos en la tarjeta de crédito del conductor y liberados al devolver el auto sin daños.`],
             ['Combustible', 'Lleno a lleno: se entrega con el tanque lleno y se devuelve igual. Si falta combustible, se cobra el faltante.'],
             ['Kilometraje', publicacion.kmPorDia ? `${publicacion.kmPorDia} km incluidos por día de alquiler.` : 'Ilimitado.'],
@@ -547,14 +614,14 @@ function pintarPoliticas() {
         : TIPO === 'hotel'
         ? [
             ['Cancelación', 'Gratuita hasta un día antes de la entrada, desde Mis reservas. Después de esa fecha, consulta con la empresa.'],
-            ['Pago', 'BookingRD no cobra por adelantado. La empresa te indicará cómo pagar tu estancia.'],
+            ['Pago', 'Con tarjeta al reservar o en el hotel al llegar. Si cancelas a tiempo, el pago con tarjeta se reembolsa completo.'],
             ['Entrada y salida', 'Coordina la hora de llegada con la empresa; puedes indicarla en el comentario de la reserva.'],
             ['Capacidad', `Hasta ${publicacion.capacidadPersonas} personas por habitación o unidad.`],
             ['Documentos', 'Cédula de identidad o pasaporte vigente del titular de la reserva.']
         ]
         : [
             ['Cancelación', 'Gratuita hasta un día antes de la actividad, desde Mis reservas.'],
-            ['Pago', 'BookingRD no cobra por adelantado. La empresa te indicará cómo pagar.'],
+            ['Pago', 'Con tarjeta al reservar o al operador el día de la actividad. Si cancelas a tiempo, el pago con tarjeta se reembolsa completo.'],
             ['Punto de encuentro', publicacion.puntoEncuentro],
             ['Duración', `${formatearDuracion(publicacion.duracionHoras)} aproximadamente.`],
             ['Recomendaciones', 'Llega 15 minutos antes, con protector solar, agua y ropa cómoda.']

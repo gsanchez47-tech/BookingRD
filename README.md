@@ -41,14 +41,14 @@ npm start
 
 Abre <http://localhost:3000> en el navegador. Para detener el servidor, pulsa `Ctrl + C` en la terminal.
 
-Sin archivo `.env`, el servidor arranca en **modo de demostración**: carga en memoria los datos de `database/datos-demo.js` (20 cuentas, 7 empresas, 60 publicaciones, 90 reservas y 74 reseñas) y todo el sitio funciona: registrarse, reservar, cancelar, reseñar, publicar desde el panel de empresa y moderar desde la administración. Los cambios se pierden al detener el servidor. La consola lo indica al arrancar.
+Sin archivo `.env`, el servidor arranca en **modo de demostración**: carga en memoria los datos de `database/datos-demo.js` (20 cuentas, 7 empresas, 60 publicaciones, 90 reservas con su pago y 74 reseñas) y todo el sitio funciona: registrarse, reservar, cancelar, reseñar, publicar desde el panel de empresa y moderar desde la administración. Los cambios se pierden al detener el servidor. La consola lo indica al arrancar.
 
 | Comando | Para qué |
 |---|---|
 | `npm start` | Arranca el servidor (demostración si no hay base configurada) |
 | `npm run demo` | Fuerza el modo de demostración aunque `.env` tenga una base |
 | `npm run dev` | Igual que `start`, con reinicio automático al guardar cambios |
-| `npm run probar` | Pruebas automáticas de la API (24 casos) |
+| `npm run probar` | Pruebas automáticas de la API (26 casos) |
 | `npm run construir` | Regenera `public/*.html` y `public/css/` desde `frontend/` (sección 6) |
 
 ### 1.4 Cuentas de demostración
@@ -63,15 +63,33 @@ Sin archivo `.env`, el servidor arranca en **modo de demostración**: carga en m
 
 Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@correo.com`) usan `Cliente123!`; las demás empresas (`aventura@`, `montana@`, `cultura@`, `rentacar@bookingrd.com`) usan `Empresa123!`. En la página de inicio de sesión, los botones de *Cuentas de demostración* completan el formulario con un clic.
 
-**Recorrido sugerido**
+### 1.5 Tarjetas de prueba (pagos simulados)
 
-1. En el inicio, toca un destino del mapa: la ficha muestra cuántos alojamientos, actividades y autos tiene y el clima actual.
-2. Entra como `cliente@bookingrd.com`, busca en *Explorar* con los filtros del panel izquierdo y reserva un hotel o una actividad.
-3. Abre *Mis reservas > Reseñas* y reseña la reserva terminada que está pendiente.
-4. En *Autos*, abre un vehículo, cambia la edad del conductor a 23, elige devolverlo en otra ciudad, marca un extra y mira cómo cambia el desglose.
-5. Entra como `empresa@bookingrd.com`: crea una publicación con fotografía, mira la reserva recibida y responde la reseña.
-6. Entra como `admin@bookingrd.com`: suspende una empresa y comprueba que sus publicaciones salen del catálogo; reactívala.
-7. Cambia el idioma a inglés y la moneda a dólares con el botón *ES / RD$* del encabezado.
+Al reservar se elige pagar con tarjeta o en el destino. La pasarela es una **simulación**: no se conecta a ningún banco, no cobra nada y no guarda el número completo ni el CVV (solo la marca, los últimos 4 dígitos y el titular). Usa cualquier nombre y un vencimiento futuro; en la ventana de pago, *Tarjetas de prueba* completa el formulario con un clic.
+
+| Número | Marca | Resultado |
+|---|---|---|
+| 4242 4242 4242 4242 | Visa | Aprobada |
+| 5555 5555 5555 4444 | Mastercard | Aprobada |
+| 3782 822463 10005 | American Express | Aprobada (CVV de 4 dígitos) |
+| 4000 0000 0000 0002 | Visa | Rechazada por el banco |
+| 4000 0000 0000 9995 | Visa | Fondos insuficientes |
+| Un número con un dígito cambiado | | Número inválido (algoritmo de Luhn) |
+
+### 1.6 Guion para la demostración en clase
+
+Unos 10 minutos. Guion completo con lo que se dice en cada paso: [`docs/GUIA-DEMOSTRACION.md`](docs/GUIA-DEMOSTRACION.md).
+
+1. **Inicio:** toca un destino del mapa; la ficha muestra cuántos alojamientos, actividades y autos tiene y el clima actual.
+2. **Explorar:** filtra con el panel izquierdo (tipo, destino, precio, valoración) y cambia a la vista de mapa.
+3. **Reserva con pago:** entra como `cliente@bookingrd.com`, abre un hotel y pulsa *Reservar ahora*. Paga primero con `4000 0000 0000 9995` (fondos insuficientes: la reserva no se crea) y luego con `4242 4242 4242 4242`. Muestra el código de reserva y el **recibo** (se puede imprimir o guardar en PDF).
+4. **Auto:** en *Autos*, cambia la edad del conductor a 23, devuélvelo en otra ciudad y marca un extra; el desglose cambia al instante. Reserva con *Pagar en el mostrador*.
+5. **Mis reservas:** cancela la reserva pagada con tarjeta; el aviso confirma el **reembolso** a la Visa •••• 4242. Reseña la reserva terminada pendiente.
+6. **Empresa:** entra como `empresa@bookingrd.com`; en *Reservas recibidas* se ve el estado del pago de cada reserva y *Marcar cobrado* registra el pago en destino de *Senderismo al Salto El Limón*.
+7. **Administración:** entra como `admin@bookingrd.com`; el resumen muestra lo cobrado en línea, lo pendiente y lo reembolsado. Suspende una empresa y comprueba que sus publicaciones salen del catálogo; reactívala.
+8. **Idioma y moneda:** cambia a inglés y dólares con *ES / RD$*.
+
+Para empezar la demostración con los datos originales, detén el servidor (`Ctrl + C`) y vuelve a ejecutar `npm start`.
 
 ---
 
@@ -83,9 +101,10 @@ Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@co
 | Explorar | **Todos los filtros en un panel a la izquierda** (cajón en móvil): qué buscas, categoría con su conteo, destino, palabra clave, personas o pasajeros, transmisión, rango de precio sobre un histograma, valoración y fechas del viaje. Etiquetas de filtros aplicados, siete órdenes, vista de lista o de mapa, clima del destino elegido y búsqueda compartible por URL. |
 | Detalle | Valoración, guardar y compartir, lo más destacado, descripción, características, ubicación con clima y pronóstico, reseñas con distribución y respuesta de la empresa, lo que debes saber, relacionadas y reserva con disponibilidad y total en tiempo real. |
 | Autos | Buscador con fecha y hora de recogida y devolución, tipos de auto, flota mejor valorada, cómo reservar, precio y requisitos, otras formas de moverse y preguntas frecuentes. |
-| Mis reservas | Próximas, pasadas y canceladas; cancelación hasta un día antes; guardados; reseñas pendientes y publicadas. |
-| Panel de empresa | Resumen con indicadores y gráficos, publicaciones con fotografía (alojamiento, actividad o vehículo), reservas recibidas con búsqueda y CSV, reseñas con respuesta pública y perfil. |
-| Administración | Indicadores globales, empresas y usuarios (suspender y reactivar), moderación de publicaciones y reseñas, todas las reservas y mensajes de contacto. |
+| Pago (simulado) | Ventana de pago al reservar: tarjeta (vista previa de la tarjeta, validación de número, vencimiento y CVV, tarjetas de prueba, respuesta del "banco") o pago en el destino. Recibo imprimible con referencia y código de autorización. |
+| Mis reservas | Próximas, pasadas y canceladas; estado del pago y recibo de cada reserva; cancelación hasta un día antes con reembolso automático del pago con tarjeta; guardados; reseñas pendientes y publicadas. |
+| Panel de empresa | Resumen con indicadores y gráficos, publicaciones con fotografía (alojamiento, actividad o vehículo), reservas recibidas con estado del pago, *Marcar cobrado* para pagos en destino, búsqueda y CSV, reseñas con respuesta pública y perfil. |
+| Administración | Indicadores globales (incluye cobrado en línea, por cobrar y reembolsado), empresas y usuarios (suspender y reactivar), moderación de publicaciones y reseñas, todas las reservas con su pago y mensajes de contacto. |
 | Registro e inicio de sesión | Registro sencillo de viajero y por pasos de empresa; *Recordarme*; cada rol llega a su espacio. |
 
 **Idioma y moneda.** El sitio está en español y se puede ver en inglés. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia); el pago siempre es en pesos y la reserva lo indica. Los textos escritos por usuarios y empresas no se traducen.
@@ -104,6 +123,8 @@ Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@co
 | Explorar, vista de mapa | ![Vista de mapa](docs/capturas/explorar-mapa.jpg) | |
 | Detalle de alojamiento | ![Detalle](docs/capturas/detalle.jpg) | ![Detalle en móvil](docs/capturas/movil/detalle.jpg) |
 | Detalle de un auto | ![Detalle de auto](docs/capturas/detalle-auto.jpg) | |
+| Pago simulado | ![Pago](docs/capturas/pago.jpg) | ![Pago en móvil](docs/capturas/movil/pago.jpg) |
+| Recibo | ![Recibo](docs/capturas/recibo.jpg) | |
 | Alquiler de autos | ![Autos](docs/capturas/autos.jpg) | ![Autos en móvil](docs/capturas/movil/autos.jpg) |
 | Mis reservas | ![Mis reservas](docs/capturas/mis-reservas.jpg) | |
 | Panel de empresa | ![Panel de empresa](docs/capturas/panel-empresa.jpg) | |
@@ -208,7 +229,8 @@ BookingRD/
 ├── public/                   Sitio servido por Express (generado + recursos)
 │   ├── *.html, css/          Generados con npm run construir: no editar a mano
 │   ├── js/                   comun.js, preferencias.js (idioma y moneda),
-│   │                         idioma-en.js, isla.js (mapa SVG), clima.js,
+│   │                         idioma-en.js, pagos.js (pago simulado y recibo),
+│   │                         isla.js (mapa SVG), clima.js,
 │   │                         buscador.js, mapa.js y uno por página
 │   ├── img/                  destinos/, paginas/, publicaciones/, servicios/
 │   ├── fonts/                Fraunces y Nunito (licencia OFL)
@@ -230,7 +252,7 @@ BookingRD/
 
 Para cambiar el diseño, edita `frontend/` y ejecuta `npm run construir`. Los cambios en `public/js/` no necesitan ese paso.
 
-Documentación técnica: [`docs/DOCUMENTACION.md`](docs/DOCUMENTACION.md). Guía paso a paso de Azure: [`docs/GUIA-AZURE.md`](docs/GUIA-AZURE.md). Resumen en una página: [`docs/RESUMEN.md`](docs/RESUMEN.md).
+Documentación técnica: [`docs/DOCUMENTACION.md`](docs/DOCUMENTACION.md). Guion de la demostración: [`docs/GUIA-DEMOSTRACION.md`](docs/GUIA-DEMOSTRACION.md). Guía paso a paso de Azure: [`docs/GUIA-AZURE.md`](docs/GUIA-AZURE.md). Resumen en una página: [`docs/RESUMEN.md`](docs/RESUMEN.md).
 
 ## 7. Solución de problemas
 

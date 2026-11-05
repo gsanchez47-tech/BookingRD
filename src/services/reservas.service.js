@@ -33,11 +33,17 @@
  * La creación se ejecuta en una transacción que bloquea la fila de la
  * publicación: las reservas simultáneas se procesan en serie y el cupo no
  * puede superarse.
+ *
+ * Pago (src/services/pagos.service.js, pasarela simulada): con tarjeta se
+ * cobra dentro de la misma transacción, después de confirmar el cupo; si la
+ * tarjeta se rechaza, la reserva no se crea. Al cancelar, la tarjeta se
+ * reembolsa y el pago en destino se anula.
  */
 
 const crypto = require('crypto');
 
 const correoService = require('./correo.service');
+const pagosService = require('./pagos.service');
 const { conTransaccion, reservasRepo, cuentasRepo } = require('../repositories');
 const { solicitudInvalida, noEncontrado, conflicto, prohibido } = require('../utils/errores');
 const { hoy, esFechaValida, diferenciaDias, sumarDias } = require('../utils/fechas');
@@ -294,6 +300,7 @@ async function crearReserva(usuario, datos) {
     if (!idPublicacion) throw solicitudInvalida('Publicación no válida.');
     const solicitud = validarSolicitud(tipo, datos);
     const comentario = textoLimpio(datos.comentario).slice(0, 500);
+    const pagoValidado = pagosService.validarPago(datos.pago);
 
     for (let intento = 1; ; intento++) {
         try {
@@ -331,11 +338,33 @@ async function crearReserva(usuario, datos) {
                     extras: solicitud.extras || [],
                     deposito: tipo === 'vehiculo' ? publicacion.deposito : null
                 };
+                // Cobro: si la pasarela rechaza la tarjeta, se deshace toda la transacción.
+                const pago = pagosService.cobrar(pagoValidado, total);
                 const id = await reservasRepo.crear(transaccion, reserva);
+                await reservasRepo.registrarPago(transaccion, id, pago);
+                reserva.pago = pago;
                 return { id, codigo: reserva.codigo, total: reserva.total, publicacion: publicacion.nombre, reserva, datosPublicacion: publicacion };
             }).then((creada) => {
                 notificarReserva(usuario.id, creada.reserva, creada.datosPublicacion);
-                return { id: creada.id, codigo: creada.codigo, total: creada.total, publicacion: creada.publicacion };
+                const p = creada.reserva.pago;
+                return {
+                    id: creada.id,
+                    codigo: creada.codigo,
+                    total: creada.total,
+                    publicacion: creada.publicacion,
+                    pago: {
+                        metodo: p.metodo,
+                        estado: p.estado,
+                        monto: p.monto,
+                        moneda: p.moneda,
+                        marca: p.marca,
+                        ultimos4: p.ultimos4,
+                        titular: p.titular,
+                        referencia: p.referencia,
+                        autorizacion: p.autorizacion,
+                        fechaPago: new Date().toISOString()
+                    }
+                };
             });
         } catch (error) {
             // Código repetido (probabilidad mínima): se reintenta con otro código.
@@ -355,11 +384,14 @@ function notificarReserva(idUsuario, reserva, publicacion) {
         .catch((error) => console.error(`No se pudo preparar el correo de la reserva ${reserva.codigo}: ${error.message}`));
 }
 
-/** Cancela una reserva futura del propio viajero. */
+/**
+ * Cancela una reserva futura del propio viajero y reembolsa o anula su pago.
+ * @returns {Promise<{reembolso: {monto: number, marca: string, ultimos4: string}|null}>}
+ */
 async function cancelarReserva(usuario, idReserva) {
     const id = aEnteroPositivo(idReserva);
     if (!id) throw noEncontrado('La reserva no existe.');
-    await conTransaccion(async (transaccion) => {
+    return conTransaccion(async (transaccion) => {
         const reserva = await reservasRepo.bloquearReserva(transaccion, id);
         if (!reserva || reserva.idUsuario !== usuario.id) throw noEncontrado('La reserva no existe.');
         if (reserva.estado === 'cancelada') throw conflicto('La reserva ya estaba cancelada.');
@@ -367,7 +399,22 @@ async function cancelarReserva(usuario, idReserva) {
             throw conflicto('Solo se pueden cancelar reservas con al menos un día de anticipación.');
         }
         await reservasRepo.cancelar(transaccion, id);
+        const pago = reserva.pago;
+        return {
+            reembolso: pago && pago.metodo === 'tarjeta' && pago.estado === 'pagado'
+                ? { monto: reserva.total, marca: pago.marca, ultimos4: pago.ultimos4 }
+                : null
+        };
     });
 }
 
-module.exports = { consultarDisponibilidad, crearReserva, cancelarReserva, generarCodigo, diasDeAlquiler };
+/** La empresa registra el cobro en destino de una reserva confirmada. */
+async function marcarCobrado(usuario, idReserva) {
+    const id = aEnteroPositivo(idReserva);
+    if (!id) throw noEncontrado('La reserva no existe.');
+    if (!usuario.idEmpresa) throw prohibido();
+    const hecho = await reservasRepo.marcarCobrado(usuario.idEmpresa, id);
+    if (!hecho) throw conflicto('Esta reserva no tiene un cobro pendiente en destino.');
+}
+
+module.exports = { consultarDisponibilidad, crearReserva, cancelarReserva, marcarCobrado, generarCodigo, diasDeAlquiler };

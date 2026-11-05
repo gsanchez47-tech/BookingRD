@@ -223,11 +223,21 @@ test('rutas protegidas exigen sesión y rol', async () => {
 test('reserva de alojamiento, actividad y auto con desglose', async () => {
     const hotel = await api('/reservas', {
         metodo: 'POST', token: tokens.nueva,
-        cuerpo: { tipo: 'hotel', idPublicacion: creadas.hotel.id, entrada: fecha(30), salida: fecha(32), habitaciones: 1, personas: 2 }
+        cuerpo: {
+            tipo: 'hotel', idPublicacion: creadas.hotel.id, entrada: fecha(30), salida: fecha(32), habitaciones: 1, personas: 2,
+            pago: { metodo: 'tarjeta', titular: 'Laura Peña', numero: '4242 4242 4242 4242', vencimiento: '12/30', cvv: '123' }
+        }
     });
     assert.equal(hotel.status, 201, JSON.stringify(hotel.datos));
     assert.match(hotel.datos.codigo, /^BRD[A-Z0-9]{7}$/);
     assert.equal(hotel.datos.total, creadas.hotel.precio * 2);
+    assert.equal(hotel.datos.pago.estado, 'pagado');
+    assert.equal(hotel.datos.pago.marca, 'Visa');
+    assert.equal(hotel.datos.pago.ultimos4, '4242');
+    assert.equal(hotel.datos.pago.monto, hotel.datos.total);
+    assert.match(hotel.datos.pago.referencia, /^PAY[A-Z0-9]{8}$/);
+    assert.match(hotel.datos.pago.autorizacion, /^\d{6}$/);
+    assert.equal(JSON.stringify(hotel.datos).includes('4242424242424242'), false, 'el número completo no se devuelve');
     creadas.reservaHotel = hotel.datos;
 
     const actividades = await api('/publicaciones?tipo=actividad&q=Tres%20Ojos');
@@ -238,6 +248,8 @@ test('reserva de alojamiento, actividad y auto con desglose', async () => {
     });
     assert.equal(reservaActividad.status, 201);
     assert.equal(reservaActividad.datos.total, actividad.precio * 3);
+    assert.equal(reservaActividad.datos.pago.metodo, 'en_destino');
+    assert.equal(reservaActividad.datos.pago.estado, 'pendiente');
 
     const autos = await api('/publicaciones?tipo=vehiculo&q=Jimny');
     const auto = autos.datos.publicaciones[0];
@@ -266,11 +278,60 @@ test('no se aceptan reservas con datos inválidos', async () => {
     assert.equal(empresa.status, 403);
 });
 
-test('mis reservas y cancelación', async () => {
+test('pagos: tarjetas inválidas, rechazadas y pago en destino', async () => {
+    const reserva = (pago) => api('/reservas', {
+        metodo: 'POST', token: tokens.nueva,
+        cuerpo: { tipo: 'hotel', idPublicacion: creadas.hotel.id, entrada: fecha(40), salida: fecha(41), habitaciones: 1, personas: 2, pago }
+    });
+    const tarjeta = (cambios) => Object.assign({ metodo: 'tarjeta', titular: 'Laura Peña', numero: '4242424242424242', vencimiento: '12/30', cvv: '123' }, cambios);
+
+    const luhn = await reserva(tarjeta({ numero: '4242424242424241' }));
+    assert.equal(luhn.status, 400);
+    assert.equal(luhn.datos.campo, 'pago-numero');
+    const vencida = await reserva(tarjeta({ vencimiento: '01/20' }));
+    assert.equal(vencida.status, 400);
+    assert.equal(vencida.datos.campo, 'pago-vencimiento');
+    const amex = await reserva(tarjeta({ numero: '378282246310005', cvv: '123' }));
+    assert.equal(amex.status, 400, 'American Express pide CVV de 4 dígitos');
+    const rechazada = await reserva(tarjeta({ numero: '4000 0000 0000 0002' }));
+    assert.equal(rechazada.status, 402);
+    const fondos = await reserva(tarjeta({ numero: '4000000000009995' }));
+    assert.equal(fondos.status, 402);
+    assert.match(fondos.datos.error, /Fondos insuficientes/);
+
     const { datos } = await api('/reservas', { token: tokens.nueva });
-    assert.equal(datos.reservas.length, 3);
+    assert.equal(datos.reservas.length, 3, 'un pago rechazado no crea la reserva');
+
+    const enDestino = await reserva({ metodo: 'en_destino' });
+    assert.equal(enDestino.status, 201);
+    assert.equal(enDestino.datos.pago.estado, 'pendiente');
+    creadas.reservaEnDestino = enDestino.datos;
+});
+
+test('la empresa registra el cobro en destino', async () => {
+    // El hotel de la prueba es de Coralia Hotels & Resorts; otra empresa no puede marcarlo.
+    const ajena = await api(`/empresa/reservas/${creadas.reservaEnDestino.id}/cobro`, { metodo: 'PATCH', token: tokens.empresa });
+    assert.equal(ajena.status, 409);
+    tokens.hoteles = await entrar('hoteles@bookingrd.com', 'Empresa123!');
+    const cobro = await api(`/empresa/reservas/${creadas.reservaEnDestino.id}/cobro`, { metodo: 'PATCH', token: tokens.hoteles });
+    assert.equal(cobro.status, 200, JSON.stringify(cobro.datos));
+    const repetido = await api(`/empresa/reservas/${creadas.reservaEnDestino.id}/cobro`, { metodo: 'PATCH', token: tokens.hoteles });
+    assert.equal(repetido.status, 409);
+    const { datos } = await api('/empresa/reservas', { token: tokens.hoteles });
+    const fila = datos.reservas.find((r) => r.id === creadas.reservaEnDestino.id);
+    assert.equal(fila.pago.estado, 'pagado');
+});
+
+test('mis reservas y cancelación con reembolso', async () => {
+    const { datos } = await api('/reservas', { token: tokens.nueva });
+    assert.equal(datos.reservas.length, 4);
+    assert.ok(datos.reservas.every((r) => r.pago && r.pago.referencia));
     const cancelar = await api(`/reservas/${creadas.reservaHotel.id}/cancelar`, { metodo: 'PATCH', token: tokens.nueva });
     assert.equal(cancelar.status, 200);
+    assert.equal(cancelar.datos.reembolso.ultimos4, '4242');
+    assert.equal(cancelar.datos.reembolso.monto, creadas.reservaHotel.total);
+    const despues = await api('/reservas', { token: tokens.nueva });
+    assert.equal(despues.datos.reservas.find((r) => r.id === creadas.reservaHotel.id).pago.estado, 'reembolsado');
     const otra = await api(`/reservas/${creadas.reservaHotel.id}/cancelar`, { metodo: 'PATCH', token: tokens.cliente });
     assert.ok([403, 404].includes(otra.status));
 });

@@ -80,7 +80,7 @@ El asistente pregunta los cuatro datos del paso 3. Luego:
 
 1. Genera el archivo `.env` con la conexión y una clave segura para las sesiones (`JWT_SECRET`).
 2. Prueba la conexión. La primera vez puede tardar hasta un minuto porque la base se está reanudando.
-3. Pregunta **¿Crear o actualizar las tablas ahora? (s/n)**: responder `s`. Ejecuta los 283 lotes del script (tablas, índices y datos de demostración) y al final muestra cuántos registros tiene cada tabla.
+3. Pregunta **¿Crear o actualizar las tablas ahora? (s/n)**: responder `s`. Ejecuta los 285 lotes del script (tablas, índices y datos de demostración) y al final muestra cuántos registros tiene cada tabla.
 
 Conteos esperados con los datos de demostración:
 
@@ -92,6 +92,7 @@ Conteos esperados con los datos de demostración:
 | actividades | 34 |
 | vehiculos | 11 |
 | reservas | 90 |
+| pagos | 90 |
 | resenas | 74 |
 | favoritos | 6 |
 | mensajes_contacto | 2 |

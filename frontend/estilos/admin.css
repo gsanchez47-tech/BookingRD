@@ -3,10 +3,6 @@
 
 /* @incluir panel.css */
 
-.cabecera-admin .cabecera-cuenta-etiqueta {
-    color: var(--azul);
-}
-
 .pestanas-admin {
     overflow-x: auto;
     flex-wrap: nowrap;

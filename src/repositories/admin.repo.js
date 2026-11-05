@@ -7,6 +7,7 @@
 
 const { peticion, sql } = require('../config/db');
 const { aIso, horaIso } = require('../utils/fechas');
+const { aPago } = require('../services/pagos.service');
 
 const CATEGORIA_HOTEL_SQL = `CASE WHEN h.tipo_alojamiento IN ('villa', 'cabana', 'apartamento', 'hostal')
                                   THEN 'villas-cabanas' ELSE 'hoteles-resorts' END`;
@@ -38,7 +39,10 @@ async function resumen(desde, hasta) {
                 (SELECT COUNT(*) FROM dbo.mensajes_contacto WHERE atendido = 0) AS mensajesPendientes,
                 (SELECT COUNT(*) FROM dbo.resenas) AS resenas,
                 (SELECT COUNT(*) FROM dbo.resenas WHERE visible = 0) AS resenasOcultas,
-                (SELECT CAST(AVG(CAST(puntuacion AS DECIMAL(5, 2))) AS DECIMAL(4, 2)) FROM dbo.resenas WHERE visible = 1) AS puntuacionMedia;
+                (SELECT CAST(AVG(CAST(puntuacion AS DECIMAL(5, 2))) AS DECIMAL(4, 2)) FROM dbo.resenas WHERE visible = 1) AS puntuacionMedia,
+                (SELECT COALESCE(SUM(monto), 0) FROM dbo.pagos WHERE metodo = 'tarjeta' AND estado = 'pagado') AS cobradoEnLinea,
+                (SELECT COALESCE(SUM(monto), 0) FROM dbo.pagos WHERE estado = 'pendiente') AS porCobrarEnDestino,
+                (SELECT COALESCE(SUM(monto), 0) FROM dbo.pagos WHERE estado = 'reembolsado') AS reembolsado;
 
             SELECT YEAR(fecha_inicio) AS anio, MONTH(fecha_inicio) AS mes, COUNT(*) AS reservas,
                    COALESCE(SUM(total), 0) AS ingresos
@@ -87,7 +91,10 @@ async function resumen(desde, hasta) {
             mensajesPendientes: t.mensajesPendientes,
             resenas: t.resenas,
             resenasOcultas: t.resenasOcultas,
-            puntuacionMedia: t.puntuacionMedia === null ? null : Number(t.puntuacionMedia)
+            puntuacionMedia: t.puntuacionMedia === null ? null : Number(t.puntuacionMedia),
+            cobradoEnLinea: Number(t.cobradoEnLinea),
+            porCobrarEnDestino: Number(t.porCobrarEnDestino),
+            reembolsado: Number(t.reembolsado)
         },
         meses: meses.map((m) => ({ anio: m.anio, mes: m.mes, reservas: m.reservas, ingresos: Number(m.ingresos) })),
         categorias: categorias.map((c) => ({ categoria: c.categoria, reservas: c.reservas })),
@@ -219,13 +226,18 @@ async function listarReservas({ estado }) {
                    COALESCE(r.id_hotel, r.id_actividad, r.id_vehiculo) AS id_publicacion,
                    COALESCE(h.nombre, a.nombre, v.nombre) AS publicacion,
                    e.nombre_comercial AS proveedor,
-                   u.nombre AS cliente_nombre, u.correo AS cliente_correo
+                   u.nombre AS cliente_nombre, u.correo AS cliente_correo,
+                   pg.metodo AS pago_metodo, pg.estado AS pago_estado, pg.monto AS pago_monto, pg.moneda AS pago_moneda,
+                   pg.marca AS pago_marca, pg.ultimos4 AS pago_ultimos4, pg.titular AS pago_titular,
+                   pg.referencia AS pago_referencia, pg.autorizacion AS pago_autorizacion,
+                   pg.fecha_pago AS pago_fecha_pago, pg.fecha_reembolso AS pago_fecha_reembolso
             FROM dbo.reservas r
             LEFT JOIN dbo.hoteles h ON h.id_hotel = r.id_hotel
             LEFT JOIN dbo.actividades a ON a.id_actividad = r.id_actividad
             LEFT JOIN dbo.vehiculos v ON v.id_vehiculo = r.id_vehiculo
             INNER JOIN dbo.empresas e ON e.id_empresa = COALESCE(h.id_empresa, a.id_empresa, v.id_empresa)
             INNER JOIN dbo.usuarios u ON u.id_usuario = r.id_usuario
+            LEFT JOIN dbo.pagos pg ON pg.id_reserva = r.id_reserva
             WHERE (@estado IS NULL OR r.estado = @estado)
             ORDER BY r.fecha_inicio DESC, r.id_reserva DESC
         `);
@@ -244,6 +256,7 @@ async function listarReservas({ estado }) {
         total: Number(f.total),
         estado: f.estado,
         fechaCreacion: f.fecha_creacion,
+        pago: aPago(f, 'pago_'),
         alquiler: f.tipo === 'vehiculo'
             ? { horaRecogida: horaIso(f.hora_inicio), horaDevolucion: horaIso(f.hora_fin), ciudadDevolucion: f.ciudad_devolucion }
             : undefined

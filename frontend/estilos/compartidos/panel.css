@@ -719,3 +719,13 @@ dialog.modal.modal-ancho {
     margin: 0;
     accent-color: var(--azul);
 }
+
+/* Estado del pago en las tablas de reservas */
+td[data-titulo='Pago'] {
+    min-width: 170px;
+}
+
+.boton-cobro {
+    display: block;
+    margin-top: var(--e-2);
+}

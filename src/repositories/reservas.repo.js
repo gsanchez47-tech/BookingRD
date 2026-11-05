@@ -7,6 +7,7 @@
 
 const { peticion, sql } = require('../config/db');
 const { aIso, horaIso } = require('../utils/fechas');
+const { aPago } = require('../services/pagos.service');
 
 /** Convierte AAAA-MM-DD a Date (medianoche UTC) para parámetros de tipo DATE. */
 const aFecha = (iso) => (iso ? new Date(`${iso}T00:00:00Z`) : null);
@@ -167,6 +168,32 @@ async function crear(transaccion, reserva) {
     return resultado.recordset[0].id;
 }
 
+/** Registra el pago de una reserva recién creada (misma transacción). */
+async function registrarPago(transaccion, idReserva, pago) {
+    const consulta = await peticion(transaccion);
+    await consulta
+        .input('idReserva', sql.Int, idReserva)
+        .input('metodo', sql.VarChar(12), pago.metodo)
+        .input('estado', sql.VarChar(12), pago.estado)
+        .input('monto', sql.Decimal(12, 2), pago.monto)
+        .input('marca', sql.VarChar(20), pago.marca)
+        .input('ultimos4', sql.Char(4), pago.ultimos4)
+        .input('titular', sql.NVarChar(100), pago.titular)
+        .input('referencia', sql.Char(11), pago.referencia)
+        .input('autorizacion', sql.Char(6), pago.autorizacion)
+        .query(`
+            INSERT INTO dbo.pagos (id_reserva, metodo, estado, monto, marca, ultimos4, titular, referencia, autorizacion)
+            VALUES (@idReserva, @metodo, @estado, @monto, @marca, @ultimos4, @titular, @referencia, @autorizacion)
+        `);
+}
+
+/** Columnas del pago (alias pg) con prefijo pago_, para aPago(fila, 'pago_'). */
+const COLUMNAS_PAGO = `
+    pg.metodo AS pago_metodo, pg.estado AS pago_estado, pg.monto AS pago_monto, pg.moneda AS pago_moneda,
+    pg.marca AS pago_marca, pg.ultimos4 AS pago_ultimos4, pg.titular AS pago_titular,
+    pg.referencia AS pago_referencia, pg.autorizacion AS pago_autorizacion,
+    pg.fecha_pago AS pago_fecha_pago, pg.fecha_reembolso AS pago_fecha_reembolso`;
+
 /** Columnas de reserva con los datos de la publicación (alias r, h, a). */
 const COLUMNAS_RESERVA = `
     r.id_reserva, r.codigo, r.fecha_inicio, r.fecha_fin, r.personas, r.habitaciones,
@@ -178,7 +205,8 @@ const COLUMNAS_RESERVA = `
     COALESCE(h.nombre, a.nombre, v.nombre) AS publicacion,
     COALESCE(h.ciudad, a.ciudad, v.ciudad) AS ciudad,
     COALESCE(h.id_imagen, a.id_imagen, v.id_imagen) AS id_imagen,
-    COALESCE(h.imagen_url, a.imagen_url, v.imagen_url) AS imagen_url`;
+    COALESCE(h.imagen_url, a.imagen_url, v.imagen_url) AS imagen_url,
+    ${COLUMNAS_PAGO}`;
 
 function aReserva(fila) {
     return {
@@ -209,6 +237,7 @@ function aReserva(fila) {
                 deposito: fila.deposito === null ? null : Number(fila.deposito)
             }
             : undefined,
+        pago: aPago(fila, 'pago_'),
         proveedor: fila.proveedor,
         cliente: fila.cliente_nombre
             ? { nombre: fila.cliente_nombre, correo: fila.cliente_correo, telefono: fila.cliente_telefono }
@@ -227,6 +256,7 @@ async function listarPorUsuario(idUsuario) {
             LEFT JOIN dbo.hoteles h ON h.id_hotel = r.id_hotel
             LEFT JOIN dbo.actividades a ON a.id_actividad = r.id_actividad
             LEFT JOIN dbo.vehiculos v ON v.id_vehiculo = r.id_vehiculo
+            LEFT JOIN dbo.pagos pg ON pg.id_reserva = r.id_reserva
             INNER JOIN dbo.empresas e ON e.id_empresa = COALESCE(h.id_empresa, a.id_empresa, v.id_empresa)
             WHERE r.id_usuario = @idUsuario
             ORDER BY r.fecha_inicio DESC, r.id_reserva DESC
@@ -246,6 +276,7 @@ async function listarPorEmpresa(idEmpresa) {
             LEFT JOIN dbo.hoteles h ON h.id_hotel = r.id_hotel
             LEFT JOIN dbo.actividades a ON a.id_actividad = r.id_actividad
             LEFT JOIN dbo.vehiculos v ON v.id_vehiculo = r.id_vehiculo
+            LEFT JOIN dbo.pagos pg ON pg.id_reserva = r.id_reserva
             INNER JOIN dbo.empresas e ON e.id_empresa = COALESCE(h.id_empresa, a.id_empresa, v.id_empresa)
             INNER JOIN dbo.usuarios u ON u.id_usuario = r.id_usuario
             WHERE e.id_empresa = @idEmpresa
@@ -259,20 +290,62 @@ async function bloquearReserva(transaccion, idReserva) {
     const consulta = await peticion(transaccion);
     const resultado = await consulta
         .input('id', sql.Int, idReserva)
-        .query(`SELECT id_reserva, id_usuario, estado, fecha_inicio
-                FROM dbo.reservas WITH (UPDLOCK, HOLDLOCK) WHERE id_reserva = @id`);
+        .query(`SELECT r.id_reserva, r.id_usuario, r.estado, r.fecha_inicio, r.total,
+                       pg.metodo AS pago_metodo, pg.estado AS pago_estado, pg.marca AS pago_marca, pg.ultimos4 AS pago_ultimos4
+                FROM dbo.reservas r WITH (UPDLOCK, HOLDLOCK)
+                LEFT JOIN dbo.pagos pg WITH (UPDLOCK, HOLDLOCK) ON pg.id_reserva = r.id_reserva
+                WHERE r.id_reserva = @id`);
     const fila = resultado.recordset[0];
     return fila
-        ? { id: fila.id_reserva, idUsuario: fila.id_usuario, estado: fila.estado, fechaInicio: aIso(fila.fecha_inicio) }
+        ? {
+            id: fila.id_reserva,
+            idUsuario: fila.id_usuario,
+            estado: fila.estado,
+            fechaInicio: aIso(fila.fecha_inicio),
+            total: Number(fila.total),
+            pago: fila.pago_metodo
+                ? { metodo: fila.pago_metodo, estado: fila.pago_estado, marca: fila.pago_marca, ultimos4: fila.pago_ultimos4 }
+                : null
+        }
         : null;
 }
 
+/**
+ * Cancela la reserva y actualiza su pago en la misma transacción: la tarjeta
+ * se reembolsa y el pago en destino se anula.
+ */
 async function cancelar(transaccion, idReserva) {
     const consulta = await peticion(transaccion);
     await consulta
         .input('id', sql.Int, idReserva)
         .query(`UPDATE dbo.reservas SET estado = 'cancelada', fecha_cancelacion = SYSUTCDATETIME()
-                WHERE id_reserva = @id`);
+                WHERE id_reserva = @id;
+                UPDATE dbo.pagos
+                SET estado = CASE WHEN metodo = 'tarjeta' THEN 'reembolsado' ELSE 'anulado' END,
+                    fecha_reembolso = CASE WHEN metodo = 'tarjeta' THEN SYSUTCDATETIME() END
+                WHERE id_reserva = @id AND estado IN ('pagado', 'pendiente');`);
+}
+
+/**
+ * La empresa registra que cobró en el destino una reserva confirmada.
+ * @returns {Promise<boolean>} false si la reserva no es de la empresa o no tiene un cobro pendiente
+ */
+async function marcarCobrado(idEmpresa, idReserva) {
+    const consulta = await peticion();
+    const resultado = await consulta
+        .input('idEmpresa', sql.Int, idEmpresa)
+        .input('id', sql.Int, idReserva)
+        .query(`
+            UPDATE pg SET pg.estado = 'pagado', pg.fecha_pago = SYSUTCDATETIME()
+            FROM dbo.pagos pg
+            INNER JOIN dbo.reservas r ON r.id_reserva = pg.id_reserva
+            LEFT JOIN dbo.hoteles h ON h.id_hotel = r.id_hotel
+            LEFT JOIN dbo.actividades a ON a.id_actividad = r.id_actividad
+            LEFT JOIN dbo.vehiculos v ON v.id_vehiculo = r.id_vehiculo
+            WHERE pg.id_reserva = @id AND pg.metodo = 'en_destino' AND pg.estado = 'pendiente'
+              AND r.estado = 'confirmada' AND COALESCE(h.id_empresa, a.id_empresa, v.id_empresa) = @idEmpresa
+        `);
+    return resultado.rowsAffected[0] > 0;
 }
 
 /**
@@ -316,6 +389,8 @@ module.exports = {
     reservasVehiculoEnRango,
     personasActividadEnFecha,
     crear,
+    registrarPago,
+    marcarCobrado,
     listarPorUsuario,
     listarPorEmpresa,
     bloquearReserva,

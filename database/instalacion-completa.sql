@@ -12,7 +12,7 @@
     2. Login y usuario de aplicación  (solo servidor local)
     3. Tablas e índices               (cualquier servidor)
        usuarios, empresas, imagenes, hoteles, actividades, vehiculos,
-       reservas, mensajes_contacto, resenas, favoritos
+       reservas, pagos, mensajes_contacto, resenas, favoritos
     4. Datos de demostración          (cualquier servidor)
 
   Modos de ejecución
@@ -340,6 +340,41 @@ BEGIN
         CONSTRAINT CK_reservas_personas CHECK (personas > 0),
         CONSTRAINT CK_reservas_total CHECK (total > 0),
         CONSTRAINT CK_reservas_estado CHECK (estado IN ('confirmada', 'cancelada'))
+    );
+END
+GO
+
+-- pagos: un registro por reserva (relación 1 a 1). Pasarela SIMULADA: solo se
+-- guardan la marca, los últimos cuatro dígitos y el titular de la tarjeta,
+-- nunca el número completo ni el CVV.
+--   metodo:  'tarjeta' (cobrado al reservar) o 'en_destino' (se paga al llegar).
+--   estado:  'pagado', 'pendiente' (en destino, por cobrar), 'reembolsado'
+--            (tarjeta de una reserva cancelada) o 'anulado' (en destino cancelado).
+--   referencia: identificador del pago (PAY + 8 caracteres); autorizacion: código
+--            de 6 dígitos que devuelve la pasarela al aprobar una tarjeta.
+IF OBJECT_ID(N'dbo.pagos', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.pagos (
+        id_pago             INT IDENTITY(1,1) PRIMARY KEY,
+        id_reserva          INT             NOT NULL CONSTRAINT UQ_pagos_reserva UNIQUE
+                                            CONSTRAINT FK_pagos_reservas REFERENCES dbo.reservas(id_reserva),
+        metodo              VARCHAR(12)     NOT NULL,
+        estado              VARCHAR(12)     NOT NULL,
+        monto               DECIMAL(12,2)   NOT NULL,
+        moneda              CHAR(3)         NOT NULL CONSTRAINT DF_pagos_moneda DEFAULT 'DOP',
+        marca               VARCHAR(20)     NULL,
+        ultimos4            CHAR(4)         NULL,
+        titular             NVARCHAR(100)   NULL,
+        referencia          CHAR(11)        NOT NULL CONSTRAINT UQ_pagos_referencia UNIQUE,
+        autorizacion        CHAR(6)         NULL,
+        fecha_pago          DATETIME2(0)    NOT NULL CONSTRAINT DF_pagos_fecha DEFAULT SYSUTCDATETIME(),
+        fecha_reembolso     DATETIME2(0)    NULL,
+        CONSTRAINT CK_pagos_metodo CHECK (metodo IN ('tarjeta', 'en_destino')),
+        CONSTRAINT CK_pagos_estado CHECK (estado IN ('pagado', 'pendiente', 'reembolsado', 'anulado')),
+        CONSTRAINT CK_pagos_monto CHECK (monto > 0),
+        CONSTRAINT CK_pagos_tarjeta CHECK (
+            metodo = 'en_destino'
+            OR (marca IS NOT NULL AND ultimos4 IS NOT NULL AND titular IS NOT NULL AND autorizacion IS NOT NULL))
     );
 END
 GO
@@ -2057,7 +2092,107 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDP7C2U8V')
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'laura.vasquez@correo.com' AND v.nombre = N'Chevrolet Tahoe';
 GO
--- 4.7 Reseñas de reservas ya disfrutadas (dos días después de terminar)
+-- 4.7 Pagos de las reservas (pasarela simulada: solo marca y últimos 4 dígitos)
+INSERT INTO dbo.pagos (id_reserva, metodo, estado, monto, marca, ultimos4, titular, referencia, autorizacion, fecha_pago, fecha_reembolso)
+SELECT r.id_reserva, v.metodo, v.estado, v.monto, v.marca, v.ultimos4,
+       CASE WHEN v.metodo = 'tarjeta' THEN u.nombre END, v.referencia, v.autorizacion, v.fecha_pago, v.fecha_reembolso
+FROM (VALUES
+        (N'BRD7K2M9QA', N'tarjeta', N'pagado', 43500, N'Mastercard', N'4444', N'PAY7K2M9QAD', N'324057', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD4H8T2LX', N'en_destino', N'pendiente', 4400, NULL, NULL, N'PAY4H8T2LXD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -9, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD9P3W6ZE', N'tarjeta', N'pagado', 19600, N'Visa', N'4242', N'PAY9P3W6ZED', N'955371', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD2C5N8RV', N'tarjeta', N'pagado', 4500, N'Visa', N'4242', N'PAY2C5N8RVD', N'717801', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD5L7Q2MA', N'tarjeta', N'pagado', 31200, N'Visa', N'4242', N'PAY5L7Q2MAD', N'031054', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD8T3V6NB', N'en_destino', N'pendiente', 6800, NULL, NULL, N'PAY8T3V6NBD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD3R9K4PC', N'tarjeta', N'pagado', 12800, N'Mastercard', N'4444', N'PAY3R9K4PCD', N'466599', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD6M2X8RD', N'tarjeta', N'pagado', 39600, N'Mastercard', N'4444', N'PAY6M2X8RDD', N'226823', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD9N5H2SE', N'tarjeta', N'pagado', 23600, N'Visa', N'4242', N'PAY9N5H2SED', N'387409', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD4P7J3TF', N'tarjeta', N'reembolsado', 8400, N'Mastercard', N'4444', N'PAY4P7J3TFD', N'727926', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), DATEADD(HOUR, 10, CAST(DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))),
+        (N'BRD2W8F5UG', N'tarjeta', N'pagado', 64000, N'American Express', N'0005', N'PAY2W8F5UGD', N'044686', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD7Y4C9VH', N'en_destino', N'pagado', 29000, NULL, NULL, N'PAY7Y4C9VHD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD5Z6B3WJ', N'tarjeta', N'pagado', 3600, N'Visa', N'4242', N'PAY5Z6B3WJD', N'195147', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -16, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDA7C2K9V', N'tarjeta', N'pagado', 47250, N'Mastercard', N'4444', N'PAYA7C2K9VD', N'252786', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDA3J8M4P', N'tarjeta', N'pagado', 38100, N'Visa', N'4242', N'PAYA3J8M4PD', N'054811', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDA9T5Q2R', N'tarjeta', N'pagado', 24250, N'Mastercard', N'4444', N'PAYA9T5Q2RD', N'870468', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0001RS', N'tarjeta', N'pagado', 58000, N'American Express', N'0005', N'PAYV0001RSD', N'524238', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -141, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0002RS', N'en_destino', N'pagado', 72500, NULL, NULL, N'PAYV0002RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0003RS', N'tarjeta', N'pagado', 43500, N'Visa', N'4242', N'PAYV0003RSD', N'650942', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0004RS', N'tarjeta', N'pagado', 51200, N'American Express', N'0005', N'PAYV0004RSD', N'714294', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0005RS', N'tarjeta', N'pagado', 38400, N'Mastercard', N'4444', N'PAYV0005RSD', N'777646', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -71, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0006RS', N'tarjeta', N'pagado', 13800, N'Visa', N'4242', N'PAYV0006RSD', N'840998', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0007RS', N'en_destino', N'pagado', 13800, NULL, NULL, N'PAYV0007RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0009RS', N'tarjeta', N'pagado', 29400, N'Visa', N'4242', N'PAYV0009RSD', N'031054', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0010RS', N'tarjeta', N'pagado', 44800, N'Mastercard', N'4444', N'PAYV0010RSD', N'516319', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -221, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0011RS', N'tarjeta', N'pagado', 33600, N'Visa', N'4242', N'PAYV0011RSD', N'579671', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0012RS', N'tarjeta', N'pagado', 26100, N'American Express', N'0005', N'PAYV0012RSD', N'643023', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -151, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0013RS', N'en_destino', N'pagado', 17400, NULL, NULL, N'PAYV0013RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0014RS', N'tarjeta', N'pagado', 47000, N'Visa', N'4242', N'PAYV0014RSD', N'769727', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -201, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0015RS', N'tarjeta', N'pagado', 37600, N'American Express', N'0005', N'PAYV0015RSD', N'833079', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0016RS', N'tarjeta', N'pagado', 49500, N'Mastercard', N'4444', N'PAYV0016RSD', N'896431', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0017RS', N'tarjeta', N'pagado', 33000, N'Visa', N'4242', N'PAYV0017RSD', N'959783', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0018RS', N'en_destino', N'pagado', 31200, NULL, NULL, N'PAYV0018RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -161, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0019RS', N'tarjeta', N'pagado', 23400, N'Mastercard', N'4444', N'PAYV0019RSD', N'086487', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0020RS', N'tarjeta', N'pagado', 39600, N'American Express', N'0005', N'PAYV0020RSD', N'571752', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -121, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0021RS', N'tarjeta', N'pagado', 26400, N'Mastercard', N'4444', N'PAYV0021RSD', N'635104', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0022RS', N'tarjeta', N'pagado', 23600, N'Visa', N'4242', N'PAYV0022RSD', N'698456', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -181, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0023RS', N'tarjeta', N'pagado', 11800, N'American Express', N'0005', N'PAYV0023RSD', N'761808', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -76, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0024RS', N'en_destino', N'pagado', 17700, NULL, NULL, N'PAYV0024RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -36, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0026RS', N'tarjeta', N'pagado', 6400, N'American Express', N'0005', N'PAYV0026RSD', N'951864', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0027RS', N'tarjeta', N'pagado', 7200, N'Mastercard', N'4444', N'PAYV0027RSD', N'015216', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -231, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0028RS', N'tarjeta', N'pagado', 14400, N'Visa', N'4242', N'PAYV0028RSD', N'078568', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -86, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0029RS', N'en_destino', N'pagado', 4400, NULL, NULL, N'PAYV0029RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -191, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0030RS', N'en_destino', N'pagado', 6600, NULL, NULL, N'PAYV0030RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0032RS', N'tarjeta', N'pagado', 14500, N'Mastercard', N'4444', N'PAYV0032RSD', N'753889', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0033RS', N'tarjeta', N'pagado', 4800, N'Visa', N'4242', N'PAYV0033RSD', N'817241', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -106, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0034RS', N'tarjeta', N'pagado', 5200, N'American Express', N'0005', N'PAYV0034RSD', N'880593', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -136, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0035RS', N'en_destino', N'pagado', 5200, NULL, NULL, N'PAYV0035RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0036RS', N'tarjeta', N'pagado', 6900, N'Visa', N'4242', N'PAYV0036RSD', N'007297', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -211, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0037RS', N'tarjeta', N'pagado', 3600, N'American Express', N'0005', N'PAYV0037RSD', N'070649', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0038RS', N'tarjeta', N'pagado', 3600, N'Mastercard', N'4444', N'PAYV0038RSD', N'134001', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -39, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0039RS', N'tarjeta', N'pagado', 4800, N'Visa', N'4242', N'PAYV0039RSD', N'197353', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -121, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0040RS', N'tarjeta', N'pagado', 3000, N'Mastercard', N'4444', N'PAYV0040RSD', N'682618', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -281, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0041RS', N'en_destino', N'pagado', 3000, NULL, NULL, N'PAYV0041RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0042RS', N'tarjeta', N'pagado', 6800, N'American Express', N'0005', N'PAYV0042RSD', N'809322', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -166, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0043RS', N'tarjeta', N'pagado', 13600, N'Mastercard', N'4444', N'PAYV0043RSD', N'872674', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0044RS', N'tarjeta', N'pagado', 7800, N'Visa', N'4242', N'PAYV0044RSD', N'936026', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0045RS', N'tarjeta', N'pagado', 3400, N'American Express', N'0005', N'PAYV0045RSD', N'999378', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0046RS', N'en_destino', N'pagado', 8400, NULL, NULL, N'PAYV0046RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0047RS', N'tarjeta', N'pagado', 12600, N'Visa', N'4242', N'PAYV0047RSD', N'126082', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0048RS', N'tarjeta', N'pagado', 5500, N'American Express', N'0005', N'PAYV0048RSD', N'189434', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0049RS', N'tarjeta', N'pagado', 10400, N'Mastercard', N'4444', N'PAYV0049RSD', N'252786', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0050RS', N'tarjeta', N'pagado', 13800, N'American Express', N'0005', N'PAYV0050RSD', N'738051', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -196, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0051RS', N'tarjeta', N'pagado', 6200, N'Mastercard', N'4444', N'PAYV0051RSD', N'801403', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0052RS', N'en_destino', N'pagado', 154000, NULL, NULL, N'PAYV0052RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0053RS', N'tarjeta', N'pagado', 115500, N'American Express', N'0005', N'PAYV0053RSD', N'928107', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0054RS', N'tarjeta', N'pagado', 31200, N'Mastercard', N'4444', N'PAYV0054RSD', N'991459', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0055RS', N'tarjeta', N'pagado', 11600, N'Visa', N'4242', N'PAYV0055RSD', N'054811', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0056RS', N'tarjeta', N'pagado', 12400, N'American Express', N'0005', N'PAYV0056RSD', N'118163', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -47, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0057RS', N'en_destino', N'pagado', 11600, NULL, NULL, N'PAYV0057RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -71, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0058RS', N'tarjeta', N'pagado', 8700, N'Visa', N'4242', N'PAYV0058RSD', N'244867', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0059RS', N'tarjeta', N'pagado', 72500, N'American Express', N'0005', N'PAYV0059RSD', N'308219', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0060RS', N'tarjeta', N'pagado', 26700, N'Visa', N'4242', N'PAYV0060RSD', N'793484', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0061RS', N'tarjeta', N'pagado', 31200, N'American Express', N'0005', N'PAYV0061RSD', N'856836', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0062RS', N'tarjeta', N'pagado', 37000, N'Mastercard', N'4444', N'PAYV0062RSD', N'920188', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0063RS', N'en_destino', N'pagado', 14800, NULL, NULL, N'PAYV0063RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN2P8K4T', N'tarjeta', N'pagado', 67200, N'American Express', N'0005', N'PAYN2P8K4TD', N'902144', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN3Q7M2V', N'tarjeta', N'pagado', 84000, N'Visa', N'4242', N'PAYN3Q7M2VD', N'076362', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN4R6W8X', N'tarjeta', N'pagado', 67200, N'American Express', N'0005', N'PAYN4R6W8XD', N'327564', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN5S4Y3Z', N'tarjeta', N'pagado', 3800, N'American Express', N'0005', N'PAYN5S4Y3ZD', N'232536', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN6T3A9B', N'en_destino', N'pagado', 7600, NULL, NULL, N'PAYN6T3A9BD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -82, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN7U2C8D', N'tarjeta', N'pagado', 12900, N'Mastercard', N'4444', N'PAYN7U2C8DD', N'516319', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -54, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN8V9E7F', N'tarjeta', N'pagado', 8600, N'Mastercard', N'4444', N'PAYN8V9E7FD', N'205272', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN9W8G6H', N'tarjeta', N'pagado', 2900, N'American Express', N'0005', N'PAYN9W8G6HD', N'450761', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDP2X7J5K', N'tarjeta', N'pagado', 27600, N'Mastercard', N'4444', N'PAYP2X7J5KD', N'585384', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -301, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDP3Y6L4M', N'tarjeta', N'pagado', 19600, N'American Express', N'0005', N'PAYP3Y6L4MD', N'830873', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -69, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDP4Z5N3P', N'tarjeta', N'pagado', 20800, N'Mastercard', N'4444', N'PAYP4Z5N3PD', N'155552', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDP5A4Q2R', N'tarjeta', N'pagado', 28000, N'Mastercard', N'4444', N'PAYP5A4Q2RD', N'229029', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -87, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDP6B3S9T', N'tarjeta', N'pagado', 15150, N'American Express', N'0005', N'PAYP6B3S9TD', N'044686', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDP7C2U8V', N'en_destino', N'pendiente', 65500, NULL, NULL, N'PAYP7C2U8VD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL)
+) AS v (codigo, metodo, estado, monto, marca, ultimos4, referencia, autorizacion, fecha_pago, fecha_reembolso)
+INNER JOIN dbo.reservas r ON r.codigo = v.codigo
+INNER JOIN dbo.usuarios u ON u.id_usuario = r.id_usuario
+WHERE NOT EXISTS (SELECT 1 FROM dbo.pagos p WHERE p.id_reserva = r.id_reserva);
+GO
+-- 4.8 Reseñas de reservas ya disfrutadas (dos días después de terminar)
 IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_reserva = rs.id_reserva WHERE r.codigo = N'BRDV0001RS')
     INSERT INTO dbo.resenas (id_reserva, puntuacion, titulo, comentario, respuesta, fecha_respuesta, visible, fecha_creacion)
     SELECT r.id_reserva, 10, N'Nuestra luna de miel perfecta', N'La playa de Bávaro frente a la habitación, el spa y la cena en el restaurante de mariscos fueron de otro nivel. El personal nos preparó una sorpresa por la luna de miel sin que lo pidiéramos.', N'Gracias, Ana Belén. Fue un placer acompañarles en un momento tan especial. Les esperamos en su primer aniversario.',
@@ -2502,7 +2637,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_re
            NULL, 1, DATEADD(HOUR, 10, CAST(DATEADD(DAY, -24, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.reservas r WHERE r.codigo = N'BRDP6B3S9T';
 GO
--- 4.8 Publicaciones guardadas por los viajeros
+-- 4.9 Publicaciones guardadas por los viajeros
 IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_usuario = f.id_usuario
                INNER JOIN dbo.hoteles h ON h.id_hotel = f.id_hotel
                WHERE u.correo = N'cliente@bookingrd.com' AND h.nombre = N'Paraíso Escondido Eco-Resort')
@@ -2551,7 +2686,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_u
     FROM dbo.usuarios u CROSS JOIN dbo.vehiculos v
     WHERE u.correo = N'cliente@bookingrd.com' AND v.nombre = N'Ford Mustang Convertible';
 GO
--- 4.9 Mensajes del formulario de contacto
+-- 4.10 Mensajes del formulario de contacto
 IF NOT EXISTS (SELECT 1 FROM dbo.mensajes_contacto WHERE correo = N'rosa.almanzar@correo.com' AND asunto = N'empresa')
     INSERT INTO dbo.mensajes_contacto (nombre, correo, asunto, mensaje, atendido, fecha_envio)
     VALUES (N'Rosa Almánzar', N'rosa.almanzar@correo.com', N'empresa', N'Tenemos un hostal en Constanza y queremos publicarlo. ¿Qué requisitos piden?', 0, DATEADD(HOUR, 16, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))));

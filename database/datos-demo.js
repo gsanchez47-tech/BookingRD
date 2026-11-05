@@ -305,3 +305,32 @@ module.exports = {
         { nombre: "Kevin Mejía", correo: "kevin.mejia@correo.com", asunto: "viajero", mensaje: "No me llegó el correo de confirmación de la reserva, aunque tengo el código.", atendido: true },
     ]
 };
+
+/**
+ * Pago de demostración de una reserva, derivado de su código para que el
+ * script SQL y el modo en memoria produzcan los mismos datos. Cuatro de cada
+ * cinco reservas se pagaron con una tarjeta de prueba; el resto, en el destino.
+ * El titular es el nombre del viajero (se completa al insertar).
+ */
+module.exports.pagoDemo = function pagoDemo(r) {
+    let h = 0;
+    for (let i = 0; i < r.codigo.length; i++) h += r.codigo.charCodeAt(i) * (i + 1);
+    const cancelada = r.estado === 'cancelada';
+    const final = r.fin === undefined || r.fin === null ? r.inicio : r.fin;
+    const base = { monto: r.total, referencia: `PAY${r.codigo.slice(3)}D` };
+    if (h % 5 === 0) {
+        return Object.assign(base, {
+            metodo: 'en_destino',
+            estado: cancelada ? 'anulado' : final < 0 ? 'pagado' : 'pendiente',
+            marca: null, ultimos4: null, autorizacion: null
+        });
+    }
+    const tarjeta = [['Visa', '4242'], ['Mastercard', '4444'], ['American Express', '0005']][h % 3];
+    return Object.assign(base, {
+        metodo: 'tarjeta',
+        estado: cancelada ? 'reembolsado' : 'pagado',
+        marca: tarjeta[0],
+        ultimos4: tarjeta[1],
+        autorizacion: String((h * 7919) % 1000000).padStart(6, '0')
+    });
+};

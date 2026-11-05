@@ -29,6 +29,7 @@ const bd = {
     actividades: [],
     vehiculos: [],
     reservas: [],
+    pagos: [],
     resenas: [],
     favoritos: [],
     mensajes_contacto: []
@@ -51,6 +52,9 @@ function errorDuplicado(restriccion) {
     error.number = 2627;
     return error;
 }
+
+/** Pago de una reserva (relación 1 a 1). */
+const pagoDe = (idReserva) => bd.pagos.find((p) => p.id_reserva === idReserva) || null;
 
 /** Fecha y hora con la precisión de DATETIME2(0). */
 const ahora = () => new Date(Math.floor(Date.now() / 1000) * 1000);
@@ -150,6 +154,16 @@ function cargar() {
             fecha_cancelacion: r.estado === 'cancelada' ? instante(sumarDias(fechaBase, Math.min(r.inicio - 21, -2) + 1), '10:00') : null
         });
         porCodigo.set(r.codigo, fila);
+
+        // Pago de demostración: mismo cálculo que scripts/generar-sql.js.
+        const pago = datos.pagoDemo(r);
+        insertar('pagos', 'id_pago', Object.assign(pago, {
+            id_reserva: fila.id_reserva,
+            moneda: 'DOP',
+            titular: pago.metodo === 'tarjeta' ? porCorreo.get(r.usuario).nombre : null,
+            fecha_pago: fila.fecha_creacion,
+            fecha_reembolso: pago.estado === 'reembolsado' ? fila.fecha_cancelacion : null
+        }));
     }
 
     for (const s of datos.resenas) {
@@ -265,6 +279,7 @@ module.exports = {
     insertar,
     errorDuplicado,
     ahora,
+    pagoDe,
     usuario,
     empresa,
     publicacion,

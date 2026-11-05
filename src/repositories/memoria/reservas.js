@@ -93,6 +93,8 @@ function filaReserva(r, { conCliente = false } = {}) {
         proveedor: A.empresa(p.id_empresa).nombre_comercial,
         id_empresa: p.id_empresa
     });
+    const pago = A.pagoDe(r.id_reserva);
+    if (pago) for (const [clave, valor] of Object.entries(pago)) fila[`pago_${clave}`] = valor;
     if (conCliente) {
         const u = A.usuario(r.id_usuario);
         Object.assign(fila, { cliente_nombre: u.nombre, cliente_correo: u.correo, cliente_telefono: u.telefono });
@@ -117,17 +119,50 @@ async function listarPorEmpresa(idEmpresa) {
         .map(aReserva);
 }
 
+async function registrarPago(transaccion, idReserva, pago) {
+    if (A.bd.pagos.some((p) => p.referencia === pago.referencia)) throw A.errorDuplicado('UQ_pagos_referencia');
+    A.insertar('pagos', 'id_pago', Object.assign({}, pago, {
+        id_reserva: idReserva,
+        moneda: 'DOP',
+        fecha_pago: A.ahora(),
+        fecha_reembolso: null
+    }));
+}
+
 async function bloquearReserva(transaccion, idReserva) {
     const r = A.bd.reservas.find((fila) => fila.id_reserva === idReserva);
-    return r ? { id: r.id_reserva, idUsuario: r.id_usuario, estado: r.estado, fechaInicio: r.fecha_inicio } : null;
+    if (!r) return null;
+    const pago = A.pagoDe(r.id_reserva);
+    return {
+        id: r.id_reserva,
+        idUsuario: r.id_usuario,
+        estado: r.estado,
+        fechaInicio: r.fecha_inicio,
+        total: Number(r.total),
+        pago: pago ? { metodo: pago.metodo, estado: pago.estado, marca: pago.marca, ultimos4: pago.ultimos4 } : null
+    };
 }
 
 async function cancelar(transaccion, idReserva) {
     const r = A.bd.reservas.find((fila) => fila.id_reserva === idReserva);
-    if (r) {
-        r.estado = 'cancelada';
-        r.fecha_cancelacion = A.ahora();
+    if (!r) return;
+    r.estado = 'cancelada';
+    r.fecha_cancelacion = A.ahora();
+    const pago = A.pagoDe(idReserva);
+    if (pago && ['pagado', 'pendiente'].includes(pago.estado)) {
+        pago.estado = pago.metodo === 'tarjeta' ? 'reembolsado' : 'anulado';
+        pago.fecha_reembolso = pago.metodo === 'tarjeta' ? r.fecha_cancelacion : null;
     }
+}
+
+async function marcarCobrado(idEmpresa, idReserva) {
+    const r = A.bd.reservas.find((fila) => fila.id_reserva === idReserva);
+    const pago = r ? A.pagoDe(idReserva) : null;
+    if (!pago || r.estado !== 'confirmada' || A.publicacionDe(r).id_empresa !== idEmpresa) return false;
+    if (pago.metodo !== 'en_destino' || pago.estado !== 'pendiente') return false;
+    pago.estado = 'pagado';
+    pago.fecha_pago = A.ahora();
+    return true;
 }
 
 async function resumenEmpresa(idEmpresa, desde) {
@@ -150,6 +185,8 @@ module.exports = {
     reservasVehiculoEnRango,
     personasActividadEnFecha,
     crear,
+    registrarPago,
+    marcarCobrado,
     listarPorUsuario,
     listarPorEmpresa,
     bloquearReserva,
