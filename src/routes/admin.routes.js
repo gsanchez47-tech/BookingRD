@@ -13,11 +13,14 @@
  *   PATCH  /mensajes/:id                Marcar como atendido o pendiente.
  *   GET    /resenas?visible=            Reseñas de la plataforma.
  *   PATCH  /resenas/:id                 Mostrar u ocultar una reseña.
+ *   GET    /pedidos                     Pedidos de la tienda de artesanía.
+ *   PATCH  /pedidos/:id/avanzar         Pedido enviado o entregado.
  */
 
 const express = require('express');
 const asyncHandler = require('../utils/asyncHandler');
 const { requiereSesion, requiereRol } = require('../middleware/autenticacion');
+const tiendaController = require('../controllers/tienda.controller');
 const { validarTipo } = require('./parametros');
 const adminController = require('../controllers/admin.controller');
 
@@ -35,6 +38,8 @@ router.get('/reservas', asyncHandler(adminController.listarReservas));
 router.get('/mensajes', asyncHandler(adminController.listarMensajes));
 router.patch('/mensajes/:id', asyncHandler(adminController.marcarMensaje));
 router.get('/resenas', asyncHandler(adminController.listarResenas));
+router.get('/pedidos', asyncHandler(tiendaController.listarTodos));
+router.patch('/pedidos/:id/avanzar', asyncHandler(tiendaController.avanzar));
 router.patch('/resenas/:id', asyncHandler(adminController.moderarResena));
 
 module.exports = router;

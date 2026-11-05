@@ -9,6 +9,7 @@
  *     y el cuerpo puede incluir las partes comunes con:
  *       <!-- @encabezado -->   frontend/partes/encabezado.html
  *       <!-- @pie -->          frontend/partes/pie.html
+ *       <!-- @pago -->         frontend/partes/pago.html (ventana de pago simulado)
  *     El resultado es public/<pagina>.html con la cabecera <head> común.
  *
  *   Estilos
@@ -35,7 +36,8 @@ const leer = (...partes) => fs.readFileSync(path.join(FRONTEND, ...partes), 'utf
 const partes = {
     cabeza: leer('partes', 'cabeza.html'),
     encabezado: leer('partes', 'encabezado.html'),
-    pie: leer('partes', 'pie.html')
+    pie: leer('partes', 'pie.html'),
+    pago: leer('partes', 'pago.html')
 };
 const base = leer('estilos', 'base.css');
 
@@ -70,7 +72,8 @@ function construirPagina(archivo) {
     const cuerpo = fuente
         .slice(directiva[0].length)
         .replace('<!-- @encabezado -->', encabezado.trimEnd())
-        .replace('<!-- @pie -->', partes.pie.trimEnd());
+        .replace('<!-- @pie -->', partes.pie.trimEnd())
+        .replace('    <!-- @pago -->', partes.pago.trimEnd());
 
     const html = `${cabeza}${cuerpo.trimEnd()}\n</body>\n</html>\n`;
     fs.writeFileSync(path.join(PUBLICO, archivo), html);

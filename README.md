@@ -1,6 +1,6 @@
 # BookingRD
 
-Plataforma web de alojamiento, excursiones, actividades y alquiler de autos en República Dominicana. Las empresas turísticas publican sus hoteles, villas, tours y su flota de vehículos; los viajeros los encuentran, consultan la disponibilidad real y reservan. Proyecto académico.
+Plataforma web para buscar y reservar alojamiento y tours en República Dominicana, con combos de hotel y excursiones con descuento, alquiler de autos, equipo de aventura y fotógrafos, la Ruta del Parador con asistencia vial y una tienda de artesanía. Las empresas turísticas publican sus hoteles, villas, tours, equipo y flota; los viajeros los encuentran en 19 destinos, consultan la disponibilidad real y reservan. Proyecto académico.
 
 | Capa | Tecnología |
 |---|---|
@@ -64,10 +64,10 @@ npm run iniciar
 | `npm run local:reiniciar` | Borra la base local en archivo; el próximo arranque carga de nuevo los datos de ejemplo |
 | `npm run demo` | Demostración en memoria con datos nuevos que no se guardan (no toca ninguna base) |
 | `npm run dev` | Igual que `start`, con reinicio automático al guardar cambios |
-| `npm run probar` | Pruebas automáticas de la API (26 casos) |
+| `npm run probar` | Pruebas automáticas de la API (28 casos) |
 | `npm run construir` | Regenera `public/*.html` y `public/css/` desde `frontend/` (sección 6) |
 
-Los datos de ejemplo (`database/datos-demo.js`) traen 20 cuentas, 7 empresas, 60 publicaciones, 90 reservas con su pago y 74 reseñas.
+Los datos de ejemplo (`database/datos-demo.js`) traen 21 cuentas, 8 empresas, 77 publicaciones (16 alojamientos, 50 actividades y servicios, 11 autos), 7 combos, 93 reservas con su pago, 74 reseñas y una tienda con 11 productos y 2 pedidos.
 
 ### 1.3 Cuentas de demostración
 
@@ -77,13 +77,14 @@ Los datos de ejemplo (`database/datos-demo.js`) traen 20 cuentas, 7 empresas, 60
 | Empresa mixta (Bahía Caribe Tours) | empresa@bookingrd.com | Empresa123! |
 | Empresa de alojamiento (Coralia Hotels & Resorts) | hoteles@bookingrd.com | Empresa123! |
 | Alquiler de autos (Caribe Rent a Car) | autos@bookingrd.com | Empresa123! |
+| Equipo y fotógrafos (Equipo & Lente Aventura) | equipo@bookingrd.com | Empresa123! |
 | Administración | admin@bookingrd.com | Admin123! |
 
 Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@correo.com`) usan `Cliente123!`; las demás empresas (`aventura@`, `montana@`, `cultura@`, `rentacar@bookingrd.com`) usan `Empresa123!`. En la página de inicio de sesión, los botones de *Cuentas de demostración* completan el formulario con un clic.
 
 ### 1.4 Tarjetas de prueba (pagos simulados)
 
-Al reservar se elige pagar con tarjeta o en el destino. La pasarela es una **simulación**: no se conecta a ningún banco, no cobra nada y no guarda el número completo ni el CVV (solo la marca, los últimos 4 dígitos y el titular). Usa cualquier nombre y un vencimiento futuro; en la ventana de pago, *Tarjetas de prueba* completa el formulario con un clic.
+Al reservar (una publicación o un combo) se elige pagar con tarjeta o en el destino; la tienda de artesanía solo acepta tarjeta. La pasarela es una **simulación**: no se conecta a ningún banco, no cobra nada y no guarda el número completo ni el CVV (solo la marca, los últimos 4 dígitos y el titular). Usa cualquier nombre y un vencimiento futuro; en la ventana de pago, *Tarjetas de prueba* completa el formulario con un clic.
 
 | Número | Marca | Resultado |
 |---|---|---|
@@ -96,16 +97,19 @@ Al reservar se elige pagar con tarjeta o en el destino. La pasarela es una **sim
 
 ### 1.5 Guion para la demostración en clase
 
-Unos 10 minutos. Guion completo con lo que se dice en cada paso: [`docs/GUIA-DEMOSTRACION.md`](docs/GUIA-DEMOSTRACION.md).
+Unos 12 minutos. Guion completo con lo que se dice en cada paso: [`docs/GUIA-DEMOSTRACION.md`](docs/GUIA-DEMOSTRACION.md).
 
-1. **Inicio:** toca un destino del mapa; la ficha muestra cuántos alojamientos, actividades y autos tiene y el clima actual.
+1. **Inicio:** muestra los combos destacados y toca un destino del mapa (por ejemplo, Miches); la ficha muestra la foto, lo que se puede reservar, los lugares imperdibles y el clima.
 2. **Explorar:** filtra con el panel izquierdo (tipo, destino, precio, valoración) y cambia a la vista de mapa.
 3. **Reserva con pago:** entra como `cliente@bookingrd.com`, abre un hotel y pulsa *Reservar ahora*. Paga primero con `4000 0000 0000 9995` (fondos insuficientes: la reserva no se crea) y luego con `4242 4242 4242 4242`. Muestra el código de reserva y el **recibo** (se puede imprimir o guardar en PDF).
-4. **Auto:** en *Autos*, cambia la edad del conductor a 23, devuélvelo en otra ciudad y marca un extra; el desglose cambia al instante. Reserva con *Pagar en el mostrador*.
-5. **Mis reservas:** cancela la reserva pagada con tarjeta; el aviso confirma el **reembolso** a la Visa •••• 4242. Reseña la reserva terminada pendiente.
-6. **Empresa:** entra como `empresa@bookingrd.com`; en *Reservas recibidas* se ve el estado del pago de cada reserva y *Marcar cobrado* registra el pago en destino de *Senderismo al Salto El Limón*.
-7. **Administración:** entra como `admin@bookingrd.com`; el resumen muestra lo cobrado en línea, lo pendiente y lo reembolsado. Suspende una empresa y comprueba que sus publicaciones salen del catálogo; reactívala.
-8. **Idioma y moneda:** cambia a inglés y dólares con *ES / RD$*.
+4. **Combo:** en *Combos*, filtra por Cabarete y pulsa *Arma tu combo*. Cambia la llegada y las noches: el desglose muestra el precio normal tachado, el precio del combo y el ahorro. Reserva y paga con `4242 4242 4242 4242`; se crean tres reservas, una por cada parte.
+5. **Tienda:** agrega un colgante de larimar y café de Jarabacoa, elige *A domicilio* (RD$450) y paga. El pedido aparece en *Mis reservas > Pedidos* y en *Administración > Tienda*, donde se marca como enviado.
+6. **En ruta:** muestra las paradas por carretera, filtra por quesos y enseña la asistencia vial: 911, *462 y grúas por provincia.
+7. **Auto:** en *Autos*, cambia la edad del conductor a 23, devuélvelo en otra ciudad y marca un extra; el desglose cambia al instante. Reserva con *Pagar en el mostrador*.
+8. **Mis reservas:** cancela la reserva pagada con tarjeta; el aviso confirma el **reembolso** a la Visa •••• 4242. Reseña la reserva terminada pendiente.
+9. **Empresa:** entra como `empresa@bookingrd.com`; en *Reservas recibidas* se ve el estado del pago de cada reserva y *Marcar cobrado* registra el pago en destino de *Senderismo al Salto El Limón*.
+10. **Administración:** entra como `admin@bookingrd.com`; el resumen muestra lo cobrado en línea, lo pendiente y lo reembolsado. Suspende una empresa y comprueba que sus publicaciones salen del catálogo; reactívala.
+11. **Idioma y moneda:** cambia a inglés y dólares con *ES / RD$*.
 
 Para empezar la demostración con los datos originales: con SQL Server, `npm run bd:reiniciar` (o `npm run sqlserver` y responder *s* a crear la base de nuevo); con la base local, cierra BookingRD y ejecuta `npm run local:reiniciar`. Si prefieres ensayar sin tocar la base, `npm run demo` usa datos en memoria que se descartan al cerrar.
 
@@ -115,19 +119,23 @@ Para empezar la demostración con los datos originales: con SQL Server, `npm run
 
 | Página | Contenido |
 |---|---|
-| Inicio | En orden: portada con fotografía de playa, buscador sobre vidrio y cifras; *¿Qué quieres reservar?* (alojamiento, actividades o autos); franja de garantías (pago protegido, cancelación gratuita, empresas verificadas, reseñas reales); **mapa de la isla** con los 15 destinos y una ficha con la foto del destino, lo que tiene y el clima; experiencias por categoría con su conteo; recomendados por tipo; *Tu viaje en tres pasos*; opiniones verificadas; llamado a empresas con el formulario de contacto. |
+| Inicio | En orden: portada con fotografía de playa, buscador sobre vidrio y cifras; *¿Qué quieres reservar?* (alojamiento, actividades o autos); franja de garantías (pago protegido, cancelación gratuita, empresas verificadas, reseñas reales); **combos destacados** con forma de boleto (itinerario por días y precio con el ahorro); **mapa de la isla** con los 19 destinos y una ficha con la foto del destino, lo que tiene, sus lugares imperdibles y el clima; *Más para tu viaje* (equipo, fotógrafos, Ruta del Parador y tienda); experiencias por categoría con su conteo; recomendados por tipo; *Tu viaje en tres pasos*; opiniones verificadas; llamado a empresas con el formulario de contacto. |
+| Combos | Paquetes de alojamiento y una o dos actividades del mismo destino con descuento (10 a 15 %). Filtros a la izquierda (destino y orden), itinerario por días, ventana *Arma tu combo* con llegada, noches, personas y habitaciones, desglose con el precio normal tachado, disponibilidad real de cada parte y reserva con un solo pago. Cada parte queda como una reserva con su código, marcada como combo en *Mis reservas*. |
 | Explorar | **Todos los filtros en un panel a la izquierda** (cajón en móvil): qué buscas, categoría con su conteo, destino, palabra clave, personas o pasajeros, transmisión, rango de precio sobre un histograma, valoración y fechas del viaje. Etiquetas de filtros aplicados, siete órdenes, vista de lista o de mapa, clima del destino elegido y búsqueda compartible por URL. |
 | Detalle | Valoración, guardar y compartir, lo más destacado, descripción, características, ubicación con clima y pronóstico, reseñas con distribución y respuesta de la empresa, lo que debes saber, relacionadas y reserva con disponibilidad y total en tiempo real. |
+| Equipo y fotógrafos | Dos categorías nuevas de actividades: alquiler de equipo de aventura (camping, abrigos, snorkel, paddleboard, chalecos, neveritas) y fotógrafos y pilotos de dron. Se reservan por unidades (equipos o sesiones) en lugar de por personas. |
+| En ruta | Ruta del Parador: paradas para comer en la Autopista Duarte, la Autovía del Este, la Carretera Sánchez y la costa norte, con filtros por carretera y antojo. Asistencia vial con llamada directa al 911 y al *462, grúas por provincia (red de ejemplo) y un botón que copia un enlace con tu ubicación. |
+| Tienda | Artesanía certificada (larimar, ámbar, arte taíno, café y cacao, muñecas Limé y máscaras de carnaval) con filtros a la izquierda, carrito, entrega gratis en el hotel o a domicilio, pago con tarjeta simulado, cancelación mientras no se envía y seguimiento desde la administración. |
 | Autos | Buscador con fecha y hora de recogida y devolución, tipos de auto, flota mejor valorada, cómo reservar, precio y requisitos, otras formas de moverse y preguntas frecuentes. |
 | Pago (simulado) | Ventana de pago al reservar: tarjeta (vista previa de la tarjeta, validación de número, vencimiento y CVV, tarjetas de prueba, respuesta del "banco") o pago en el destino. Recibo imprimible con referencia y código de autorización. |
-| Mis reservas | Próximas, pasadas y canceladas; estado del pago y recibo de cada reserva; cancelación hasta un día antes con reembolso automático del pago con tarjeta; guardados; reseñas pendientes y publicadas. |
+| Mis reservas | Próximas, pasadas y canceladas; estado del pago y recibo de cada reserva; cancelación hasta un día antes con reembolso automático del pago con tarjeta; guardados; reseñas pendientes y publicadas; pedidos de la tienda. Las partes de un combo llevan la etiqueta del combo. |
 | Panel de empresa | Resumen con indicadores y gráficos, publicaciones con fotografía (alojamiento, actividad o vehículo), reservas recibidas con estado del pago, *Marcar cobrado* para pagos en destino, búsqueda y CSV, reseñas con respuesta pública y perfil. |
-| Administración | Indicadores globales (incluye cobrado en línea, por cobrar y reembolsado), empresas y usuarios (suspender y reactivar), moderación de publicaciones y reseñas, todas las reservas con su pago y mensajes de contacto. |
+| Administración | Indicadores globales (incluye cobrado en línea, por cobrar y reembolsado), empresas y usuarios (suspender y reactivar), moderación de publicaciones y reseñas, todas las reservas con su pago, pedidos de la tienda (enviar y entregar) y mensajes de contacto. |
 | Registro e inicio de sesión | Registro sencillo de viajero y por pasos de empresa; *Recordarme*; cada rol llega a su espacio. |
 
 **Idioma y moneda.** El sitio está en español y se puede ver en inglés. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia); el pago siempre es en pesos y la reserva lo indica. Los textos escritos por usuarios y empresas no se traducen.
 
-**Diseño caribeño y futurista.** Azules profundos del Caribe de noche con paneles de vidrio translúcido, bordes de luz y brillos turquesa; fotografías a pantalla completa bajo un velo azul (inicio, inicio de sesión, registro, empresas y categorías de Explorar); encabezado azul noche con la franja tricolor; píldoras sobre los títulos y segunda línea en cursiva turquesa; retícula de puntos en las bandas oscuras. Tipografías Fraunces y Nunito (incluidas en `public/fonts/`). Una sola animación: los puntos del mapa al cargar; sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (90) se usa en un solo lugar del sitio.
+**Diseño caribeño y futurista.** Azules profundos del Caribe de noche con paneles de vidrio translúcido, bordes de luz y brillos turquesa; fotografías a pantalla completa bajo un velo azul (inicio, inicio de sesión, registro, empresas y categorías de Explorar); encabezado azul noche con la franja tricolor; píldoras sobre los títulos y segunda línea en cursiva turquesa; retícula de puntos en las bandas oscuras. Tipografías Fraunces y Nunito (incluidas en `public/fonts/`). Una sola animación: los puntos del mapa al cargar; sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (107) se usa en un solo lugar del sitio; el equipo, los fotógrafos y los productos de la tienda usan ilustraciones propias (`public/img/ilustraciones/`, 20 archivos SVG).
 
 **Correos.** Bienvenida al registrarse y confirmación de cada reserva por SMTP. Sin `SMTP_HOST` en `.env`, cada correo se guarda como HTML en `correos-enviados/`.
 
@@ -136,6 +144,9 @@ Para empezar la demostración con los datos originales: con SQL Server, `npm run
 | Página | Escritorio | Móvil |
 |---|---|---|
 | Inicio | ![Inicio](docs/capturas/index.jpg) | ![Inicio en móvil](docs/capturas/movil/index.jpg) |
+| Combos | ![Combos](docs/capturas/combos.jpg) | ![Combos en móvil](docs/capturas/movil/combos.jpg) |
+| Tienda de artesanía | ![Tienda](docs/capturas/tienda.jpg) | ![Tienda en móvil](docs/capturas/movil/tienda.jpg) |
+| Ruta del Parador | ![Ruta del Parador](docs/capturas/ruta.jpg) | |
 | Explorar | ![Explorar](docs/capturas/explorar.jpg) | ![Explorar en móvil](docs/capturas/movil/explorar.jpg) |
 | Explorar autos | ![Explorar autos](docs/capturas/explorar-autos.jpg) | |
 | Explorar, vista de mapa | ![Vista de mapa](docs/capturas/explorar-mapa.jpg) | |
@@ -248,15 +259,17 @@ Fuera del repositorio (`.gitignore`): `node_modules/`, `.env`, `correos-enviados
 BookingRD/
 ├── frontend/                 Fuente de las páginas
 │   ├── paginas/*.html        Contenido de cada página
-│   ├── partes/               Cabeza, encabezado y pie comunes
+│   ├── partes/               Cabeza, encabezado, pie y ventana de pago comunes
 │   └── estilos/              base.css, una hoja por página y compartidos/
 ├── public/                   Sitio servido por Express (generado + recursos)
 │   ├── *.html, css/          Generados con npm run construir: no editar a mano
 │   ├── js/                   comun.js, preferencias.js (idioma y moneda),
 │   │                         idioma-en.js, pagos.js (pago simulado y recibo),
-│   │                         isla.js (mapa SVG), clima.js,
+│   │                         isla.js (mapa SVG), lugares.js (imperdibles),
+│   │                         combos-comun.js (tarjeta de combo), clima.js,
 │   │                         buscador.js, mapa.js y uno por página
-│   ├── img/                  destinos/, paginas/, publicaciones/, servicios/
+│   ├── img/                  destinos/, paginas/, publicaciones/, servicios/,
+│   │                         ilustraciones/ (equipo, fotógrafos y tienda)
 │   ├── fonts/                Fraunces y Nunito (licencia OFL)
 │   └── vendor/leaflet/       Mapa de resultados (Leaflet 1.9.4)
 ├── src/
@@ -299,5 +312,6 @@ Documentación técnica: [`docs/DOCUMENTACION.md`](docs/DOCUMENTACION.md). Guion
 | `Cannot open server ... requested by the login` | Tu IP no está autorizada en Azure | Agrégala en *Networking > Firewall rules* |
 | `Login failed for user` | Usuario o contraseña incorrectos | Revisa `DB_USER` y `DB_PASSWORD` |
 | `Invalid column name` tras instalar | La base tiene tablas de una versión anterior | `npm run bd:reiniciar` |
+| `CHECK constraint` al publicar en Miches, Barahona, Montecristi o Baní | La base se instaló antes de agregar esos destinos | `npm run bd:reiniciar` (o `npm run sqlserver` y responder *s*) |
 | `Failed to connect to localhost:1433` | TCP/IP deshabilitado o servicio detenido | `npm run sqlserver`, o ejecuta `database/habilitar-sqlserver.sql` y reinicia el servicio |
 | "Demasiados intentos" | Límite de inicios de sesión por IP | Espera 10 minutos o sube `LIMITE_INTENTOS_AUTH` |

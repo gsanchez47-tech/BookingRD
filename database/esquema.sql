@@ -192,7 +192,7 @@ BEGIN
         fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_hoteles_creacion DEFAULT SYSUTCDATETIME(),
         fecha_actualizacion DATETIME2(0)    NULL,
         CONSTRAINT CK_hoteles_tipo CHECK (tipo_alojamiento IN ('hotel', 'resort', 'boutique', 'villa', 'cabana', 'apartamento', 'hostal')),
-        CONSTRAINT CK_hoteles_ciudad CHECK (ciudad IN (N'Santo Domingo', N'Punta Cana', N'Puerto Plata', N'Las Terrenas', N'Samaná', N'Las Galeras', N'La Romana', N'Sosúa', N'Cabarete', N'Jarabacoa', N'Constanza', N'Juan Dolio', N'Boca Chica', N'Río San Juan', N'Pedernales')),
+        CONSTRAINT CK_hoteles_ciudad CHECK (ciudad IN (N'Santo Domingo', N'Punta Cana', N'Puerto Plata', N'Las Terrenas', N'Samaná', N'Las Galeras', N'La Romana', N'Sosúa', N'Cabarete', N'Jarabacoa', N'Constanza', N'Juan Dolio', N'Boca Chica', N'Río San Juan', N'Pedernales', N'Miches', N'Barahona', N'Montecristi', N'Baní')),
         CONSTRAINT CK_hoteles_precio CHECK (precio_noche > 0),
         CONSTRAINT CK_hoteles_capacidad CHECK (capacidad_personas BETWEEN 1 AND 30),
         CONSTRAINT CK_hoteles_habitaciones CHECK (habitaciones BETWEEN 1 AND 5000)
@@ -224,8 +224,8 @@ BEGIN
         activo              BIT             NOT NULL CONSTRAINT DF_actividades_activo DEFAULT 1,
         fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_actividades_creacion DEFAULT SYSUTCDATETIME(),
         fecha_actualizacion DATETIME2(0)    NULL,
-        CONSTRAINT CK_actividades_categoria CHECK (categoria IN ('tour-playa', 'tour-montana', 'tour-gastronomico', 'cultural', 'zip-line', 'motocross', 'acuaticas', 'golf')),
-        CONSTRAINT CK_actividades_ciudad CHECK (ciudad IN (N'Santo Domingo', N'Punta Cana', N'Puerto Plata', N'Las Terrenas', N'Samaná', N'Las Galeras', N'La Romana', N'Sosúa', N'Cabarete', N'Jarabacoa', N'Constanza', N'Juan Dolio', N'Boca Chica', N'Río San Juan', N'Pedernales')),
+        CONSTRAINT CK_actividades_categoria CHECK (categoria IN ('tour-playa', 'tour-montana', 'tour-gastronomico', 'cultural', 'zip-line', 'motocross', 'acuaticas', 'golf', 'alquiler-equipo', 'fotografia')),
+        CONSTRAINT CK_actividades_ciudad CHECK (ciudad IN (N'Santo Domingo', N'Punta Cana', N'Puerto Plata', N'Las Terrenas', N'Samaná', N'Las Galeras', N'La Romana', N'Sosúa', N'Cabarete', N'Jarabacoa', N'Constanza', N'Juan Dolio', N'Boca Chica', N'Río San Juan', N'Pedernales', N'Miches', N'Barahona', N'Montecristi', N'Baní')),
         CONSTRAINT CK_actividades_precio CHECK (precio_persona > 0),
         CONSTRAINT CK_actividades_cupo CHECK (cupo_diario BETWEEN 1 AND 1000),
         CONSTRAINT CK_actividades_duracion CHECK (duracion_horas > 0 AND duracion_horas <= 240)
@@ -281,7 +281,7 @@ BEGIN
         CONSTRAINT CK_vehiculos_categoria CHECK (categoria IN ('economico', 'compacto', 'sedan', 'suv', 'minivan', 'lujo', 'convertible', 'pickup')),
         CONSTRAINT CK_vehiculos_transmision CHECK (transmision IN ('automatica', 'manual')),
         CONSTRAINT CK_vehiculos_combustible CHECK (combustible IN ('gasolina', 'diesel', 'hibrido', 'electrico')),
-        CONSTRAINT CK_vehiculos_ciudad CHECK (ciudad IN (N'Santo Domingo', N'Punta Cana', N'Puerto Plata', N'Las Terrenas', N'Samaná', N'Las Galeras', N'La Romana', N'Sosúa', N'Cabarete', N'Jarabacoa', N'Constanza', N'Juan Dolio', N'Boca Chica', N'Río San Juan', N'Pedernales')),
+        CONSTRAINT CK_vehiculos_ciudad CHECK (ciudad IN (N'Santo Domingo', N'Punta Cana', N'Puerto Plata', N'Las Terrenas', N'Samaná', N'Las Galeras', N'La Romana', N'Sosúa', N'Cabarete', N'Jarabacoa', N'Constanza', N'Juan Dolio', N'Boca Chica', N'Río San Juan', N'Pedernales', N'Miches', N'Barahona', N'Montecristi', N'Baní')),
         CONSTRAINT CK_vehiculos_anio CHECK (anio BETWEEN 2000 AND 2100),
         CONSTRAINT CK_vehiculos_pasajeros CHECK (pasajeros BETWEEN 1 AND 15),
         CONSTRAINT CK_vehiculos_puertas CHECK (puertas BETWEEN 2 AND 5),
@@ -295,6 +295,39 @@ BEGIN
 END
 GO
 
+-- combos: paquetes de un alojamiento y una o dos actividades del mismo
+-- destino con un descuento sobre la suma de los precios. Al reservar un combo
+-- se crea una reserva por cada parte (enlazadas por id_combo) con el precio
+-- ya rebajado.
+--   noches_sugeridas: estadía con la que se muestra el precio de referencia.
+--   dia_actividad / dia_actividad2: noche de la estadía (1 = día siguiente a
+--                     la llegada) en que se programa cada actividad.
+IF OBJECT_ID(N'dbo.combos', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.combos (
+        id_combo            INT IDENTITY(1,1) PRIMARY KEY,
+        nombre              NVARCHAR(150)   NOT NULL CONSTRAINT UQ_combos_nombre UNIQUE,
+        lema                NVARCHAR(200)   NOT NULL,
+        descripcion         NVARCHAR(1000)  NOT NULL,
+        ciudad              NVARCHAR(60)    NOT NULL,
+        id_hotel            INT             NOT NULL CONSTRAINT FK_combos_hoteles REFERENCES dbo.hoteles(id_hotel),
+        id_actividad        INT             NOT NULL CONSTRAINT FK_combos_actividades REFERENCES dbo.actividades(id_actividad),
+        id_actividad2       INT             NULL CONSTRAINT FK_combos_actividades2 REFERENCES dbo.actividades(id_actividad),
+        dia_actividad       TINYINT         NOT NULL CONSTRAINT DF_combos_dia DEFAULT 1,
+        dia_actividad2      TINYINT         NULL,
+        noches_sugeridas    TINYINT         NOT NULL CONSTRAINT DF_combos_noches DEFAULT 3,
+        descuento_pct       TINYINT         NOT NULL,
+        destacado           BIT             NOT NULL CONSTRAINT DF_combos_destacado DEFAULT 0,
+        activo              BIT             NOT NULL CONSTRAINT DF_combos_activo DEFAULT 1,
+        fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_combos_creacion DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT CK_combos_descuento CHECK (descuento_pct BETWEEN 1 AND 40),
+        CONSTRAINT CK_combos_noches CHECK (noches_sugeridas BETWEEN 1 AND 14),
+        CONSTRAINT CK_combos_dias CHECK (dia_actividad BETWEEN 0 AND 14 AND (dia_actividad2 IS NULL OR dia_actividad2 BETWEEN 0 AND 14)),
+        CONSTRAINT CK_combos_segunda CHECK ((id_actividad2 IS NULL AND dia_actividad2 IS NULL) OR (id_actividad2 IS NOT NULL AND dia_actividad2 IS NOT NULL AND id_actividad2 <> id_actividad))
+    );
+END
+GO
+
 -- reservas: reservas de viajeros. Cada fila corresponde a un hotel, a una
 -- actividad o a un vehículo (exactamente uno de los tres).
 --   Hotel:     fecha_inicio = entrada, fecha_fin = salida, habitaciones >= 1.
@@ -303,6 +336,7 @@ GO
 --              ciudad_devolucion, edad_conductor, extras (códigos separados por coma)
 --              y deposito (retenido al recoger, no forma parte del total).
 --   codigo:    identificador entregado al viajero (BRD + 7 caracteres).
+--   id_combo:  combo con el que se reservó (hotel y actividades del paquete).
 IF OBJECT_ID(N'dbo.reservas', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.reservas (
@@ -328,6 +362,7 @@ BEGIN
         comentario          NVARCHAR(500)   NULL,
         fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_reservas_creacion DEFAULT SYSUTCDATETIME(),
         fecha_cancelacion   DATETIME2(0)    NULL,
+        id_combo            INT             NULL CONSTRAINT FK_reservas_combos REFERENCES dbo.combos(id_combo),
         CONSTRAINT CK_reservas_publicacion CHECK (
             (CASE WHEN id_hotel IS NULL THEN 0 ELSE 1 END
              + CASE WHEN id_actividad IS NULL THEN 0 ELSE 1 END
@@ -342,6 +377,11 @@ BEGIN
         CONSTRAINT CK_reservas_estado CHECK (estado IN ('confirmada', 'cancelada'))
     );
 END
+GO
+
+-- Bases instaladas con una versión anterior: agrega la columna del combo.
+IF COL_LENGTH(N'dbo.reservas', N'id_combo') IS NULL
+    ALTER TABLE dbo.reservas ADD id_combo INT NULL CONSTRAINT FK_reservas_combos REFERENCES dbo.combos(id_combo);
 GO
 
 -- pagos: un registro por reserva (relación 1 a 1). Pasarela SIMULADA: solo se
@@ -437,6 +477,76 @@ BEGIN
 END
 GO
 
+-- productos: tienda de artesanía dominicana certificada (larimar, ámbar,
+-- pintura, café, cacao...). Los vende BookingRD en nombre de talleres locales.
+--   taller / origen: quién lo hace y dónde; existencias: unidades a la venta.
+IF OBJECT_ID(N'dbo.productos', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.productos (
+        id_producto         INT IDENTITY(1,1) PRIMARY KEY,
+        nombre              NVARCHAR(150)   NOT NULL CONSTRAINT UQ_productos_nombre UNIQUE,
+        categoria           VARCHAR(20)     NOT NULL,
+        descripcion         NVARCHAR(1000)  NOT NULL,
+        taller              NVARCHAR(150)   NOT NULL,
+        origen              NVARCHAR(60)    NOT NULL,
+        precio              DECIMAL(10,2)   NOT NULL,
+        existencias         INT             NOT NULL,
+        imagen_url          NVARCHAR(300)   NULL,
+        destacado           BIT             NOT NULL CONSTRAINT DF_productos_destacado DEFAULT 0,
+        activo              BIT             NOT NULL CONSTRAINT DF_productos_activo DEFAULT 1,
+        CONSTRAINT CK_productos_categoria CHECK (categoria IN ('larimar', 'ambar', 'arte', 'cafe-cacao', 'artesania')),
+        CONSTRAINT CK_productos_precio CHECK (precio > 0),
+        CONSTRAINT CK_productos_existencias CHECK (existencias >= 0)
+    );
+END
+GO
+
+-- pedidos: compras de la tienda. Se pagan con tarjeta al confirmar (pasarela
+-- SIMULADA: solo marca, últimos 4 dígitos, titular, referencia y autorización).
+--   entrega:  'hotel' (en la recepción del alojamiento) o 'domicilio'.
+--   estado:   'pagado' -> 'enviado' -> 'entregado', o 'cancelado' (reembolsado).
+IF OBJECT_ID(N'dbo.pedidos', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.pedidos (
+        id_pedido           INT IDENTITY(1,1) PRIMARY KEY,
+        codigo              CHAR(10)        NOT NULL CONSTRAINT UQ_pedidos_codigo UNIQUE,
+        id_usuario          INT             NOT NULL CONSTRAINT FK_pedidos_usuarios REFERENCES dbo.usuarios(id_usuario),
+        entrega             VARCHAR(10)     NOT NULL,
+        destinatario        NVARCHAR(100)   NOT NULL,
+        direccion           NVARCHAR(300)   NOT NULL,
+        telefono            VARCHAR(20)     NULL,
+        subtotal            DECIMAL(12,2)   NOT NULL,
+        envio               DECIMAL(10,2)   NOT NULL,
+        total               DECIMAL(12,2)   NOT NULL,
+        estado              VARCHAR(12)     NOT NULL CONSTRAINT DF_pedidos_estado DEFAULT 'pagado',
+        pago_marca          VARCHAR(20)     NOT NULL,
+        pago_ultimos4       CHAR(4)         NOT NULL,
+        pago_titular        NVARCHAR(100)   NOT NULL,
+        pago_referencia     CHAR(11)        NOT NULL CONSTRAINT UQ_pedidos_referencia UNIQUE,
+        pago_autorizacion   CHAR(6)         NOT NULL,
+        fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_pedidos_creacion DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT CK_pedidos_entrega CHECK (entrega IN ('hotel', 'domicilio')),
+        CONSTRAINT CK_pedidos_estado CHECK (estado IN ('pagado', 'enviado', 'entregado', 'cancelado')),
+        CONSTRAINT CK_pedidos_total CHECK (subtotal > 0 AND envio >= 0 AND total = subtotal + envio)
+    );
+END
+GO
+
+-- pedido_detalle: productos de cada pedido con el precio del momento de la compra.
+IF OBJECT_ID(N'dbo.pedido_detalle', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.pedido_detalle (
+        id_detalle          INT IDENTITY(1,1) PRIMARY KEY,
+        id_pedido           INT             NOT NULL CONSTRAINT FK_detalle_pedidos REFERENCES dbo.pedidos(id_pedido),
+        id_producto         INT             NOT NULL CONSTRAINT FK_detalle_productos REFERENCES dbo.productos(id_producto),
+        cantidad            INT             NOT NULL,
+        precio_unitario     DECIMAL(10,2)   NOT NULL,
+        CONSTRAINT UQ_detalle_producto UNIQUE (id_pedido, id_producto),
+        CONSTRAINT CK_detalle_cantidad CHECK (cantidad BETWEEN 1 AND 20)
+    );
+END
+GO
+
 -- Índices de soporte para los listados, el panel de empresa y la
 -- disponibilidad de reservas.
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_hoteles_ciudad')
@@ -479,4 +589,11 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_reservas_vehiculo_fec
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_favoritos_vehiculo')
     CREATE UNIQUE INDEX UX_favoritos_vehiculo ON dbo.favoritos (id_usuario, id_vehiculo) WHERE id_vehiculo IS NOT NULL;
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_reservas_combo')
+    CREATE INDEX IX_reservas_combo ON dbo.reservas (id_combo) WHERE id_combo IS NOT NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_pedidos_usuario')
+    CREATE INDEX IX_pedidos_usuario ON dbo.pedidos (id_usuario, fecha_creacion);
 GO

@@ -28,6 +28,7 @@ const admin = {
     tipoPublicacion: 'hotel',
     reservas: [],
     mensajes: [],
+    pedidos: [],
     resenas: [],
     filtroResenas: 'todas',
     resenasVisibles: 12,     // reseñas mostradas; "Mostrar más" suma otras 12
@@ -53,6 +54,7 @@ const CARGADORES = {
     publicaciones: cargarPublicaciones,
     reservas: cargarReservas,
     resenas: cargarResenas,
+    pedidos: cargarPedidos,
     mensajes: cargarMensajes
 };
 
@@ -224,6 +226,10 @@ function iniciarAcciones() {
         admin.resenasVisibles += 12;
         pintarResenas();
     });
+    document.getElementById('tabla-pedidos-admin').addEventListener('click', (evento) => {
+        const boton = evento.target.closest('[data-avanzar-pedido]');
+        if (boton) avanzarPedido(boton);
+    });
     document.getElementById('lista-mensajes').addEventListener('click', (evento) => {
         const boton = evento.target.closest('[data-mensaje]');
         if (boton) marcarMensaje(Number(boton.dataset.mensaje), boton.dataset.atendido === 'true');
@@ -389,7 +395,7 @@ function pintarPublicaciones() {
                     <h3><a href="${enlaceDetalle(p)}" target="_blank" rel="noopener">${escaparHtml(p.nombre)}</a></h3>
                     <p>${escaparHtml(p.ciudad)}, ${escaparHtml(p.proveedor)}</p>
                 </div>
-                <div class="fila-precio">${formatoMoneda.format(p.precio)}<small>${unidadPrecio(p.tipo)}</small></div>
+                <div class="fila-precio">${formatoMoneda.format(p.precio)}<small>${unidadPrecio(p.tipo, p.categoria)}</small></div>
                 <div class="fila-acciones">
                     ${interruptor({ accion: 'destacada', activo: p.destacado, textoSi: 'Destacada', textoNo: 'Normal', datos })}
                     ${interruptor({ accion: 'visible', activo: p.activo, textoSi: 'Visible', textoNo: 'Oculta', datos })}
@@ -454,6 +460,62 @@ function pintarReservas() {
             <td data-titulo="Pago">${chipPago(r.pago, 'empresa')}${r.pago ? `<span class="dato-secundario" translate="no">${escaparHtml(r.pago.referencia)}</span>` : ''}</td>
             <td data-titulo="Estado"><span class="estado-reserva es-${r.estado}">${r.estado === 'confirmada' ? 'Confirmada' : 'Cancelada'}</span></td>
         </tr>`).join('');
+}
+
+/* ----------------------------------------------------------------------------
+   TIENDA: PEDIDOS
+   ---------------------------------------------------------------------------- */
+
+const ESTADOS_PEDIDO_ADMIN = { pagado: 'Pagado, por enviar', enviado: 'Enviado', entregado: 'Entregado', cancelado: 'Cancelado' };
+const SIGUIENTE_PEDIDO = { pagado: 'Marcar enviado', enviado: 'Marcar entregado' };
+
+async function cargarPedidos() {
+    const cuerpo = document.getElementById('tabla-pedidos-admin');
+    cuerpo.innerHTML = '<tr><td colspan="6"><span class="resumen-cargando"><span class="spinner" aria-hidden="true"></span>Cargando pedidos...</span></td></tr>';
+    try {
+        admin.pedidos = (await apiFetch('/admin/pedidos')).pedidos;
+    } catch (error) {
+        cuerpo.innerHTML = '';
+        errorDeCarga(document.getElementById('pedidos-admin-vacio'), error);
+        return;
+    }
+    pintarPedidos();
+}
+
+function pintarPedidos() {
+    const lista = admin.pedidos || [];
+    const porEnviar = lista.filter((p) => p.estado === 'pagado').length;
+    const conteo = document.getElementById('conteo-pedidos');
+    conteo.textContent = porEnviar;
+    conteo.hidden = !porEnviar;
+    document.getElementById('pedidos-admin-vacio').innerHTML = lista.length ? '' : crearEstado({ titulo: 'Aún no hay pedidos en la tienda' });
+    document.getElementById('tabla-pedidos-admin').innerHTML = lista.map((p) => `
+        <tr>
+            <td data-titulo="Pedido"><span class="codigo-reserva">${escaparHtml(p.codigo)}</span><span class="dato-secundario">${escaparHtml(fechaCorta(p.fecha))}</span></td>
+            <td data-titulo="Cliente">${escaparHtml(p.cliente.nombre)}<span class="dato-secundario">${correoCortable(p.cliente.correo)}</span></td>
+            <td data-titulo="Productos">${p.lineas.map((l) => `${l.cantidad} x ${escaparHtml(l.nombre)}`).join('<br>')}</td>
+            <td data-titulo="Entrega">${escaparHtml(CATALOGOS.entregasPedido[p.entrega].nombre)}<span class="dato-secundario">${escaparHtml(p.destinatario)}, ${escaparHtml(p.direccion)}</span></td>
+            <td data-titulo="Total"><strong>${formatoMoneda.format(p.total)}</strong>${chipPago(p.pago, 'empresa')}</td>
+            <td data-titulo="Estado">
+                <span class="estado-reserva es-${p.estado === 'cancelado' ? 'cancelada' : 'confirmada'}">${ESTADOS_PEDIDO_ADMIN[p.estado]}</span>
+                ${SIGUIENTE_PEDIDO[p.estado] ? `<button type="button" class="btn-outline btn-chico" data-avanzar-pedido="${p.id}">${SIGUIENTE_PEDIDO[p.estado]}</button>` : ''}
+            </td>
+        </tr>`).join('');
+}
+
+async function avanzarPedido(boton) {
+    const pedido = admin.pedidos.find((p) => p.id === Number(boton.dataset.avanzarPedido));
+    if (!pedido) return;
+    boton.disabled = true;
+    try {
+        const { estado } = await apiFetch(`/admin/pedidos/${pedido.id}/avanzar`, { method: 'PATCH' });
+        pedido.estado = estado;
+        mostrarAviso(`Pedido ${pedido.codigo}: ${ESTADOS_PEDIDO_ADMIN[estado].toLowerCase()}.`);
+        pintarPedidos();
+    } catch (error) {
+        boton.disabled = false;
+        mostrarAviso(error.message, 'error');
+    }
 }
 
 /* ----------------------------------------------------------------------------

@@ -17,7 +17,13 @@ const FOTOS_DESTINO = [
     { ciudad: 'La Romana', foto: 'img/destinos/la-romana.jpg', alt: 'Iglesia de piedra de Altos de Chavón' },
     { ciudad: 'Jarabacoa', foto: 'img/destinos/jarabacoa.jpg', alt: 'Casa de campo y vacas en las montañas de Jarabacoa' },
     { ciudad: 'Constanza', foto: 'img/destinos/constanza.jpg', alt: 'Agricultores en los campos de cultivo del valle de Constanza' },
-    { ciudad: 'Pedernales', foto: 'img/destinos/pedernales.jpg', alt: 'Costa de Pedernales con flores amarillas frente al mar' }
+    { ciudad: 'Pedernales', foto: 'img/destinos/pedernales.jpg', alt: 'Costa de Pedernales con flores amarillas frente al mar' },
+    { ciudad: 'Boca Chica', foto: 'img/destinos/boca-chica.jpg', alt: 'Vista aérea de la laguna de Boca Chica, su islote y la marina' },
+    { ciudad: 'Las Galeras', foto: 'img/destinos/las-galeras.jpg', alt: 'Playa Rincón con cocoteros, un bote y las montañas de Samaná' },
+    { ciudad: 'Río San Juan', foto: 'img/destinos/rio-san-juan.jpg', alt: 'Botes de colores en la laguna Gri-Gri vista desde el aire' },
+    { ciudad: 'Sosúa', foto: 'img/destinos/sosua.jpg', alt: 'Terraza con balaustrada blanca sobre el mar de Sosúa' },
+    { ciudad: 'Cabarete', foto: 'img/destinos/cabarete.jpg', alt: 'Bahía de Cabarete desde el aire con cometas de kitesurf' },
+    { ciudad: 'Miches', foto: 'img/destinos/miches.jpg', alt: 'Bahía de Miches vista desde Montaña Redonda' }
 ];
 
 /**
@@ -40,7 +46,11 @@ const ETIQUETAS_MAPA = {
     'Las Galeras': [12, -12, 'start'],
     'Jarabacoa': [14, -6, 'start'],
     'Constanza': [14, 14, 'start'],
-    'Pedernales': [14, 6, 'start']
+    'Pedernales': [14, 6, 'start'],
+    'Miches': [12, 14, 'start'],
+    'Barahona': [12, 6, 'start'],
+    'Montecristi': [12, 6, 'start'],
+    'Baní': [0, 30, 'middle']
 };
 
 const estado = {
@@ -54,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dibujarMapa();
     cargarEstadisticas();
     iniciarRecomendados();
+    cargarCombos();
     pintarVistos();
     cargarOpiniones();
     iniciarContacto();
@@ -205,10 +216,41 @@ function pintarFicha(ciudad) {
         </div>
         <div class="ficha-cuerpo">
             <ul class="ficha-conteos">${enlaces || '<li class="sin-oferta">Pronto habrá publicaciones en este destino.</li>'}</ul>
+            ${lugaresDe(ciudad)}
             <div class="ficha-clima" id="ficha-clima"></div>
             ${total ? `<a class="btn-primario btn-bloque" href="explorar.html?ciudad=${encodeURIComponent(ciudad)}">Ver todo en ${escaparHtml(ciudad)}</a>` : ''}
         </div>`;
     pintarClimaCompacto(document.getElementById('ficha-clima'), ciudad);
+}
+
+/** Lugares imperdibles del destino (public/js/lugares.js): los cinco primeros y el resto plegado. */
+function lugaresDe(ciudad) {
+    const lugares = (typeof LUGARES_DESTINO !== 'undefined' && LUGARES_DESTINO[ciudad]) || [];
+    if (!lugares.length) return '';
+    const item = (lugar) => `<li translate="no">${escaparHtml(lugar)}</li>`;
+    const resto = lugares.slice(5);
+    return `
+        <div class="ficha-lugares">
+            <h4>Imperdibles</h4>
+            <ul>${lugares.slice(0, 5).map(item).join('')}</ul>
+            ${resto.length ? `<details><summary>${resto.length} ${resto.length === 1 ? 'lugar más' : 'lugares más'}</summary><ul>${resto.map(item).join('')}</ul></details>` : ''}
+        </div>`;
+}
+
+/* ----------------------------------------------------------------------------
+   Combos destacados
+   ---------------------------------------------------------------------------- */
+
+async function cargarCombos() {
+    const lista = document.getElementById('combos-inicio');
+    try {
+        const { combos } = await apiFetch('/combos');
+        const destacados = combos.filter((c) => c.destacado).slice(0, 3);
+        lista.innerHTML = destacados.map((c) => `<li>${tarjetaCombo(c)}</li>`).join('');
+        document.getElementById('combos').hidden = !destacados.length;
+    } catch (error) {
+        document.getElementById('combos').hidden = true;
+    }
 }
 
 /* ----------------------------------------------------------------------------

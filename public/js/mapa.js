@@ -135,7 +135,7 @@ function ventanaPublicacion(publicacion) {
                 <span class="mapa-ventana-ciudad">${escaparHtml(publicacion.ciudad)}</span>
                 <strong>${escaparHtml(publicacion.nombre)}</strong>
                 <span class="mapa-ventana-valoracion">${valoracion}</span>
-                <span class="mapa-ventana-precio">${formatearPrecio(publicacion.precio)} <small>${unidadPrecio(publicacion.tipo)}</small></span>
+                <span class="mapa-ventana-precio">${formatearPrecio(publicacion.precio)} <small>${unidadPrecio(publicacion.tipo, publicacion.categoria)}</small></span>
             </span>
         </a>`;
 }

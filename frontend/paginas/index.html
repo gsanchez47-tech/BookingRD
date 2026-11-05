@@ -116,6 +116,21 @@
             </div>
         </section>
 
+        <!-- Combos: alojamiento + tours con descuento (js/combos-comun.js) -->
+        <section class="seccion seccion-combos" id="combos" aria-labelledby="titulo-combos">
+            <div class="contenedor">
+                <div class="seccion-cabecera">
+                    <div>
+                        <p class="etiqueta-caribe roja"><span class="bandera-mini" aria-hidden="true"><i></i><b></b></span>Combos</p>
+                        <h2 id="titulo-combos">Hotel y tours juntos, <em>pagando menos</em></h2>
+                        <p>Paquetes armados con alojamiento y las excursiones del destino, con las fechas de cada actividad ya organizadas. Eliges la llegada y reservas todo en un paso.</p>
+                    </div>
+                    <a class="btn-outline" href="combos.html">Ver todos los combos</a>
+                </div>
+                <ul class="combos-lista" id="combos-inicio" aria-live="polite"></ul>
+            </div>
+        </section>
+
         <!-- Por qué BookingRD: cuatro garantías en una franja -->
         <section class="banda-arena beneficios-banda" aria-label="Por qué reservar con BookingRD">
             <ul class="contenedor beneficios">
@@ -145,7 +160,7 @@
                     <div>
                         <p class="etiqueta-caribe">Destinos</p>
                         <h2 id="titulo-mapa">Elige tu destino <em>en el mapa</em></h2>
-                        <p>Quince destinos, de la capital colonial a las montañas y las playas del este.</p>
+                        <p>Diecinueve destinos, de la capital colonial a las montañas, el sur profundo y la Línea Noroeste. Toca uno para ver qué reservar y sus lugares imperdibles.</p>
                     </div>
                 </div>
                 <figure class="mapa-destinos" aria-labelledby="mapa-titulo">
@@ -172,6 +187,48 @@
                     <a class="btn-outline" href="explorar.html?tipo=actividad">Ver todas las actividades</a>
                 </div>
                 <ul class="experiencias" id="lista-experiencias"></ul>
+            </div>
+        </section>
+
+        <!-- Más para tu viaje: equipo, fotógrafos, carretera y artesanía -->
+        <section class="seccion banda-oscura seccion-extras" aria-labelledby="titulo-extras">
+            <div class="contenedor">
+                <div class="seccion-cabecera">
+                    <div>
+                        <p class="etiqueta-caribe">Más para tu viaje</p>
+                        <h2 id="titulo-extras">Todo lo que la ruta <em>te pide</em></h2>
+                    </div>
+                </div>
+                <ul class="extras">
+                    <li>
+                        <a class="extra vidrio" href="explorar.html?tipo=actividad&categoria=alquiler-equipo">
+                            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M6 40 L24 10 L42 40 Z M24 10 V40 M18 40 L24 28 L30 40"/></svg>
+                            <strong>Alquiler de equipo</strong>
+                            <span>Casas de campaña y abrigos para Constanza y Jarabacoa; snorkel, paddleboard y neveritas para la playa.</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="extra vidrio" href="explorar.html?tipo=actividad&categoria=fotografia">
+                            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M17 20 h14 v8 h-14 z M17 22 L9 16 M31 22 L39 16 M17 26 L9 32 M31 26 L39 32 M5 16 h8 M35 16 h8 M5 32 h8 M35 32 h8"/></svg>
+                            <strong>Fotógrafos y drones</strong>
+                            <span>Creadores locales que graban tu kitesurf en Cabarete, tu sendero o tu playa virgen.</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="extra vidrio" href="ruta.html">
+                            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M18 6 L12 42 M30 6 L36 42 M24 8 v5 M24 19 v5 M24 30 v5"/></svg>
+                            <strong>Ruta del Parador</strong>
+                            <span>Dónde parar a comer en las autopistas y asistencia vial con un toque si algo pasa en la carretera.</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="extra vidrio" href="tienda.html">
+                            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 8 C34 14 34 30 24 40 C14 30 14 14 24 8 Z M18 22 q6 4 12 0"/></svg>
+                            <strong>Tienda de artesanía</strong>
+                            <span>Larimar, ámbar, arte taíno, café y cacao de talleres certificados, con entrega en tu hotel.</span>
+                        </a>
+                    </li>
+                </ul>
             </div>
         </section>
 
@@ -306,5 +363,7 @@
     <script src="js/preferencias.js"></script>
     <script src="js/clima.js"></script>
     <script src="js/isla.js"></script>
+    <script src="js/lugares.js"></script>
+    <script src="js/combos-comun.js"></script>
     <script src="js/buscador.js"></script>
     <script src="js/index.js"></script>

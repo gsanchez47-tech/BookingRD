@@ -157,13 +157,14 @@ async function crear(transaccion, reserva) {
         .input('precioUnitario', sql.Decimal(10, 2), reserva.precioUnitario)
         .input('total', sql.Decimal(12, 2), reserva.total)
         .input('comentario', sql.NVarChar(500), reserva.comentario || null)
+        .input('idCombo', sql.Int, reserva.idCombo || null)
         .query(`
             INSERT INTO dbo.reservas
                 (codigo, id_usuario, id_hotel, id_actividad, id_vehiculo, fecha_inicio, fecha_fin, hora_inicio, hora_fin,
-                 ciudad_devolucion, edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, comentario)
+                 ciudad_devolucion, edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, comentario, id_combo)
             OUTPUT INSERTED.id_reserva AS id
             VALUES (@codigo, @idUsuario, @idHotel, @idActividad, @idVehiculo, @inicio, @fin, @horaInicio, @horaFin,
-                    @ciudadDevolucion, @edadConductor, @extras, @deposito, @personas, @habitaciones, @precioUnitario, @total, @comentario)
+                    @ciudadDevolucion, @edadConductor, @extras, @deposito, @personas, @habitaciones, @precioUnitario, @total, @comentario, @idCombo)
         `);
     return resultado.recordset[0].id;
 }
@@ -199,7 +200,8 @@ const COLUMNAS_RESERVA = `
     r.id_reserva, r.codigo, r.fecha_inicio, r.fecha_fin, r.personas, r.habitaciones,
     r.precio_unitario, r.total, r.estado, r.comentario, r.fecha_creacion,
     r.hora_inicio, r.hora_fin, r.ciudad_devolucion, r.edad_conductor, r.extras, r.deposito,
-    v.lugar_recogida,
+    v.lugar_recogida, r.id_combo,
+    (SELECT cb.nombre FROM dbo.combos cb WHERE cb.id_combo = r.id_combo) AS combo,
     CASE WHEN r.id_hotel IS NOT NULL THEN 'hotel' WHEN r.id_actividad IS NOT NULL THEN 'actividad' ELSE 'vehiculo' END AS tipo,
     COALESCE(r.id_hotel, r.id_actividad, r.id_vehiculo) AS id_publicacion,
     COALESCE(h.nombre, a.nombre, v.nombre) AS publicacion,
@@ -226,6 +228,7 @@ function aReserva(fila) {
         estado: fila.estado,
         comentario: fila.comentario,
         fechaCreacion: fila.fecha_creacion,
+        combo: fila.id_combo ? { id: fila.id_combo, nombre: fila.combo } : null,
         alquiler: fila.tipo === 'vehiculo'
             ? {
                 horaRecogida: horaIso(fila.hora_inicio),

@@ -25,9 +25,10 @@
             <nav class="nav-principal" aria-label="Principal">
                 <a href="explorar.html?tipo=hotel" data-nav="alojamiento">Alojamiento</a>
                 <a href="explorar.html?tipo=actividad" data-nav="actividades">Actividades</a>
+                <a href="combos.html" data-nav="combos">Combos</a>
                 <a href="autos.html" data-nav="autos">Autos</a>
-                <a href="index.html#destinos" data-nav="destinos">Destinos</a>
-                <a href="registro.html?tipo=empresa" data-nav="empresas">Para empresas</a>
+                <a href="ruta.html" data-nav="ruta">En ruta</a>
+                <a href="tienda.html" data-nav="tienda">Tienda</a>
             </nav>
 
             <div class="header-acciones">
@@ -62,7 +63,10 @@
             <nav aria-label="Menú móvil">
                 <a href="explorar.html?tipo=hotel">Alojamiento</a>
                 <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="combos.html">Combos con descuento</a>
                 <a href="autos.html">Alquiler de autos</a>
+                <a href="ruta.html">Ruta del Parador y asistencia vial</a>
+                <a href="tienda.html">Tienda de artesanía</a>
                 <a href="index.html#destinos">Destinos</a>
                 <a href="registro.html?tipo=empresa">Para empresas</a>
                 <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
@@ -103,6 +107,7 @@
                     <button type="button" class="pestana" data-seccion="publicaciones" role="tab" aria-selected="false">Publicaciones</button>
                     <button type="button" class="pestana" data-seccion="reservas" role="tab" aria-selected="false">Reservas</button>
                     <button type="button" class="pestana" data-seccion="resenas" role="tab" aria-selected="false">Reseñas</button>
+                    <button type="button" class="pestana" data-seccion="pedidos" role="tab" aria-selected="false">Tienda <span class="pestana-conteo" id="conteo-pedidos" hidden>0</span></button>
                     <button type="button" class="pestana" data-seccion="mensajes" role="tab" aria-selected="false">Mensajes <span class="pestana-conteo" id="conteo-mensajes">0</span></button>
                 </div>
 
@@ -270,6 +275,26 @@
                 </div>
 
                 <!-- MENSAJES · GET /api/admin/mensajes · PATCH /api/admin/mensajes/:id -->
+                <div class="panel-seccion" id="seccion-pedidos" hidden>
+                    <p class="nota-seccion">Pedidos de la tienda de artesanía. Avanza cada pedido cuando sale del taller y cuando se entrega.</p>
+                    <div class="tabla-envoltura">
+                        <table class="tabla-datos">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Pedido</th>
+                                    <th scope="col">Cliente</th>
+                                    <th scope="col">Productos</th>
+                                    <th scope="col">Entrega</th>
+                                    <th scope="col">Total</th>
+                                    <th scope="col">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-pedidos-admin"></tbody>
+                        </table>
+                    </div>
+                    <div id="pedidos-admin-vacio"></div>
+                </div>
+
                 <div class="panel-seccion" id="seccion-mensajes" hidden>
                     <div class="lista-mensajes" id="lista-mensajes"></div>
                 </div>
@@ -309,8 +334,10 @@
                     <ul>
                         <li><a href="explorar.html?tipo=hotel">Alojamiento</a></li>
                         <li><a href="explorar.html?tipo=actividad">Actividades</a></li>
+                        <li><a href="combos.html">Combos</a></li>
                         <li><a href="autos.html">Alquiler de autos</a></li>
                         <li><a href="index.html#destinos">Destinos</a></li>
+                        <li><a href="tienda.html">Tienda de artesanía</a></li>
                     </ul>
                 </div>
                 <div>
@@ -325,6 +352,7 @@
                     <ul>
                         <li><a href="index.html#contacto">Contacto</a></li>
                         <li><a href="mis-reservas.html">Mis reservas</a></li>
+                        <li><a href="ruta.html#asistencia">Asistencia vial</a></li>
                         <li><a href="autos.html#preguntas">Preguntas sobre autos</a></li>
                     </ul>
                 </div>

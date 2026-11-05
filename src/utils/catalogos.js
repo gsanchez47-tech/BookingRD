@@ -44,7 +44,18 @@ const CATEGORIAS_ACTIVIDAD = {
     'zip-line': 'Tirolesa y aventura aérea',
     motocross: 'Motocross y buggies',
     acuaticas: 'Actividades acuáticas',
-    golf: 'Golf'
+    golf: 'Golf',
+    'alquiler-equipo': 'Alquiler de equipo de aventura',
+    fotografia: 'Fotógrafos y drones'
+};
+
+/**
+ * Categorías de actividad que se reservan por unidades en lugar de por
+ * personas: el equipo se alquila por pieza y día, y el fotógrafo por sesión.
+ */
+const UNIDAD_ACTIVIDAD = {
+    'alquiler-equipo': { singular: 'equipo', plural: 'equipos', precio: 'por equipo y día' },
+    fotografia: { singular: 'sesión', plural: 'sesiones', precio: 'por sesión' }
 };
 
 /** Categorías de vehículos de alquiler (clases habituales del sector). */
@@ -111,7 +122,11 @@ const DESTINOS = {
     'Juan Dolio': 'San Pedro de Macorís',
     'Boca Chica': 'Santo Domingo',
     'Río San Juan': 'María Trinidad Sánchez',
-    'Pedernales': 'Pedernales'
+    'Pedernales': 'Pedernales',
+    'Miches': 'El Seibo',
+    'Barahona': 'Barahona',
+    'Montecristi': 'Monte Cristi',
+    'Baní': 'Peravia'
 };
 
 /** Coordenadas (latitud, longitud) de cada destino: mapa de la isla y consulta del clima. */
@@ -130,7 +145,26 @@ const COORDENADAS_DESTINOS = {
     'Juan Dolio': [18.4270, -69.4290],
     'Boca Chica': [18.4500, -69.6060],
     'Río San Juan': [19.6420, -70.0760],
-    'Pedernales': [18.0380, -71.7440]
+    'Pedernales': [18.0380, -71.7440],
+    'Miches': [18.9820, -69.0450],
+    'Barahona': [18.2085, -71.1008],
+    'Montecristi': [19.8480, -71.6460],
+    'Baní': [18.2800, -70.3310]
+};
+
+/** Categorías de la tienda de artesanía. */
+const CATEGORIAS_PRODUCTO = {
+    larimar: 'Larimar',
+    ambar: 'Ámbar',
+    arte: 'Pintura y arte taíno',
+    'cafe-cacao': 'Café y cacao de origen',
+    artesania: 'Artesanía tradicional'
+};
+
+/** Entrega de los pedidos de la tienda y su costo en RD$. */
+const ENTREGAS_PEDIDO = {
+    hotel: { nombre: 'En la recepción de tu hotel', costo: 0 },
+    domicilio: { nombre: 'A domicilio', costo: 450 }
 };
 
 /** Provincias de República Dominicana y Distrito Nacional (registro de empresas). */
@@ -160,6 +194,9 @@ module.exports = {
     TIPOS_ALOJAMIENTO,
     CATEGORIAS_ALOJAMIENTO,
     CATEGORIAS_ACTIVIDAD,
+    UNIDAD_ACTIVIDAD,
+    CATEGORIAS_PRODUCTO,
+    ENTREGAS_PEDIDO,
     CATEGORIAS_VEHICULO,
     TRANSMISIONES,
     COMBUSTIBLES,

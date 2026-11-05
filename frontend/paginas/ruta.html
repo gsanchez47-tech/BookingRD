@@ -1,0 +1,81 @@
+<!-- @pagina titulo="Ruta del Parador y asistencia vial | BookingRD" descripcion="Paradas para comer en la Autopista Duarte, la Autovía del Este, la Carretera Sánchez y la costa norte de República Dominicana, y asistencia vial con un toque." css="ruta" nav="ruta" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <header class="cabecera-caribe cabecera-foto cabecera-ruta" style="--foto-cabecera: url('../img/paginas/ruta-autobuses.jpg')">
+            <div class="contenedor">
+                <nav class="migas" aria-label="Ruta de navegación">
+                    <a href="index.html">Inicio</a>
+                    <span aria-hidden="true">/</span>
+                    <span>En ruta</span>
+                </nav>
+                <p class="etiqueta-caribe roja"><span class="bandera-mini" aria-hidden="true"><i></i><b></b></span>Ruta del Parador</p>
+                <h1>Para, come y sigue <em>sin perderte nada</em></h1>
+                <p class="cabecera-entrada">Las paradas de siempre en las carreteras del país: chicharrón en la Duarte, catibías en el este, dulces en el sur y quesos en la costa norte. Y si algo pasa en el camino, la asistencia está a un toque.</p>
+            </div>
+        </header>
+
+        <!-- Asistencia vial: llamadas directas y grúas por provincia -->
+        <section class="contenedor asistencia" id="asistencia" aria-labelledby="titulo-asistencia">
+            <div class="asistencia-panel">
+                <div class="asistencia-texto">
+                    <h2 id="titulo-asistencia">Asistencia vial <em>24/7</em></h2>
+                    <p>Goma ponchada en la montaña, el carro atascado en la arena o una avería en la autopista: llama primero a emergencias y, si necesitas remolque, a una grúa de la provincia donde estás.</p>
+                </div>
+                <div class="asistencia-llamadas">
+                    <a class="llamada llamada-emergencia" href="tel:911">
+                        <strong>911</strong>
+                        <span>Emergencias, accidentes y asistencia en carretera</span>
+                    </a>
+                    <a class="llamada" href="tel:*462">
+                        <strong>*462</strong>
+                        <span>Línea de atención del Gobierno: orientación y servicios públicos</span>
+                    </a>
+                    <button type="button" class="llamada llamada-ubicacion" id="boton-ubicacion">
+                        <strong>Mi ubicación</strong>
+                        <span id="texto-ubicacion">Copia un enlace del mapa con tu posición para dárselo a la grúa</span>
+                    </button>
+                </div>
+                <div class="gruas">
+                    <div class="campo">
+                        <label for="provincia-grua">Grúas en la provincia</label>
+                        <select id="provincia-grua"></select>
+                    </div>
+                    <ul class="gruas-lista" id="gruas-lista" aria-live="polite"></ul>
+                    <p class="gruas-aviso">Red de grúas de ejemplo para la demostración académica: los nombres y teléfonos no son reales.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="contenedor layout-lateral">
+            <aside class="panel-lateral" aria-label="Filtros de la ruta">
+                <fieldset>
+                    <legend>Carretera</legend>
+                    <div class="opciones-lateral" id="filtro-carretera"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Qué se te antoja</legend>
+                    <div class="opciones-lateral" id="filtro-antojo"></div>
+                </fieldset>
+                <p class="panel-nota">
+                    <strong>Antes de salir</strong>
+                    Lleva efectivo en pesos para los paradores y los peajes, revisa la goma de repuesto y evita manejar de noche por la montaña.
+                </p>
+            </aside>
+
+            <section aria-labelledby="titulo-paradas">
+                <div class="resultado-cabecera">
+                    <h2 id="titulo-paradas" class="visualmente-oculto">Paradas en la carretera</h2>
+                    <p id="conteo-paradas" aria-live="polite"></p>
+                    <a class="btn-outline btn-chico" href="autos.html">Alquilar un auto</a>
+                </div>
+                <div id="lista-rutas"></div>
+            </section>
+        </div>
+    </main>
+
+<!-- @pie -->
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/ruta.js"></script>

@@ -33,11 +33,15 @@ const bd = {
     hoteles: [],
     actividades: [],
     vehiculos: [],
+    combos: [],
     reservas: [],
     pagos: [],
     resenas: [],
     favoritos: [],
-    mensajes_contacto: []
+    mensajes_contacto: [],
+    productos: [],
+    pedidos: [],
+    pedido_detalle: []
 };
 
 /** Último identificador asignado por tabla (equivalente a IDENTITY). */
@@ -130,6 +134,27 @@ function cargar() {
         });
     }
 
+    const porNombreCombo = new Map();
+    datos.combos.forEach((c, indice) => {
+        const fila = insertar('combos', 'id_combo', {
+            nombre: c.nombre,
+            lema: c.lema,
+            descripcion: c.descripcion,
+            ciudad: c.ciudad,
+            id_hotel: publicaciones.hotel.get(c.hotel).id_hotel,
+            id_actividad: publicaciones.actividad.get(c.actividad).id_actividad,
+            id_actividad2: c.actividad2 ? publicaciones.actividad.get(c.actividad2).id_actividad : null,
+            dia_actividad: c.dia_actividad,
+            dia_actividad2: c.actividad2 ? c.dia_actividad2 : null,
+            noches_sugeridas: c.noches_sugeridas,
+            descuento_pct: c.descuento_pct,
+            destacado: c.destacado ? 1 : 0,
+            activo: 1,
+            fecha_creacion: instante(sumarDias(fechaBase, -90 + indice), '12:00')
+        });
+        porNombreCombo.set(c.nombre, fila);
+    });
+
     const porCodigo = new Map();
     for (const r of datos.reservas) {
         const publicacion = publicaciones[r.tipo].get(r.publicacion);
@@ -156,7 +181,8 @@ function cargar() {
             comentario: r.comentario || null,
             // Igual que scripts/generar-sql.js: creada al menos dos días antes de hoy.
             fecha_creacion: instante(sumarDias(fechaBase, Math.min(r.inicio - 21, -2)), '15:00'),
-            fecha_cancelacion: r.estado === 'cancelada' ? instante(sumarDias(fechaBase, Math.min(r.inicio - 21, -2) + 1), '10:00') : null
+            fecha_cancelacion: r.estado === 'cancelada' ? instante(sumarDias(fechaBase, Math.min(r.inicio - 21, -2) + 1), '10:00') : null,
+            id_combo: r.combo ? porNombreCombo.get(r.combo).id_combo : null
         });
         porCodigo.set(r.codigo, fila);
 
@@ -207,6 +233,45 @@ function cargar() {
             fecha_envio: instante(sumarDias(fechaBase, -3 - indice * 2), '16:00')
         });
     });
+
+    const porNombreProducto = new Map();
+    for (const p of datos.productos) {
+        const fila = insertar('productos', 'id_producto', {
+            nombre: p.nombre,
+            categoria: p.categoria,
+            descripcion: p.descripcion,
+            taller: p.taller,
+            origen: p.origen,
+            precio: p.precio,
+            existencias: p.existencias,
+            imagen_url: p.imagen_url || null,
+            destacado: p.destacado ? 1 : 0,
+            activo: 1
+        });
+        porNombreProducto.set(p.nombre, fila);
+    }
+    for (const p of datos.pedidos) {
+        const usuario = porCorreo.get(p.usuario);
+        const pedido = insertar('pedidos', 'id_pedido', Object.assign({
+            codigo: p.codigo,
+            id_usuario: usuario.id_usuario,
+            entrega: p.entrega,
+            destinatario: p.destinatario,
+            direccion: p.direccion,
+            telefono: p.telefono || null,
+            estado: p.estado,
+            fecha_creacion: instante(sumarDias(fechaBase, p.dias), '16:00')
+        }, datos.pedidoDemo(p), { pago_titular: usuario.nombre }));
+        for (const [nombre, cantidad] of p.productos) {
+            const producto = porNombreProducto.get(nombre);
+            insertar('pedido_detalle', 'id_detalle', {
+                id_pedido: pedido.id_pedido,
+                id_producto: producto.id_producto,
+                cantidad,
+                precio_unitario: producto.precio
+            });
+        }
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -215,11 +280,13 @@ function cargar() {
 
 const ARCHIVO_LOCAL = process.env.DB_ARCHIVO
     || path.join(__dirname, '..', '..', '..', 'database', 'local', 'bookingrd-local.json');
+/** Versión del formato de la base local; si cambia, se vuelven a cargar los datos de ejemplo. */
+const VERSION_LOCAL = 2;
 const ISO_INSTANTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
 /** Fechas y contenidos binarios a JSON y de vuelta. */
 function aJson() {
-    return JSON.stringify({ version: 1, secuencias, bd }, (clave, valor) => {
+    return JSON.stringify({ version: VERSION_LOCAL, secuencias, bd }, (clave, valor) => {
         if (valor && valor.type === 'Buffer' && Array.isArray(valor.data)) return { __base64: Buffer.from(valor.data).toString('base64') };
         return valor;
     });
@@ -235,7 +302,10 @@ function revivir(clave, valor) {
 function recuperar() {
     try {
         const guardado = JSON.parse(fs.readFileSync(ARCHIVO_LOCAL, 'utf8'), revivir);
-        if (!guardado || guardado.version !== 1) return false;
+        if (!guardado || guardado.version !== VERSION_LOCAL) {
+            console.log('La base local es de una versión anterior de BookingRD: se cargan los datos de ejemplo nuevos.');
+            return false;
+        }
         for (const tabla of Object.keys(bd)) bd[tabla] = Array.isArray(guardado.bd[tabla]) ? guardado.bd[tabla] : [];
         Object.assign(secuencias, guardado.secuencias);
         return true;

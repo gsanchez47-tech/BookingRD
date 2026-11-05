@@ -215,6 +215,7 @@
 }
 
 /* @incluir buscador.css */
+/* @incluir combos.css */
 
 /* ----------------------------------------------------------------------------
    2. Qué quieres reservar
@@ -613,6 +614,106 @@
     padding: 8px 0;
     color: var(--tinta-3);
     font-size: var(--t-s);
+}
+
+/* Lugares imperdibles del destino */
+.ficha-lugares h4 {
+    margin-bottom: var(--e-2);
+    color: var(--tinta-3);
+    font-family: var(--f-texto);
+    font-size: var(--t-xs);
+    font-weight: 900;
+}
+
+.ficha-lugares ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.ficha-lugares li {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(0, 180, 216, 0.1);
+    color: var(--caribe-deep);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.ficha-lugares details {
+    margin-top: var(--e-2);
+}
+
+.ficha-lugares summary {
+    color: var(--azul);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.ficha-lugares details ul {
+    margin-top: var(--e-2);
+}
+
+/* Combos destacados */
+.seccion-combos {
+    padding-bottom: var(--e-6);
+}
+
+/* Más para tu viaje */
+.extras {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--e-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.extra {
+    display: grid;
+    align-content: start;
+    gap: var(--e-2);
+    height: 100%;
+    padding: var(--e-5);
+    border-radius: 18px;
+    color: rgba(255, 255, 255, 0.78);
+    text-decoration: none;
+    transition: border-color 0.2s, transform 0.2s;
+}
+
+.extra:hover {
+    border-color: rgba(0, 180, 216, 0.6);
+    transform: translateY(-2px);
+}
+
+.extra svg {
+    width: 44px;
+    height: 44px;
+    margin-bottom: var(--e-2);
+    fill: none;
+    stroke: var(--caribe);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.extra strong {
+    color: #fff;
+    font-family: 'Fraunces', serif;
+    font-size: var(--t-l);
+}
+
+.extra span {
+    font-size: var(--t-s);
+    line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .extra:hover { transform: none; }
 }
 
 @media (min-width: 1040px) {

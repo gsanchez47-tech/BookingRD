@@ -59,6 +59,7 @@ function confirmacionReserva(cliente, reserva, publicacion) {
         fechas = fecha(reserva.fechaInicio);
         detalle.push(['Personas', String(reserva.personas)]);
     }
+    if (reserva.comboNombre) detalle.unshift(['Combo', `${reserva.comboNombre} (precio con descuento)`]);
     if (reserva.pago && reserva.pago.metodo === 'tarjeta') {
         detalle.push(['Pago', `${reserva.pago.marca} terminada en ${reserva.pago.ultimos4} (simulado)`], ['Referencia del pago', reserva.pago.referencia]);
     } else if (reserva.pago) {

@@ -1,0 +1,185 @@
+/* Combos de hotel y tours: lista de boletos con filtros a la izquierda y
+   ventana para armar el combo con el desglose del descuento. */
+
+/* @incluir lateral.css */
+/* @incluir combos.css */
+/* @incluir pago.css */
+
+.estado-vacio {
+    padding: var(--e-6);
+    border: 1px dashed var(--linea-fuerte);
+    border-radius: 16px;
+    color: var(--tinta-2);
+    text-align: center;
+}
+
+/* Armar el combo */
+dialog.modal-combo {
+    width: min(96vw, 600px);
+}
+
+.armar-combo {
+    display: grid;
+    gap: var(--e-4);
+    padding: var(--e-5);
+}
+
+.armar-cabecera {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--e-4);
+    align-items: start;
+}
+
+.armar-cabecera img {
+    width: 76px;
+    height: 76px;
+    border-radius: 14px;
+    object-fit: cover;
+}
+
+.armar-cabecera h2 {
+    margin-top: 6px;
+    font-size: var(--t-l);
+    line-height: 1.2;
+}
+
+.armar-cabecera p:not(.etiqueta-caribe) {
+    margin-top: 4px;
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+}
+
+.combo-desglose {
+    display: grid;
+    gap: var(--e-3);
+    transition: opacity 0.2s;
+}
+
+.combo-desglose.cargando {
+    opacity: 0.5;
+}
+
+.desglose-lineas {
+    display: grid;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--linea);
+    border-radius: 14px;
+    list-style: none;
+    overflow: hidden;
+}
+
+.desglose-lineas li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2px var(--e-3);
+    padding: var(--e-3) var(--e-4);
+    border-bottom: 1px solid var(--linea);
+}
+
+.desglose-lineas li:last-child {
+    border-bottom: 0;
+}
+
+.desglose-fecha {
+    grid-column: 1 / -1;
+    color: var(--caribe-deep);
+    font-size: var(--t-xs);
+    font-weight: 900;
+}
+
+.desglose-nombre {
+    font-weight: 800;
+}
+
+.desglose-lineas small {
+    grid-column: 1;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.desglose-importe {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+    display: grid;
+    justify-items: end;
+    align-content: center;
+    font-weight: 900;
+}
+
+.desglose-importe s {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 600;
+}
+
+.desglose-total {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-weight: 800;
+}
+
+.desglose-total strong {
+    color: var(--azul);
+    font-family: 'Fraunces', serif;
+    font-size: var(--t-xl);
+}
+
+.desglose-ahorro {
+    padding: var(--e-2) var(--e-3);
+    border-radius: 10px;
+    background: rgba(45, 106, 79, 0.1);
+    color: var(--jungle);
+    font-size: var(--t-s);
+    font-weight: 800;
+}
+
+.nota-reserva {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    text-align: center;
+}
+
+/* Confirmación: un código por cada parte del combo. */
+.confirmacion-reservas {
+    display: grid;
+    gap: var(--e-2);
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+}
+
+.confirmacion-reservas li {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0 var(--e-3);
+    padding: var(--e-3) var(--e-4);
+    border: 1px dashed var(--azul);
+    border-radius: 12px;
+}
+
+.confirmacion-reservas small {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
+.confirmacion-reservas strong {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    color: var(--azul);
+    letter-spacing: 0.06em;
+}
+
+.confirmacion .modal-acciones {
+    flex-wrap: wrap;
+}
+
+.pagina-combos .pie {
+    margin-top: 0;
+}

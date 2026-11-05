@@ -4,7 +4,11 @@
 
 | Módulo | Contenido |
 |---|---|
-| Inicio | Portada con fotografía, buscador sobre vidrio y cifras; accesos a alojamiento, actividades y autos; franja de garantías; experiencias por categoría; cómo funciona en tres pasos; mapa SVG de la isla sobre azul noche con los 15 destinos (ficha con conteos por tipo y clima); banda de cifras; buscador (alojamiento, actividades o autos; destino con autocompletado; fechas, o recogida y devolución con hora; personas), postales de destinos, categorías, recomendados por tipo, *Vistos recientemente*, opiniones verificadas, *Nosotros*, llamado a empresas y *Contacto*. |
+| Inicio | Portada con fotografía, buscador sobre vidrio y cifras; accesos a alojamiento, actividades y autos; franja de garantías; experiencias por categoría; cómo funciona en tres pasos; combos destacados; *Más para tu viaje* (equipo, fotógrafos, Ruta del Parador y tienda); mapa SVG de la isla sobre azul noche con los 19 destinos (ficha con fotografía, conteos por tipo, lugares imperdibles de `public/js/lugares.js` y clima); banda de cifras; buscador (alojamiento, actividades o autos; destino con autocompletado; fechas, o recogida y devolución con hora; personas), postales de destinos, categorías, recomendados por tipo, *Vistos recientemente*, opiniones verificadas, *Nosotros*, llamado a empresas y *Contacto*. |
+| Combos | `combos.html`: paquetes de un alojamiento y una o dos actividades del mismo destino con descuento (`dbo.combos`). Filtros a la izquierda, itinerario por días, cotización con disponibilidad real y reserva de todas las partes con un solo pago (sección 4.3). |
+| Tienda de artesanía | `tienda.html`: productos de talleres locales (`dbo.productos`), carrito guardado en el navegador, entrega en el hotel o a domicilio, pago con tarjeta simulado, cancelación antes del envío y seguimiento por la administración (`dbo.pedidos`, sección 4.4). |
+| En ruta | `ruta.html`: Ruta del Parador (paradas para comer por carretera, con filtros) y asistencia vial: llamada al 911 y al *462, grúas por provincia (red de ejemplo con teléfonos 555) y enlace con la ubicación del navegador. Contenido informativo sin base de datos. |
+| Equipo y fotógrafos | Categorías de actividad `alquiler-equipo` y `fotografia`, que se reservan por unidades (equipos por día o sesiones) en lugar de por personas (`UNIDAD_ACTIVIDAD`). |
 | Alquiler de autos | `autos.html`: portada con buscador de autos, tipos de auto con su conteo, autos mejor valorados, pasos, lo que incluye, requisitos y preguntas frecuentes. |
 | Explorar | Todos los filtros en un panel a la izquierda (cajón lateral en móvil): tipo, categoría con conteo, destino, palabra clave, personas o pasajeros, transmisión, rango de precio (control de dos extremos sobre un histograma), valoración mínima y fechas; etiquetas de filtros activos; siete órdenes; vista de lista o de mapa; clima del destino; paginación incremental; filtros y fechas en la URL. |
 | Detalle | Valoración, guardar y compartir; barra de secciones; lo más destacado; información, servicios o lo que incluye; mapa de la zona; reseñas con distribución y respuestas; políticas; datos de la empresa; relacionadas y reserva con disponibilidad en tiempo real. |
@@ -12,7 +16,7 @@
 | Alquiler de autos | Flota publicada por empresas de tipo `vehiculos` (`dbo.vehiculos`): ficha técnica, requisitos, políticas, recogida y devolución con hora, devolución en otra ciudad, edad del conductor y extras; precio y disponibilidad calculados en el servidor (sección 4.1). |
 | Reservas | Creación con control de cupo en transacción, código único, listado del viajero y cancelación. |
 | Panel de empresa | Resumen con indicadores (incluida la valoración media) y gráficos; alta, edición, publicación u ocultación y eliminación de publicaciones con fotografía; reservas recibidas con búsqueda, filtro y exportación CSV; reseñas con respuesta pública; perfil público editable. |
-| Administración | Rol `admin` (equipo de desarrollo): indicadores y gráficos globales, suspensión y reactivación de cuentas, moderación de publicaciones (visibilidad y destacado) y de reseñas, consulta de reservas y atención de mensajes de contacto. |
+| Administración | Rol `admin` (equipo de desarrollo): indicadores y gráficos globales, suspensión y reactivación de cuentas, moderación de publicaciones (visibilidad y destacado) y de reseñas, consulta de reservas, pedidos de la tienda (enviar y entregar) y atención de mensajes de contacto. |
 | Cuentas | Registro de viajero (sencillo) y de empresa (tres pasos), inicio de sesión con *Recordarme*, cierre de sesión, expiración del token. |
 | Contacto | Mensajes guardados en `dbo.mensajes_contacto`. |
 | Correos | Bienvenida al registrarse (viajero o empresa) y confirmación de cada reserva, por SMTP con nodemailer (sección 7.1). |
@@ -58,9 +62,17 @@ Express (src/server.js): helmet, CORS, límite de intentos, límites de tamaño
 
 Errores: los controladores lanzan `ErrorHttp(status, mensaje, campo)`; el manejador central responde `{ error, campo }`. Los fallos de conexión a la base responden 503 con un mensaje para el usuario.
 
-### 2.1 Modo de demostración
+### 2.1 Modos de datos
 
-`src/config/modo.js` activa el modo de demostración cuando `DB_SERVER` está vacío o `DB_MODO=demo` (`npm run demo`). `src/repositories/index.js` entrega entonces la implementación en memoria (`repositories/memoria/`) en lugar de la SQL, con las mismas funciones y la misma forma de respuesta; controladores, servicios y middleware importan siempre desde `require('../repositories')` y no distinguen el modo. Las transacciones en memoria se serializan con una cola de promesas, de modo que el control de cupo se comporta igual que con `UPDLOCK, HOLDLOCK`. Si falta `JWT_SECRET`, se genera uno temporal. `GET /api/salud` informa `{ estado, modo }`.
+| Modo | Cuándo | Persistencia |
+|---|---|---|
+| SQL Server / Azure SQL | `DB_SERVER` en `.env` (lo escribe `INICIAR-BookingRD.bat` / `npm run sqlserver`, o `npm run configurar` para Azure) | La base de datos |
+| Base local en archivo | Sin `DB_SERVER` | `database/local/bookingrd-local.json` (guardado atómico tras cada cambio) y `database/local/clave-sesiones.txt` (clave de los JWT) |
+| Demostración en memoria | `DB_MODO=demo` (`npm run demo` y las pruebas) | Ninguna: datos nuevos en cada arranque |
+
+**Instalación en un paso (Windows):** `INICIAR-BookingRD.bat` instala Node.js con `winget` si falta, ejecuta `npm install` la primera vez y llama a `scripts/iniciar.js`. Este, si no hay `.env`, ejecuta `scripts/sqlserver-windows.ps1`, que pide permiso de administrador, busca o instala SQL Server 2022 Express, habilita TCP 1433 y la autenticación mixta (`database/habilitar-sqlserver.sql`), crea la base con `database/instalacion-completa.sql`, asigna una contraseña aleatoria a `bookingrd_app`, reinicia el servicio, prueba la conexión y escribe `.env`. Después prueba la conexión (20 s) y, si SQL Server no responde, arranca con la base local; finalmente abre el navegador. La base local cambia de versión de formato (`VERSION_LOCAL`) cuando cambian las tablas: un archivo de una versión anterior se reemplaza por los datos de ejemplo nuevos.
+
+`src/config/modo.js` usa los repositorios en memoria cuando `DB_SERVER` está vacío o `DB_MODO=demo`. `src/repositories/index.js` entrega entonces la implementación en memoria (`repositories/memoria/`) en lugar de la SQL, con las mismas funciones y la misma forma de respuesta; controladores, servicios y middleware importan siempre desde `require('../repositories')` y no distinguen el modo. Las transacciones en memoria se serializan con una cola de promesas, de modo que el control de cupo se comporta igual que con `UPDLOCK, HOLDLOCK`. Si falta `JWT_SECRET`, se genera uno (temporal en memoria; guardado en la base local). `GET /api/salud` informa `{ estado, modo }` con `modo` ∈ {sql-server, local, demostracion}.
 
 Los datos salen de `database/datos-demo.js`, la misma fuente que genera las inserciones del script SQL (`npm run bd:generar`), por lo que la demostración y la base instalada tienen el mismo contenido.
 
@@ -128,7 +140,7 @@ Cada consulta filtra por el `id_empresa` del token: una empresa no puede leer ni
 | `GET /api/empresa/resenas` | Reseñas de sus publicaciones, primero las sin responder |
 | `PUT /api/empresa/resenas/:id/respuesta` | `{ respuesta }` (hasta 1000); vacía la retira. 404 si la reseña es de otra empresa |
 
-Campos de publicación: `nombre` (150), `ciudad` (uno de los 15 destinos), `descripcion` (2000), `precio` (> 0), `idImagen`. Hotel: `tipoAlojamiento`, `direccion`, `servicios[]`, `capacidadPersonas` (1-30), `habitaciones` (1-5000). Actividad: `categoria`, `puntoEncuentro`, `incluye`, `duracionHoras` (hasta 240), `cupoDiario` (1-1000). Vehículo (precio por día): `categoria` (economico, compacto, sedan, suv, minivan, lujo, convertible, pickup), `marca`, `modelo`, `anio` (2000 al año próximo), `transmision`, `combustible`, `pasajeros` (1-15), `puertas` (2-5), `maletas` (0-10), `aire`, `kmPorDia` (vacío: ilimitado), `lugarRecogida`, `incluye`, `deposito`, `edadMinima` (18-30), `cargoConductorJoven`? (por día, menores de 25), `cargoOtraCiudad`? (vacío: solo se devuelve en la misma ciudad), `unidades` (1-1000). Errores con campo `veh-*`.
+Campos de publicación: `nombre` (150), `ciudad` (uno de los 19 destinos), `descripcion` (2000), `precio` (> 0), `idImagen`. Hotel: `tipoAlojamiento`, `direccion`, `servicios[]`, `capacidadPersonas` (1-30), `habitaciones` (1-5000). Actividad: `categoria`, `puntoEncuentro`, `incluye`, `duracionHoras` (hasta 240), `cupoDiario` (1-1000). Vehículo (precio por día): `categoria` (economico, compacto, sedan, suv, minivan, lujo, convertible, pickup), `marca`, `modelo`, `anio` (2000 al año próximo), `transmision`, `combustible`, `pasajeros` (1-15), `puertas` (2-5), `maletas` (0-10), `aire`, `kmPorDia` (vacío: ilimitado), `lugarRecogida`, `incluye`, `deposito`, `edadMinima` (18-30), `cargoConductorJoven`? (por día, menores de 25), `cargoOtraCiudad`? (vacío: solo se devuelve en la misma ciudad), `unidades` (1-1000). Errores con campo `veh-*`.
 
 ### 3.5 Administración (rol `admin`)
 
@@ -156,6 +168,18 @@ Campos de publicación: `nombre` (150), `ciudad` (uno de los 15 destinos), `desc
 | Cierre | `descripcionEmpresa`?, `confirmaDatos: true` |
 
 El usuario y la empresa se insertan en una sola transacción.
+
+### 3.7 Combos y tienda
+
+| Método y ruta | Descripción |
+|---|---|
+| `GET /api/combos?ciudad=` | Combos visibles (todas sus partes activas y de empresas no suspendidas): `{ id, nombre, lema, descripcion, ciudad, descuento, nochesSugeridas, hotel { id, nombre, precio, capacidad, imagen }, actividades[{ id, nombre, precio, duracion, dia }], imagen, referencia { noches, personas, normal, total, ahorro } }` |
+| `GET /api/combos/:id/cotizacion` | `entrada`, `noches`, `personas`, `habitaciones`. `{ disponible, mensaje, entrada, salida, noches, lineas[{ tipo, nombre, fecha, detalle, precio, precioCombo, normal, total }], normal, total, ahorro }` |
+| `POST /api/combos/:id/reservar` | Viajero. `{ entrada, noches, personas, habitaciones, comentario?, pago }`. 201 `{ combo, reservas[{ codigo, tipo, publicacion, fecha, total, referencia }], total, normal, ahorro, pago }`; 402 tarjeta rechazada (no se crea ninguna reserva); 409 sin cupo en alguna parte |
+| `GET /api/tienda/productos` | Productos a la venta con existencias |
+| `POST /api/tienda/pedidos` | Viajero. `{ productos[{ id, cantidad }], entrega: "hotel" \| "domicilio", destinatario, direccion, telefono?, pago }` (solo tarjeta). 201 pedido con líneas y pago; 402; 409 sin existencias |
+| `GET /api/tienda/pedidos` · `PATCH /api/tienda/pedidos/:id/cancelar` | Pedidos propios; cancelar mientras está `pagado` (reembolso y reposición de existencias) |
+| `GET /api/admin/pedidos` · `PATCH /api/admin/pedidos/:id/avanzar` | Administración: todos los pedidos; `pagado` → `enviado` → `entregado` |
 
 ## 4. Reglas de reserva
 
@@ -193,6 +217,20 @@ El precio se guarda en la reserva (`precio_unitario`), por lo que un cambio post
 
 Estados: `pagado`, `pendiente`, `reembolsado`, `anulado`. El viajero ve el estado y el recibo (imprimible o en PDF desde el navegador) en *Mis reservas*; la empresa y la administración, en sus tablas de reservas; la administración suma lo cobrado en línea, lo pendiente en destino y lo reembolsado.
 
+### 4.3 Combos
+
+- Un combo une un alojamiento y una o dos actividades con un `descuento_pct` (1 a 40) y el día de la estadía de cada actividad (`dia_actividad`, 0 = día de llegada).
+- Las noches deben cubrir el último día de actividad (por ejemplo, actividad el día 2 exige al menos 3 noches); máximo 14.
+- La cotización y la reserva comprueban el cupo de cada parte con las mismas reglas que una reserva suelta (habitaciones y capacidad del hotel; plazas de cada actividad en su fecha).
+- Al reservar, en una sola transacción se crea una reserva por cada parte con `precio_unitario` ya rebajado e `id_combo`, y se cobra cada una con la misma tarjeta (o queda pendiente en destino). Cada parte se cancela por separado desde *Mis reservas*.
+- Una publicación incluida en un combo no se puede eliminar (se puede ocultar).
+
+### 4.4 Tienda de artesanía
+
+- Entrega en la recepción del hotel (gratis) o a domicilio (RD$450, `ENTREGAS_PEDIDO`). Hasta 15 productos distintos y 20 unidades de cada uno.
+- Las existencias se bloquean, comprueban y descuentan en la transacción del pedido, junto con el cobro (solo tarjeta). Una tarjeta rechazada no crea el pedido.
+- Estados: `pagado` → `enviado` → `entregado` (administración), o `cancelado` por el viajero mientras no se haya enviado: la tarjeta se reembolsa y las existencias se reponen.
+
 ## 5. Base de datos
 
 Scripts generados por `npm run bd:generar` a partir de `database/esquema.sql` (tablas e índices) y `database/datos-demo.js` (datos): `database/instalacion-completa.sql` (SQL Server local: crea la base y el login `bookingrd_app`) y `database/instalacion-azure.sql` (Azure SQL Database: se ejecuta sobre la base de la conexión). Ambos son idempotentes y UTF-8. `npm run bd:instalar` ejecuta el primero desde el marcador `-- @inicio-esquema`; `npm run bd:reiniciar` elimina las tablas y reinstala.
@@ -203,19 +241,23 @@ Scripts generados por `npm run bd:generar` a partir de `database/esquema.sql` (t
 | `empresas` | Datos de empresa (1:1 con `usuarios`) | `rnc` único; `tipo_servicio`; campos obligatorios según el servicio |
 | `imagenes` | Fotografías subidas | `VARBINARY(MAX)`; tipo jpeg, png o webp; máximo 3 MB |
 | `hoteles` | Alojamientos | FK a `empresas` e `imagenes`; `tipo_alojamiento` y `ciudad` de catálogo; precio, capacidad (1-30) y habitaciones (1-5000) |
-| `actividades` | Tours y actividades | `categoria` y `ciudad` de catálogo (incluye `golf`); duración, precio y cupo diario positivos |
+| `actividades` | Tours, actividades, alquiler de equipo y fotógrafos | `categoria` y `ciudad` de catálogo (incluye `golf`, `alquiler-equipo` y `fotografia`); duración, precio y cupo diario positivos |
+| `combos` | Paquetes de alojamiento y actividades | `nombre` único; FK a `hoteles` y a una o dos `actividades` (distintas); `descuento_pct` de 1 a 40; días de las actividades y noches sugeridas en rango |
 | `vehiculos` | Autos de alquiler | FK a `empresas` e `imagenes`; `categoria`, `transmision`, `combustible` y `ciudad` de catálogo; pasajeros, puertas, maletas, año, edad mínima y unidades en rango; `km_por_dia` y cargos opcionales |
 | `pagos` | Pago de cada reserva (1:1) | `id_reserva` único y FK; `metodo` ∈ {tarjeta, en_destino}; `estado` ∈ {pagado, pendiente, reembolsado, anulado}; `referencia` única; con tarjeta son obligatorios marca, últimos 4, titular y autorización. Nunca guarda el número completo ni el CVV |
-| `reservas` | Reservas | `codigo` único; exactamente uno de `id_hotel` / `id_actividad` / `id_vehiculo`; hotel con fecha de salida posterior; alquiler con fecha de devolución, horas y edad del conductor (`hora_inicio`, `hora_fin`, `ciudad_devolucion`, `edad_conductor`, `extras`, `deposito`); total positivo; `estado` ∈ {confirmada, cancelada} |
+| `reservas` | Reservas | `codigo` único; exactamente uno de `id_hotel` / `id_actividad` / `id_vehiculo`; hotel con fecha de salida posterior; alquiler con fecha de devolución, horas y edad del conductor (`hora_inicio`, `hora_fin`, `ciudad_devolucion`, `edad_conductor`, `extras`, `deposito`); total positivo; `estado` ∈ {confirmada, cancelada}; `id_combo` opcional (FK a `combos`) |
 | `mensajes_contacto` | Formulario de contacto | `asunto` de catálogo |
 | `resenas` | Reseñas de viajeros | `id_reserva` único (una reseña por reserva) y FK a `reservas`; `puntuacion` de 1 a 10; respuesta de la empresa y `visible` para la moderación. La publicación y el autor se obtienen de la reserva |
+| `productos` | Tienda de artesanía | `nombre` único; `categoria` ∈ {larimar, ambar, arte, cafe-cacao, artesania}; precio positivo; existencias ≥ 0 |
+| `pedidos` | Compras de la tienda | `codigo` único (PED + 7); `entrega` ∈ {hotel, domicilio}; `total = subtotal + envio`; `estado` ∈ {pagado, enviado, entregado, cancelado}; pago con tarjeta simulado (marca, últimos 4, titular, referencia única, autorización) |
+| `pedido_detalle` | Productos de cada pedido | FK a `pedidos` y `productos`; un renglón por producto; cantidad de 1 a 20; precio del momento de la compra |
 | `favoritos` | Publicaciones guardadas | FK a `usuarios`, `hoteles`, `actividades` o `vehiculos` (exactamente una); índices únicos filtrados por usuario y publicación |
 
 Índices sobre empresa, ciudad, categoría y estado de las publicaciones, y sobre usuario, publicación y fecha de las reservas.
 
-**Bases de una versión anterior:** el script solo crea lo que falta y no altera tablas existentes. Si la base tiene tablas de una versión previa con otra estructura, usar `npm run bd:reiniciar` (borra los datos de BookingRD).
+**Bases de una versión anterior:** el script solo crea lo que falta (tablas nuevas y la columna `reservas.id_combo`) y no altera las restricciones de tablas existentes; los destinos nuevos (Miches, Barahona, Montecristi y Baní) y las categorías `alquiler-equipo` y `fotografia` requieren reinstalar. Si la base tiene tablas de una versión previa con otra estructura, usar `npm run bd:reiniciar` (borra los datos de BookingRD).
 
-**Datos de demostración:** 1 cuenta de administración (`admin@bookingrd.com`, `Admin123!`), 12 viajeros (`Cliente123!`), 7 empresas (`Empresa123!`; dos de alquiler de autos), 15 alojamientos, 34 actividades y 11 autos en los 15 destinos, 90 reservas con fechas relativas a la instalación (próximas, realizadas y canceladas) y su pago (`datosDemo.pagoDemo`: 72 con tarjeta de prueba, 18 en el destino), 74 reseñas con respuestas de las empresas, 6 favoritos y 2 mensajes de contacto. Las relaciones se expresan con claves naturales (correo, RNC y nombre de la publicación) y el script las resuelve con subconsultas, así que no depende de los identificadores generados. Cada inserción comprueba antes que el registro no exista. Las fotografías de demostración son archivos estáticos (`public/img/publicaciones/`, columna `imagen_url`); las subidas desde el panel van a `dbo.imagenes`.
+**Datos de demostración:** 1 cuenta de administración (`admin@bookingrd.com`, `Admin123!`), 12 viajeros (`Cliente123!`), 8 empresas (`Empresa123!`; dos de alquiler de autos y una de equipo y fotógrafos), 16 alojamientos, 50 actividades (incluidos 6 alquileres de equipo y 3 servicios de fotografía) y 11 autos en los 19 destinos, 7 combos, 93 reservas con fechas relativas a la instalación (próximas, realizadas, canceladas y un combo de tres partes) y su pago (`datosDemo.pagoDemo`), 74 reseñas con respuestas de las empresas, 6 favoritos, 2 mensajes de contacto, 11 productos y 2 pedidos (`datosDemo.pedidoDemo`). Las relaciones se expresan con claves naturales (correo, RNC y nombre de la publicación) y el script las resuelve con subconsultas, así que no depende de los identificadores generados. Cada inserción comprueba antes que el registro no exista. Las fotografías de demostración son archivos estáticos (`public/img/publicaciones/`, columna `imagen_url`); las subidas desde el panel van a `dbo.imagenes`.
 
 ## 6. Frontend
 
@@ -253,7 +295,7 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 
 ### 6.3 Mapas
 
-- Inicio: `isla.js` contiene el contorno de República Dominicana y Haití (Natural Earth, dominio público) como trazados SVG y `ISLA.proyectar(lat, lon)`. Los 15 destinos se ubican con `COORDENADAS_DESTINOS` (`src/utils/catalogos.js`, también en `/api/catalogos`). Cada punto es un botón accesible por teclado.
+- Inicio: `isla.js` contiene el contorno de República Dominicana y Haití (Natural Earth, dominio público) como trazados SVG y `ISLA.proyectar(lat, lon)`. Los 19 destinos se ubican con `COORDENADAS_DESTINOS` (`src/utils/catalogos.js`, también en `/api/catalogos`). Cada punto es un botón accesible por teclado.
 - Explorar y detalle: Leaflet 1.9.4 incluido en `public/vendor/leaflet/`, con mosaicos de CARTO / OpenStreetMap y el contorno del país debajo, legible aunque no carguen los mosaicos. Las publicaciones se ubican en su destino con un desplazamiento estable; el detalle enlaza a *Cómo llegar* en Google Maps.
 
 ### 6.4 Reseñas, favoritos y vistos recientemente
@@ -327,10 +369,11 @@ El entorno de desarrollo no disponía de SQL Server ni de acceso a Azure, ni de 
 
 | Prueba | Resultado |
 |---|---|
-| `npm run probar`: catálogo, filtros, detalle, disponibilidad, reservas (sin cupo, fechas pasadas, empresa que intenta reservar), pagos (aprobado, Luhn inválido, vencida, CVV de American Express, rechazada, fondos insuficientes sin crear la reserva, pago en destino, cobro registrado por la empresa y no por otra), cancelación con reembolso, reseñas, favoritos, panel de empresa, administración (suspensión con efecto en catálogo, login y token), clima y monedas | 26 de 26 |
-| Recorrido en navegador automatizado: mapa del inicio (15 destinos, ficha), recomendados, buscador hacia Explorar, panel de filtros, vista de mapa, detalle, reserva de actividad con pago en destino, alquiler de auto con tarjeta inválida, rechazada y aprobada, recibo, mis reservas, cancelación con aviso de reembolso, reseña, respuesta de la empresa, publicación nueva, administración, registro de viajero y de empresa | 39 de 39, sin errores de JavaScript |
+| `npm run probar`: catálogo, filtros, combos (cotización, noches mínimas, tarjeta rechazada sin reservas, reserva de tres partes), tienda (solo tarjeta, existencias, cancelación con reposición, envío y entrega), detalle, disponibilidad, reservas (sin cupo, fechas pasadas, empresa que intenta reservar), pagos (aprobado, Luhn inválido, vencida, CVV de American Express, rechazada, fondos insuficientes sin crear la reserva, pago en destino, cobro registrado por la empresa y no por otra), cancelación con reembolso, reseñas, favoritos, panel de empresa, administración (suspensión con efecto en catálogo, login y token), clima y monedas | 28 de 28 |
+| Recorrido en navegador automatizado de los combos (inicio, filtro, desglose, inicio de sesión, pago y recibo), la tienda (filtro, carrito, entrega a domicilio, pago solo con tarjeta, pedido en *Mis reservas* y cancelación), la Ruta del Parador (filtros, grúas, 911), equipo por unidades, pedidos en la administración e inglés | 25 de 25, sin errores de JavaScript |
+| Recorrido en navegador automatizado: mapa del inicio (19 destinos, ficha), recomendados, buscador hacia Explorar, panel de filtros, vista de mapa, detalle, reserva de actividad con pago en destino, alquiler de auto con tarjeta inválida, rechazada y aprobada, recibo, mis reservas, cancelación con aviso de reembolso, reseña, respuesta de la empresa, publicación nueva, administración, registro de viajero y de empresa | 39 de 39, sin errores de JavaScript |
 | Recorrido en inglés con dólares: textos de la interfaz sin traducir (excluidos nombres propios y contenido de usuarios) | 0 pendientes |
-| Script SQL: esquema y lotes de inserción emulados; cada clave natural resuelve y los conteos coinciden con `datos-demo.js`. El lote de pagos se ejecutó dos veces sobre una emulación: 90 pagos, 90 referencias distintas, sin duplicados | Correcto |
-| Desbordamiento horizontal en 375, 768 y 1440 px y revisión visual de las 9 páginas | Sin incidencias |
+| Script SQL: esquema y lotes de inserción emulados; cada clave natural resuelve y los conteos coinciden con `datos-demo.js`. El lote de pagos se ejecutó dos veces sobre una emulación: 90 pagos, 90 referencias distintas, sin duplicados. Las 97 consultas de los repositorios se validaron contra el esquema y los lotes nuevos (combos, reservas de combo, productos y pedidos) se analizaron con un parser de T-SQL | Correcto |
+| Desbordamiento horizontal en 375, 768 y 1440 px y revisión visual de las 12 páginas | Sin incidencias |
 
-**Pendiente de verificar con un motor real:** ejecutar `npm run configurar` (o `npm run bd:instalar`) contra Azure SQL Database y comprobar con `npm run bd:probar` que los conteos coinciden: 20 usuarios, 7 empresas, 15 hoteles, 34 actividades, 11 vehículos, 90 reservas, 90 pagos, 74 reseñas, 6 favoritos y 2 mensajes.
+**Pendiente de verificar con un motor real:** ejecutar `npm run configurar` (o `npm run bd:instalar`) contra Azure SQL Database y comprobar con `npm run bd:probar` que los conteos coinciden: 21 usuarios, 8 empresas, 16 hoteles, 50 actividades, 11 vehículos, 7 combos, 93 reservas, 93 pagos, 74 reseñas, 6 favoritos, 2 mensajes, 11 productos, 2 pedidos y 4 líneas de pedido. El instalador de Windows (`scripts/sqlserver-windows.ps1`) solo pudo revisarse en sintaxis: falta ejecutarlo en un Windows real.

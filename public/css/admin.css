@@ -3209,3 +3209,13 @@ td[data-titulo='Pago'] {
 .fila-admin .fila-acciones {
     gap: var(--e-4);
 }
+
+.nota-seccion {
+    margin-bottom: var(--e-4);
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+}
+
+#tabla-pedidos-admin .btn-outline {
+    margin-top: var(--e-2);
+}

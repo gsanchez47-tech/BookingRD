@@ -417,4 +417,187 @@ async function marcarCobrado(usuario, idReserva) {
     if (!hecho) throw conflicto('Esta reserva no tiene un cobro pendiente en destino.');
 }
 
-module.exports = { consultarDisponibilidad, crearReserva, cancelarReserva, marcarCobrado, generarCodigo, diasDeAlquiler };
+/* ---------------------------------------------------------------------------
+ * Combos: alojamiento + una o dos actividades con descuento
+ * ------------------------------------------------------------------------- */
+
+const MAXIMO_NOCHES_COMBO = 14;
+
+/** Precio con el descuento del combo, redondeado a centavos. */
+const conDescuento = (precio, descuento) => Math.round(precio * (100 - descuento)) / 100;
+
+/**
+ * Valida la solicitud del combo: llegada, noches (deben cubrir los días de
+ * las actividades), habitaciones y personas.
+ */
+function validarSolicitudCombo(combo, datos) {
+    validarFechaInicio(datos.entrada, 'combo-entrada');
+    const ultimoDia = Math.max(...combo.actividades.map((a) => a.dia));
+    const noches = aEnteroPositivo(datos.noches);
+    if (!noches || noches > MAXIMO_NOCHES_COMBO) throw solicitudInvalida(`Indica entre 1 y ${MAXIMO_NOCHES_COMBO} noches.`, 'combo-noches');
+    if (noches <= ultimoDia) {
+        throw solicitudInvalida(`Este combo necesita al menos ${ultimoDia + 1} ${plural(ultimoDia + 1, 'noche', 'noches')} para incluir las actividades.`, 'combo-noches');
+    }
+    const habitaciones = aEnteroPositivo(datos.habitaciones) || 1;
+    if (habitaciones > 10) throw solicitudInvalida('Indica entre 1 y 10 habitaciones.', 'combo-habitaciones');
+    const personas = aEnteroPositivo(datos.personas);
+    if (!personas || personas > 30) throw solicitudInvalida('Indica entre 1 y 30 personas.', 'combo-personas');
+    return {
+        entrada: datos.entrada,
+        salida: sumarDias(datos.entrada, noches),
+        noches,
+        habitaciones,
+        personas
+    };
+}
+
+/** Desglose del combo: precio normal, con descuento y ahorro de cada parte. */
+function desgloseCombo(combo, solicitud) {
+    const lineas = [{
+        tipo: 'hotel',
+        id: combo.hotel.id,
+        nombre: combo.hotel.nombre,
+        fecha: solicitud.entrada,
+        fechaFin: solicitud.salida,
+        detalle: `${solicitud.noches} ${plural(solicitud.noches, 'noche', 'noches')}, ${solicitud.habitaciones} ${plural(solicitud.habitaciones, 'habitación', 'habitaciones')}`,
+        cantidad: solicitud.noches * solicitud.habitaciones,
+        precio: combo.hotel.precio
+    }].concat(combo.actividades.map((a) => ({
+        tipo: 'actividad',
+        id: a.id,
+        nombre: a.nombre,
+        fecha: sumarDias(solicitud.entrada, a.dia),
+        fechaFin: null,
+        detalle: `${solicitud.personas} ${plural(solicitud.personas, 'persona', 'personas')}`,
+        cantidad: solicitud.personas,
+        precio: a.precio
+    })));
+    for (const linea of lineas) {
+        linea.precioCombo = conDescuento(linea.precio, combo.descuento);
+        linea.normal = Math.round(linea.precio * linea.cantidad * 100) / 100;
+        linea.total = Math.round(linea.precioCombo * linea.cantidad * 100) / 100;
+    }
+    const normal = lineas.reduce((suma, l) => suma + l.normal, 0);
+    const total = Math.round(lineas.reduce((suma, l) => suma + l.total, 0) * 100) / 100;
+    return { lineas, normal: Math.round(normal * 100) / 100, total, ahorro: Math.round((normal - total) * 100) / 100 };
+}
+
+/** Comprueba el cupo de cada parte del combo (con o sin transacción). */
+async function comprobarCombo(transaccion, combo, solicitud, desglose) {
+    for (const linea of desglose.lineas) {
+        const publicacion = await reservasRepo.bloquearPublicacion(transaccion, linea.tipo, linea.id);
+        if (!publicacion || !publicacion.activo) throw conflicto(`${linea.nombre} ya no está disponible.`);
+        const parcial = linea.tipo === 'hotel'
+            ? { fechaInicio: solicitud.entrada, fechaFin: solicitud.salida, noches: solicitud.noches, personas: solicitud.personas, habitaciones: solicitud.habitaciones }
+            : { fechaInicio: linea.fecha, personas: solicitud.personas };
+        const libres = await calcularLibres(transaccion, linea.tipo, publicacion, parcial);
+        const evaluacion = evaluar(linea.tipo, publicacion, parcial, libres);
+        if (!evaluacion.disponible) throw conflicto(`${linea.nombre}: ${evaluacion.mensaje}`);
+    }
+}
+
+/**
+ * Cotiza un combo para unas fechas sin reservar.
+ * @returns {Promise<{disponible: boolean, mensaje: string|null, entrada, salida, noches, lineas, normal, total, ahorro}>}
+ */
+async function cotizarCombo(combo, datos) {
+    const solicitud = validarSolicitudCombo(combo, datos);
+    const desglose = desgloseCombo(combo, solicitud);
+    let mensaje = null;
+    try {
+        await comprobarCombo(null, combo, solicitud, desglose);
+    } catch (error) {
+        if (error.status !== 409) throw error;
+        mensaje = error.message;
+    }
+    return Object.assign({ disponible: !mensaje, mensaje, entrada: solicitud.entrada, salida: solicitud.salida, noches: solicitud.noches }, desglose);
+}
+
+/**
+ * Reserva un combo: una reserva por cada parte (enlazadas por id_combo), con
+ * el precio rebajado, en una sola transacción. Con tarjeta se cobra cada
+ * reserva por separado; si la tarjeta se rechaza, no se crea ninguna.
+ */
+async function reservarCombo(usuario, combo, datos) {
+    if (usuario.rol !== 'cliente') throw prohibido('Las reservas se realizan con una cuenta de viajero.');
+    const solicitud = validarSolicitudCombo(combo, datos);
+    const desglose = desgloseCombo(combo, solicitud);
+    const pagoValidado = pagosService.validarPago(datos.pago);
+    const comentario = textoLimpio(datos.comentario).slice(0, 500);
+
+    for (let intento = 1; ; intento++) {
+        try {
+            const creadas = await conTransaccion(async (transaccion) => {
+                await comprobarCombo(transaccion, combo, solicitud, desglose);
+                const resultado = [];
+                for (const linea of desglose.lineas) {
+                    const reserva = {
+                        codigo: generarCodigo(),
+                        idUsuario: usuario.id,
+                        tipo: linea.tipo,
+                        idPublicacion: linea.id,
+                        fechaInicio: linea.fecha,
+                        fechaFin: linea.fechaFin,
+                        personas: solicitud.personas,
+                        habitaciones: linea.tipo === 'hotel' ? solicitud.habitaciones : null,
+                        precioUnitario: linea.precioCombo,
+                        total: linea.total,
+                        comentario,
+                        idCombo: combo.id
+                    };
+                    const pago = pagosService.cobrar(pagoValidado, linea.total);
+                    const id = await reservasRepo.crear(transaccion, reserva);
+                    await reservasRepo.registrarPago(transaccion, id, pago);
+                    reserva.pago = pago;
+                    reserva.comboNombre = combo.nombre;
+                    resultado.push({ id, reserva, pago, nombre: linea.nombre });
+                }
+                return resultado;
+            });
+            for (const c of creadas) notificarReserva(usuario.id, c.reserva, { nombre: c.nombre });
+            const primero = creadas[0].pago;
+            return {
+                combo: { id: combo.id, nombre: combo.nombre, descuento: combo.descuento },
+                reservas: creadas.map((c) => ({
+                    id: c.id,
+                    codigo: c.reserva.codigo,
+                    tipo: c.reserva.tipo,
+                    publicacion: c.nombre,
+                    fecha: c.reserva.fechaInicio,
+                    fechaFin: c.reserva.fechaFin,
+                    total: c.reserva.total,
+                    referencia: c.pago.referencia
+                })),
+                total: desglose.total,
+                normal: desglose.normal,
+                ahorro: desglose.ahorro,
+                pago: {
+                    metodo: primero.metodo,
+                    estado: primero.estado,
+                    monto: desglose.total,
+                    moneda: 'DOP',
+                    marca: primero.marca,
+                    ultimos4: primero.ultimos4,
+                    titular: primero.titular,
+                    referencia: primero.referencia,
+                    autorizacion: primero.autorizacion,
+                    fechaPago: new Date().toISOString()
+                }
+            };
+        } catch (error) {
+            if (ERRORES_SQL_DUPLICADO.includes(error.number) && intento < 3) continue;
+            throw error;
+        }
+    }
+}
+
+module.exports = {
+    consultarDisponibilidad,
+    crearReserva,
+    cancelarReserva,
+    marcarCobrado,
+    cotizarCombo,
+    reservarCombo,
+    generarCodigo,
+    diasDeAlquiler
+};

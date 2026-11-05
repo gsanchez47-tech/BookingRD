@@ -25,9 +25,10 @@
             <nav class="nav-principal" aria-label="Principal">
                 <a href="explorar.html?tipo=hotel" data-nav="alojamiento">Alojamiento</a>
                 <a href="explorar.html?tipo=actividad" data-nav="actividades">Actividades</a>
+                <a href="combos.html" data-nav="combos">Combos</a>
                 <a href="autos.html" data-nav="autos">Autos</a>
-                <a href="index.html#destinos" data-nav="destinos">Destinos</a>
-                <a href="registro.html?tipo=empresa" data-nav="empresas">Para empresas</a>
+                <a href="ruta.html" data-nav="ruta">En ruta</a>
+                <a href="tienda.html" data-nav="tienda">Tienda</a>
             </nav>
 
             <div class="header-acciones">
@@ -62,7 +63,10 @@
             <nav aria-label="Menú móvil">
                 <a href="explorar.html?tipo=hotel">Alojamiento</a>
                 <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="combos.html">Combos con descuento</a>
                 <a href="autos.html">Alquiler de autos</a>
+                <a href="ruta.html">Ruta del Parador y asistencia vial</a>
+                <a href="tienda.html">Tienda de artesanía</a>
                 <a href="index.html#destinos">Destinos</a>
                 <a href="registro.html?tipo=empresa">Para empresas</a>
                 <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
@@ -106,6 +110,7 @@
                     <button type="button" class="pestana" data-filtro="canceladas" role="tab" aria-selected="false">Canceladas <span class="pestana-conteo" data-conteo="canceladas">0</span></button>
                     <button type="button" class="pestana" data-filtro="guardados" role="tab" aria-selected="false">Guardados <span class="pestana-conteo" data-conteo="guardados">0</span></button>
                     <button type="button" class="pestana" data-filtro="resenas" role="tab" aria-selected="false">Reseñas <span class="pestana-conteo pestana-alerta" data-conteo="resenas" title="Reseñas pendientes">0</span></button>
+                    <button type="button" class="pestana" data-filtro="pedidos" role="tab" aria-selected="false">Pedidos <span class="pestana-conteo" data-conteo="pedidos">0</span></button>
                 </div>
 
                 <div class="aviso-resenas" id="aviso-resenas" hidden></div>
@@ -122,7 +127,7 @@
             <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
         </div>
         <div class="modal-cuerpo">
-            <p>Vas a cancelar la reserva <strong id="cancelar-codigo"></strong> de <strong id="cancelar-nombre"></strong>. Esta acción no se puede deshacer y libera el cupo para otros viajeros.</p>
+            <p id="cancelar-intro">Vas a cancelar la reserva <strong id="cancelar-codigo"></strong> de <strong id="cancelar-nombre"></strong>. Esta acción no se puede deshacer y libera el cupo para otros viajeros.</p>
             <p class="cancelar-reembolso" id="cancelar-reembolso"></p>
             <div id="cancelar-error" class="mensaje-error" role="alert"></div>
             <div class="modal-acciones">
@@ -178,8 +183,10 @@
                     <ul>
                         <li><a href="explorar.html?tipo=hotel">Alojamiento</a></li>
                         <li><a href="explorar.html?tipo=actividad">Actividades</a></li>
+                        <li><a href="combos.html">Combos</a></li>
                         <li><a href="autos.html">Alquiler de autos</a></li>
                         <li><a href="index.html#destinos">Destinos</a></li>
+                        <li><a href="tienda.html">Tienda de artesanía</a></li>
                     </ul>
                 </div>
                 <div>
@@ -194,6 +201,7 @@
                     <ul>
                         <li><a href="index.html#contacto">Contacto</a></li>
                         <li><a href="mis-reservas.html">Mis reservas</a></li>
+                        <li><a href="ruta.html#asistencia">Asistencia vial</a></li>
                         <li><a href="autos.html#preguntas">Preguntas sobre autos</a></li>
                     </ul>
                 </div>

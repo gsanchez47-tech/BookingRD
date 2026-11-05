@@ -143,10 +143,10 @@ function abrirRecibo(datos) {
     const esTarjeta = pago.metodo === 'tarjeta';
     // [etiqueta, valor, traducible]: nombres propios y códigos no se traducen.
     const filas = [
-        ['Código de reserva', datos.codigo, false],
-        ['Servicio', datos.publicacion, false],
+        [datos.etiquetaCodigo || 'Código de reserva', datos.codigo, false],
+        [datos.etiquetaServicio || 'Servicio', datos.publicacion, false],
         datos.proveedor ? ['Empresa', datos.proveedor, false] : null,
-        ['Fechas', datos.fechas, true],
+        datos.fechas ? [datos.etiquetaFechas || 'Fechas', datos.fechas, true] : null,
         datos.cliente ? ['Viajero', datos.cliente, false] : null,
         ['Método', esTarjeta ? `${pago.marca} terminada en ${pago.ultimos4}` : 'Pago en el destino', true],
         esTarjeta ? ['Titular', pago.titular, false] : null,
@@ -193,7 +193,7 @@ window.addEventListener('afterprint', () => document.body.classList.remove('impr
  *   alPagar recibe el objeto `pago` para POST /api/reservas y debe lanzar el
  *   error de la API si la reserva o el pago fallan. Si devuelve una función,
  *   se ejecuta al cerrarse la ventana de pago (p. ej. abrir la confirmación).
- * @returns {{abrir: (pedido: {imagen: string, publicacion: string, fechas: string, total: number, destino?: [string, string]}) => void}}
+ * @returns {{abrir: (pedido: {imagen: string, publicacion: string, fechas: string, total: number, destino?: [string, string], soloTarjeta?: boolean}) => void}}
  */
 function prepararPago({ alPagar }) {
     const formulario = document.getElementById('form-pago');
@@ -356,6 +356,10 @@ function prepararPago({ alPagar }) {
             const equivalente = formatearPrecio(pedido.total);
             document.getElementById('pago-total').innerHTML = escaparHtml(formatoMoneda.format(pedido.total))
                 + (equivalente !== formatoMoneda.format(pedido.total) ? `<small>aprox. ${escaparHtml(equivalente)}</small>` : '');
+            // La tienda solo acepta tarjeta: se oculta el pago en el destino.
+            const opcionDestino = formulario.querySelector('input[name="pago-metodo"][value="en_destino"]');
+            opcionDestino.closest('label').hidden = Boolean(pedido.soloTarjeta);
+            if (pedido.soloTarjeta) formulario.querySelector('input[name="pago-metodo"][value="tarjeta"]').checked = true;
             if (pedido.destino) {
                 document.getElementById('pago-destino-titulo').textContent = pedido.destino[0];
                 document.getElementById('pago-destino-texto').textContent = pedido.destino[1];

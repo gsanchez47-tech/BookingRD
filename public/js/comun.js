@@ -426,14 +426,15 @@ function botonNormal(boton, texto) {
 const CATALOGOS = {
     destinos: ['Santo Domingo', 'Punta Cana', 'Puerto Plata', 'Las Terrenas', 'Samaná', 'Las Galeras',
         'La Romana', 'Sosúa', 'Cabarete', 'Jarabacoa', 'Constanza', 'Juan Dolio', 'Boca Chica',
-        'Río San Juan', 'Pedernales'],
+        'Río San Juan', 'Pedernales', 'Miches', 'Barahona', 'Montecristi', 'Baní'],
     /** Provincia de cada destino (src/utils/catalogos.js: DESTINOS). */
     provincias: {
         'Santo Domingo': 'Distrito Nacional', 'Punta Cana': 'La Altagracia', 'Puerto Plata': 'Puerto Plata',
         'Las Terrenas': 'Samaná', 'Samaná': 'Samaná', 'Las Galeras': 'Samaná', 'La Romana': 'La Romana',
         'Sosúa': 'Puerto Plata', 'Cabarete': 'Puerto Plata', 'Jarabacoa': 'La Vega', 'Constanza': 'La Vega',
         'Juan Dolio': 'San Pedro de Macorís', 'Boca Chica': 'Santo Domingo', 'Río San Juan': 'María Trinidad Sánchez',
-        'Pedernales': 'Pedernales'
+        'Pedernales': 'Pedernales', 'Miches': 'El Seibo', 'Barahona': 'Barahona', 'Montecristi': 'Monte Cristi',
+        'Baní': 'Peravia'
     },
     /** Latitud y longitud de cada destino (src/utils/catalogos.js: COORDENADAS_DESTINOS). */
     coordenadas: {
@@ -441,7 +442,9 @@ const CATALOGOS = {
         'Las Terrenas': [19.3110, -69.5428], 'Samaná': [19.2056, -69.3366], 'Las Galeras': [19.2850, -69.1960],
         'La Romana': [18.4273, -68.9728], 'Sosúa': [19.7520, -70.5170], 'Cabarete': [19.7490, -70.4100],
         'Jarabacoa': [19.1180, -70.6380], 'Constanza': [18.9090, -70.7450], 'Juan Dolio': [18.4270, -69.4290],
-        'Boca Chica': [18.4500, -69.6060], 'Río San Juan': [19.6420, -70.0760], 'Pedernales': [18.0380, -71.7440]
+        'Boca Chica': [18.4500, -69.6060], 'Río San Juan': [19.6420, -70.0760], 'Pedernales': [18.0380, -71.7440],
+        'Miches': [18.9820, -69.0450], 'Barahona': [18.2085, -71.1008], 'Montecristi': [19.8480, -71.6460],
+        'Baní': [18.2800, -70.3310]
     },
     categorias: {
         'hoteles-resorts': { nombre: 'Hoteles y resorts', tipo: 'hotel', grupo: 'Alojamiento' },
@@ -454,6 +457,8 @@ const CATALOGOS = {
         motocross: { nombre: 'Motocross y buggies', tipo: 'actividad', grupo: 'Aventura' },
         acuaticas: { nombre: 'Actividades acuáticas', tipo: 'actividad', grupo: 'Aventura' },
         golf: { nombre: 'Golf', tipo: 'actividad', grupo: 'Aventura' },
+        'alquiler-equipo': { nombre: 'Alquiler de equipo de aventura', tipo: 'actividad', grupo: 'Equipo y fotografía' },
+        fotografia: { nombre: 'Fotógrafos y drones', tipo: 'actividad', grupo: 'Equipo y fotografía' },
         economico: { nombre: 'Económico', tipo: 'vehiculo', grupo: 'Autos' },
         compacto: { nombre: 'Compacto', tipo: 'vehiculo', grupo: 'Autos' },
         sedan: { nombre: 'Sedán', tipo: 'vehiculo', grupo: 'Autos' },
@@ -475,6 +480,19 @@ const CATALOGOS = {
         'entrega-hotel': { nombre: 'Entrega y recogida en tu hotel', precio: 1500, porDia: false, detalle: 'Te llevamos el auto donde te hospedas.' }
     },
     horarioAlquiler: { apertura: '06:00', cierre: '22:00' },
+    /** Categorías que se reservan por unidades (src/utils/catalogos.js: UNIDAD_ACTIVIDAD). */
+    unidadActividad: {
+        'alquiler-equipo': { singular: 'equipo', plural: 'equipos', precio: 'por equipo y día' },
+        fotografia: { singular: 'sesión', plural: 'sesiones', precio: 'por sesión' }
+    },
+    categoriasProducto: {
+        larimar: 'Larimar', ambar: 'Ámbar', arte: 'Pintura y arte taíno',
+        'cafe-cacao': 'Café y cacao de origen', artesania: 'Artesanía tradicional'
+    },
+    entregasPedido: {
+        hotel: { nombre: 'En la recepción de tu hotel', costo: 0 },
+        domicilio: { nombre: 'A domicilio', costo: 450 }
+    },
     tiposAlojamiento: {
         hotel: 'Hotel', resort: 'Resort todo incluido', boutique: 'Hotel boutique', villa: 'Villa',
         cabana: 'Cabañas', apartamento: 'Apartamentos turísticos', hostal: 'Hostal o posada'
@@ -545,9 +563,20 @@ function formatearDuracion(horas) {
     return `${horas} ${horas === 1 ? 'hora' : 'horas'}`;
 }
 
-/** Unidad de precio según el tipo de publicación. */
-function unidadPrecio(tipo) {
+/**
+ * Unidad de precio según el tipo de publicación. El alquiler de equipo y
+ * los fotógrafos (CATALOGOS.unidadActividad) se cobran por unidad.
+ */
+function unidadPrecio(tipo, categoria) {
+    const unidad = tipo === 'actividad' && CATALOGOS.unidadActividad[categoria];
+    if (unidad) return unidad.precio;
     return { hotel: 'por noche', actividad: 'por persona', vehiculo: 'por día' }[tipo] || '';
+}
+
+/** "3 personas", o "2 equipos" / "1 sesión" en las categorías por unidad. */
+function textoCantidad(cantidad, categoria) {
+    const unidad = CATALOGOS.unidadActividad[categoria] || { singular: 'persona', plural: 'personas' };
+    return `${cantidad} ${cantidad === 1 ? unidad.singular : unidad.plural}`;
 }
 
 /** Nombre del tipo de publicación para listados y tablas. */
@@ -660,7 +689,7 @@ function crearTarjetaPublicacion(publicacion) {
                 ${esVehiculo ? especificaciones : `<p class="tarjeta-descripcion" translate="no">${escaparHtml(publicacion.descripcion)}</p>`}
                 <p class="tarjeta-politica">${esVehiculo ? 'Cancelación gratuita hasta un día antes de la recogida' : 'Cancelación gratuita hasta un día antes'}</p>
                 <div class="tarjeta-pie">
-                    <span class="tarjeta-precio"><small class="tarjeta-desde">Desde</small>${formatearPrecio(publicacion.precio)}<small>${unidadPrecio(publicacion.tipo)}</small></span>
+                    <span class="tarjeta-precio"><small class="tarjeta-desde">Desde</small>${formatearPrecio(publicacion.precio)}<small>${unidadPrecio(publicacion.tipo, publicacion.categoria)}</small></span>
                     <span class="tarjeta-proveedor" translate="no">${escaparHtml(publicacion.proveedor || '')}</span>
                 </div>
             </div>

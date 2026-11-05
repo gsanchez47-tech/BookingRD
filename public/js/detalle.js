@@ -153,7 +153,7 @@ function pintarInformacion() {
             ['Destino', publicacion.ciudad],
             ['Duración', formatearDuracion(publicacion.duracionHoras)],
             ['Punto de encuentro', publicacion.puntoEncuentro],
-            ['Cupo diario', `${publicacion.cupoDiario} personas`]
+            ['Cupo diario', textoCantidad(publicacion.cupoDiario, publicacion.categoria)]
         ];
     document.getElementById('detalle-datos').innerHTML = datos
         .map(([titulo, valor]) => `<div><dt>${escaparHtml(titulo)}</dt><dd>${escaparHtml(valor)}</dd></div>`)
@@ -185,7 +185,13 @@ function pintarInformacion() {
     document.getElementById('empresa-datos').innerHTML = html;
 
     document.getElementById('reserva-precio').textContent = formatearPrecio(publicacion.precio);
-    document.getElementById('reserva-unidad').textContent = unidadPrecio(TIPO);
+    document.getElementById('reserva-unidad').textContent = unidadPrecio(TIPO, publicacion.categoria);
+    // Equipo y fotógrafos: se reserva por unidades en lugar de por personas.
+    const unidad = TIPO === 'actividad' && CATALOGOS.unidadActividad[publicacion.categoria];
+    if (unidad) {
+        document.querySelector('label[for="reserva-personas"]').textContent = unidad.plural.charAt(0).toUpperCase() + unidad.plural.slice(1);
+        document.getElementById('reserva-personas').value = 1;
+    }
 
     prepararBarraMovil();
 }
@@ -236,7 +242,7 @@ function pintarFichaVehiculo() {
 function prepararBarraMovil() {
     const barra = document.getElementById('barra-reserva-movil');
     document.getElementById('barra-precio').textContent = formatearPrecio(publicacion.precio);
-    document.getElementById('barra-unidad').textContent = unidadPrecio(TIPO);
+    document.getElementById('barra-unidad').textContent = unidadPrecio(TIPO, publicacion.categoria);
     barra.hidden = false;
     if (!('IntersectionObserver' in window)) return;
     new IntersectionObserver(([entrada]) => {
@@ -427,7 +433,7 @@ async function actualizarResumen() {
         }
         const detalle = TIPO === 'hotel'
             ? `${formatearPrecio(publicacion.precio)} x ${evaluacion.noches} ${evaluacion.noches === 1 ? 'noche' : 'noches'} x ${solicitud.habitaciones} ${solicitud.habitaciones === 1 ? 'habitación' : 'habitaciones'}`
-            : `${formatearPrecio(publicacion.precio)} x ${solicitud.personas} ${solicitud.personas === 1 ? 'persona' : 'personas'}`;
+            : `${formatearPrecio(publicacion.precio)} x ${textoCantidad(solicitud.personas, publicacion.categoria)}`;
         resumen.innerHTML = `
             <div class="resumen-linea"><span>${detalle}</span><span>${formatearPrecio(evaluacion.total)}</span></div>
             <div class="resumen-total"><span>Total</span><strong>${formatearPrecio(evaluacion.total)}</strong></div>
@@ -474,7 +480,7 @@ function textoFechasSolicitud(datos) {
     if (ES_AUTO) {
         return `${formatearFecha(datos.recogida)}, ${formatearHora(datos.horaRecogida)} al ${formatearFecha(datos.devolucion)}, ${formatearHora(datos.horaDevolucion)}`;
     }
-    const personas = `${datos.personas} ${datos.personas === 1 ? 'persona' : 'personas'}`;
+    const personas = TIPO === 'actividad' ? textoCantidad(datos.personas, publicacion.categoria) : `${datos.personas} ${datos.personas === 1 ? 'persona' : 'personas'}`;
     if (TIPO === 'actividad') return `${formatearFecha(datos.fecha)}, ${personas}`;
     return `${formatearFecha(datos.entrada)} al ${formatearFecha(datos.salida)}, ${personas}`;
 }
@@ -592,6 +598,8 @@ function pintarVentajas() {
         ventajas.push(['Todo incluido', 'Comidas y bebidas incluidas en el precio por noche.']);
     } else if (ES_AUTO && /aeropuerto/i.test(publicacion.lugarRecogida)) {
         ventajas.push(['Recogida en el aeropuerto', 'Mostrador en la terminal de llegadas.']);
+    } else if (TIPO === 'actividad' && CATALOGOS.unidadActividad[publicacion.categoria]) {
+        ventajas.push(['Reserva por unidades', `Hasta ${textoCantidad(publicacion.cupoDiario, publicacion.categoria)} por día.`]);
     } else if (TIPO === 'actividad') {
         ventajas.push(['Grupos pequeños', `Cupo de ${publicacion.cupoDiario} personas por día.`]);
     }

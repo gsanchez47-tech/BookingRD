@@ -1,0 +1,179 @@
+/* Páginas con cabecera fotográfica y panel lateral de filtros a la izquierda
+   (combos y tienda). */
+
+.cabecera-foto {
+    margin-bottom: var(--e-6);
+    background:
+        radial-gradient(rgba(127, 227, 245, 0.09) 1px, transparent 1.5px) 0 0 / 24px 24px,
+        radial-gradient(60% 120% at 90% 10%, rgba(0, 180, 216, 0.3) 0%, transparent 60%),
+        linear-gradient(90deg, rgba(5, 19, 43, 0.93) 0%, rgba(5, 19, 43, 0.74) 52%, rgba(0, 119, 168, 0.3) 100%),
+        var(--foto-cabecera) center / cover no-repeat,
+        var(--night);
+}
+
+.cabecera-foto h1 {
+    max-width: 20ch;
+    font-size: var(--t-3xl);
+}
+
+.cabecera-foto .cabecera-entrada {
+    max-width: 60ch;
+    margin-top: var(--e-3);
+    color: rgba(255, 255, 255, 0.84);
+    font-size: var(--t-l);
+}
+
+.migas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: var(--e-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.layout-lateral {
+    display: grid;
+    gap: var(--e-5);
+    padding-bottom: var(--e-8);
+}
+
+.panel-lateral {
+    display: grid;
+    gap: var(--e-4);
+    align-content: start;
+}
+
+.panel-lateral fieldset {
+    margin: 0;
+    padding: var(--e-4);
+    border: 1px solid var(--linea);
+    border-radius: 16px;
+    background: var(--superficie);
+    min-width: 0;
+}
+
+.panel-lateral legend {
+    float: left;
+    width: 100%;
+    margin-bottom: var(--e-3);
+    padding: 0;
+    font-size: var(--t-s);
+    font-weight: 900;
+}
+
+.panel-lateral legend + * {
+    clear: both;
+}
+
+/* Opciones como píldoras en móvil y como lista en escritorio. */
+.opciones-lateral {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.opciones-lateral label {
+    position: relative;
+    cursor: pointer;
+}
+
+.opciones-lateral input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.opciones-lateral label > span {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+    padding: 7px 12px;
+    border: 1px solid var(--linea);
+    border-radius: 999px;
+    font-size: var(--t-s);
+    font-weight: 700;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.opciones-lateral small {
+    color: var(--tinta-3);
+    font-weight: 700;
+}
+
+.opciones-lateral input:checked + span {
+    border-color: var(--azul);
+    background: var(--azul);
+    color: #fff;
+}
+
+.opciones-lateral input:checked + span small {
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.opciones-lateral input:focus-visible + span {
+    outline: 3px solid var(--caribe);
+    outline-offset: 2px;
+}
+
+.panel-nota {
+    padding: var(--e-4);
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--night) 0%, var(--night-mid) 60%, var(--caribe-deep) 100%);
+    color: rgba(255, 255, 255, 0.82);
+    font-size: var(--t-s);
+    line-height: 1.55;
+}
+
+.panel-nota strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #fff;
+    font-family: 'Fraunces', serif;
+    font-size: var(--t-l);
+}
+
+.panel-lateral .panel-nota {
+    display: none;
+}
+
+.resultado-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--e-2);
+    margin-bottom: var(--e-4);
+}
+
+.resultado-cabecera p {
+    color: var(--tinta-2);
+    font-weight: 700;
+}
+
+@media (min-width: 1040px) {
+    .layout-lateral {
+        grid-template-columns: 270px minmax(0, 1fr);
+        align-items: start;
+        gap: var(--e-6);
+    }
+
+    .panel-lateral {
+        position: sticky;
+        top: 96px;
+    }
+
+    .opciones-lateral {
+        display: grid;
+        gap: 4px;
+    }
+
+    .opciones-lateral label > span {
+        border-radius: 10px;
+    }
+
+    .panel-lateral .panel-nota {
+        display: block;
+    }
+}

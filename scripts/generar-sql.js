@@ -120,8 +120,24 @@ IF NOT EXISTS (SELECT 1 FROM dbo.${TABLA[tipo]} WHERE nombre = ${sql(p.nombre)})
     });
 }
 
+/** Combos: alojamiento y una o dos actividades con descuento (claves naturales: nombres). */
+function combos() {
+    lotes.push('-- 4.6 Combos de alojamiento y actividades');
+    for (const c of datos.combos) {
+        const segunda = c.actividad2 ? `a2.id_actividad` : 'NULL';
+        agregar(null, `
+IF NOT EXISTS (SELECT 1 FROM dbo.combos WHERE nombre = ${sql(c.nombre)})
+    INSERT INTO dbo.combos (nombre, lema, descripcion, ciudad, id_hotel, id_actividad, id_actividad2, dia_actividad,
+                            dia_actividad2, noches_sugeridas, descuento_pct, destacado)
+    SELECT ${[c.nombre, c.lema, c.descripcion, c.ciudad].map(sql).join(', ')}, h.id_hotel, a.id_actividad, ${segunda},
+           ${sql(c.dia_actividad)}, ${sql(c.actividad2 ? c.dia_actividad2 : null)}, ${sql(c.noches_sugeridas)}, ${sql(c.descuento_pct)}, ${sql(Boolean(c.destacado))}
+    FROM dbo.hoteles h CROSS JOIN dbo.actividades a${c.actividad2 ? ' CROSS JOIN dbo.actividades a2' : ''}
+    WHERE h.nombre = ${sql(c.hotel)} AND a.nombre = ${sql(c.actividad)}${c.actividad2 ? ` AND a2.nombre = ${sql(c.actividad2)}` : ''};`);
+    }
+}
+
 function reservas() {
-    lotes.push('-- 4.6 Reservas (fechas relativas al día de la instalación)');
+    lotes.push('-- 4.7 Reservas (fechas relativas al día de la instalación)');
     for (const r of datos.reservas) {
         const { creacion, cancelacion } = fechasRegistro(r);
         const cancelada = r.estado === 'cancelada';
@@ -131,12 +147,13 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = ${sql(r.codigo)})
     INSERT INTO dbo.reservas
         (codigo, id_usuario, ${ID[r.tipo]}, fecha_inicio, fecha_fin, hora_inicio, hora_fin, ciudad_devolucion,
          edad_conductor, extras, deposito, personas, habitaciones, precio_unitario, total, estado, comentario,
-         fecha_creacion, fecha_cancelacion)
+         fecha_creacion, fecha_cancelacion, id_combo)
     SELECT ${sql(r.codigo)}, u.id_usuario, ${p}.${ID[r.tipo]}, ${dia(r.inicio)}, ${r.fin === undefined ? 'NULL' : dia(r.fin)},
            ${sql(r.hora_inicio)}, ${sql(r.hora_fin)}, ${sql(r.ciudad_devolucion)}, ${sql(r.edad_conductor)}, ${sql(r.extras)},
            ${sql(r.deposito)}, ${sql(r.personas)}, ${sql(r.habitaciones)}, ${sql(r.precio_unitario)}, ${sql(r.total)},
            ${sql(cancelada ? 'cancelada' : 'confirmada')}, ${sql(r.comentario)},
-           ${instante(creacion, 15)}, ${cancelada ? instante(cancelacion, 10) : 'NULL'}
+           ${instante(creacion, 15)}, ${cancelada ? instante(cancelacion, 10) : 'NULL'},
+           ${r.combo ? `(SELECT id_combo FROM dbo.combos WHERE nombre = ${sql(r.combo)})` : 'NULL'}
     FROM dbo.usuarios u CROSS JOIN dbo.${TABLA[r.tipo]} ${p}
     WHERE u.correo = ${sql(r.usuario)} AND ${p}.nombre = ${sql(r.publicacion)};`);
     }
@@ -148,7 +165,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = ${sql(r.codigo)})
  * cancelación. El titular es el nombre del viajero.
  */
 function pagos() {
-    lotes.push('-- 4.7 Pagos de las reservas (pasarela simulada: solo marca y últimos 4 dígitos)');
+    lotes.push('-- 4.8 Pagos de las reservas (pasarela simulada: solo marca y últimos 4 dígitos)');
     const filas = datos.reservas.map((r) => {
         const p = datos.pagoDemo(r);
         const { creacion, cancelacion } = fechasRegistro(r);
@@ -169,7 +186,7 @@ WHERE NOT EXISTS (SELECT 1 FROM dbo.pagos p WHERE p.id_reserva = r.id_reserva);`
 }
 
 function resenas() {
-    lotes.push('-- 4.8 Reseñas de reservas ya disfrutadas (dos días después de terminar)');
+    lotes.push('-- 4.9 Reseñas de reservas ya disfrutadas (dos días después de terminar)');
     const porCodigo = new Map(datos.reservas.map((r) => [r.codigo, r]));
     for (const s of datos.resenas) {
         const r = porCodigo.get(s.reserva);
@@ -187,7 +204,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.resenas rs INNER JOIN dbo.reservas r ON r.id_re
 }
 
 function favoritos() {
-    lotes.push('-- 4.9 Publicaciones guardadas por los viajeros');
+    lotes.push('-- 4.10 Publicaciones guardadas por los viajeros');
     datos.favoritos.forEach((f, indice) => {
         const p = f.tipo.charAt(0);
         agregar(null, `
@@ -202,13 +219,47 @@ IF NOT EXISTS (SELECT 1 FROM dbo.favoritos f INNER JOIN dbo.usuarios u ON u.id_u
 }
 
 function mensajes() {
-    lotes.push('-- 4.10 Mensajes del formulario de contacto');
+    lotes.push('-- 4.11 Mensajes del formulario de contacto');
     datos.mensajes.forEach((m, indice) => {
         agregar(null, `
 IF NOT EXISTS (SELECT 1 FROM dbo.mensajes_contacto WHERE correo = ${sql(m.correo)} AND asunto = ${sql(m.asunto)})
     INSERT INTO dbo.mensajes_contacto (nombre, correo, asunto, mensaje, atendido, fecha_envio)
     VALUES (${[m.nombre, m.correo, m.asunto, m.mensaje].map(sql).join(', ')}, ${m.atendido ? 1 : 0}, ${instante(-3 - indice * 2, 16)});`);
     });
+}
+
+/** Tienda de artesanía: productos y pedidos de ejemplo con su detalle. */
+function tienda() {
+    lotes.push('-- 4.12 Tienda de artesanía: productos');
+    const columnas = ['nombre', 'categoria', 'descripcion', 'taller', 'origen', 'precio', 'existencias', 'imagen_url'];
+    const filas = datos.productos.map((p) => `        (${columnas.map((c) => sql(p[c])).join(', ')}, ${sql(Boolean(p.destacado))})`);
+    agregar(null, `
+INSERT INTO dbo.productos (${columnas.join(', ')}, destacado)
+SELECT v.* FROM (VALUES
+${filas.join(',\n')}
+) AS v (${columnas.join(', ')}, destacado)
+WHERE NOT EXISTS (SELECT 1 FROM dbo.productos p WHERE p.nombre = v.nombre);`);
+
+    lotes.push('-- 4.13 Pedidos de la tienda (pago simulado con tarjeta)');
+    for (const p of datos.pedidos) {
+        const importe = datos.pedidoDemo(p);
+        agregar(null, `
+IF NOT EXISTS (SELECT 1 FROM dbo.pedidos WHERE codigo = ${sql(p.codigo)})
+BEGIN
+    INSERT INTO dbo.pedidos (codigo, id_usuario, entrega, destinatario, direccion, telefono, subtotal, envio, total, estado,
+                             pago_marca, pago_ultimos4, pago_titular, pago_referencia, pago_autorizacion, fecha_creacion)
+    SELECT ${[p.codigo].map(sql)}, u.id_usuario, ${[p.entrega, p.destinatario, p.direccion, p.telefono, importe.subtotal, importe.envio, importe.total, p.estado,
+        importe.pago_marca, importe.pago_ultimos4].map(sql).join(', ')}, u.nombre, ${sql(importe.pago_referencia)}, ${sql(importe.pago_autorizacion)}, ${instante(p.dias, 16)}
+    FROM dbo.usuarios u WHERE u.correo = ${sql(p.usuario)};
+
+    INSERT INTO dbo.pedido_detalle (id_pedido, id_producto, cantidad, precio_unitario)
+    SELECT pe.id_pedido, pr.id_producto, v.cantidad, pr.precio
+    FROM (VALUES ${p.productos.map(([n, c]) => `(${sql(n)}, ${c})`).join(', ')}) AS v (nombre, cantidad)
+    INNER JOIN dbo.productos pr ON pr.nombre = v.nombre
+    CROSS JOIN dbo.pedidos pe
+    WHERE pe.codigo = ${sql(p.codigo)};
+END`);
+    }
 }
 
 /* ---------------------------------------------------------------------------
@@ -220,11 +271,13 @@ empresas();
 publicaciones('hotel', '4.3 Alojamiento');
 publicaciones('actividad', '4.4 Actividades');
 publicaciones('vehiculo', '4.5 Autos de alquiler');
+combos();
 reservas();
 pagos();
 resenas();
 favoritos();
 mensajes();
+tienda();
 
 const cuentas = `-- Contraseñas de demostración (hash bcrypt de 10 rondas):
 --   admin@bookingrd.com      Admin123!     administración de la plataforma

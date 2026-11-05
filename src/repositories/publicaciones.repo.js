@@ -494,7 +494,7 @@ async function cambiarEstado(tipo, id, idEmpresa, activo) {
 
 /**
  * Elimina una publicación sin reservas. Si tiene reservas (historial que
- * debe conservarse) no se elimina.
+ * debe conservarse) o forma parte de un combo, no se elimina.
  * @returns {Promise<'eliminada'|'con-reservas'|'no-existe'>}
  */
 async function eliminar(tipo, id, idEmpresa) {
@@ -507,7 +507,8 @@ async function eliminar(tipo, id, idEmpresa) {
         .query(`
             IF NOT EXISTS (SELECT 1 FROM ${tabla} WHERE ${columnaId} = @id AND id_empresa = @idEmpresa)
                 SELECT 'no-existe' AS resultado;
-            ELSE IF EXISTS (SELECT 1 FROM dbo.reservas WHERE ${columnaReserva} = @id)
+            ELSE IF EXISTS (SELECT 1 FROM dbo.reservas WHERE ${columnaReserva} = @id)${tipo === 'vehiculo' ? '' : `
+                 OR EXISTS (SELECT 1 FROM dbo.combos WHERE ${tipo === 'hotel' ? 'id_hotel = @id' : 'id_actividad = @id OR id_actividad2 = @id'})`}
                 SELECT 'con-reservas' AS resultado;
             ELSE
             BEGIN

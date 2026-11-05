@@ -73,7 +73,8 @@ async function crear(transaccion, reserva) {
         estado: 'confirmada',
         comentario: reserva.comentario || null,
         fecha_creacion: A.ahora(),
-        fecha_cancelacion: null
+        fecha_cancelacion: null,
+        id_combo: reserva.idCombo || null
     });
     return fila.id_reserva;
 }
@@ -91,7 +92,9 @@ function filaReserva(r, { conCliente = false } = {}) {
         imagen_url: p.imagen_url,
         lugar_recogida: tipo === 'vehiculo' ? p.lugar_recogida : null,
         proveedor: A.empresa(p.id_empresa).nombre_comercial,
-        id_empresa: p.id_empresa
+        id_empresa: p.id_empresa,
+        id_combo: r.id_combo || null,
+        combo: r.id_combo ? (A.bd.combos.find((c) => c.id_combo === r.id_combo) || {}).nombre || null : null
     });
     const pago = A.pagoDe(r.id_reserva);
     if (pago) for (const [clave, valor] of Object.entries(pago)) fila[`pago_${clave}`] = valor;

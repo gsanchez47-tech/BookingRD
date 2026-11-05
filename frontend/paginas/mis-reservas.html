@@ -31,6 +31,7 @@
                     <button type="button" class="pestana" data-filtro="canceladas" role="tab" aria-selected="false">Canceladas <span class="pestana-conteo" data-conteo="canceladas">0</span></button>
                     <button type="button" class="pestana" data-filtro="guardados" role="tab" aria-selected="false">Guardados <span class="pestana-conteo" data-conteo="guardados">0</span></button>
                     <button type="button" class="pestana" data-filtro="resenas" role="tab" aria-selected="false">Reseñas <span class="pestana-conteo pestana-alerta" data-conteo="resenas" title="Reseñas pendientes">0</span></button>
+                    <button type="button" class="pestana" data-filtro="pedidos" role="tab" aria-selected="false">Pedidos <span class="pestana-conteo" data-conteo="pedidos">0</span></button>
                 </div>
 
                 <div class="aviso-resenas" id="aviso-resenas" hidden></div>
@@ -47,7 +48,7 @@
             <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
         </div>
         <div class="modal-cuerpo">
-            <p>Vas a cancelar la reserva <strong id="cancelar-codigo"></strong> de <strong id="cancelar-nombre"></strong>. Esta acción no se puede deshacer y libera el cupo para otros viajeros.</p>
+            <p id="cancelar-intro">Vas a cancelar la reserva <strong id="cancelar-codigo"></strong> de <strong id="cancelar-nombre"></strong>. Esta acción no se puede deshacer y libera el cupo para otros viajeros.</p>
             <p class="cancelar-reembolso" id="cancelar-reembolso"></p>
             <div id="cancelar-error" class="mensaje-error" role="alert"></div>
             <div class="modal-acciones">

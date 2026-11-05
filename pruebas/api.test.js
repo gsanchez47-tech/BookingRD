@@ -99,9 +99,9 @@ test('estadísticas con conteos por tipo, categoría y destino', async () => {
     assert.ok(datos.puntuacionMedia > 8);
 });
 
-test('catálogos con coordenadas de los 15 destinos', async () => {
+test('catálogos con coordenadas de los 19 destinos', async () => {
     const { datos } = await api('/catalogos');
-    assert.equal(datos.destinos.length, 15);
+    assert.equal(datos.destinos.length, 19);
     for (const destino of datos.destinos) assert.equal(datos.coordenadas[destino].length, 2);
 });
 
@@ -414,6 +414,96 @@ test('panel de empresa: subir fotografía, crear, editar, ocultar y eliminar', a
 test('una empresa de alojamiento no publica autos', async () => {
     const intento = await api('/empresa/publicaciones', { metodo: 'POST', token: tokens.hostal, cuerpo: { tipo: 'vehiculo', nombre: 'Auto' } });
     assert.equal(intento.status, 403);
+});
+
+/* ---------------------------------------------------------------------------
+ * Combos y tienda de artesanía
+ * ------------------------------------------------------------------------- */
+
+const TARJETA_PRUEBA = { metodo: 'tarjeta', titular: 'Laura Peña', numero: '4242424242424242', vencimiento: '12/30', cvv: '123' };
+
+test('combos: listado, cotización con descuento y reserva en un paso', async () => {
+    const lista = await api('/combos');
+    assert.equal(lista.status, 200);
+    assert.ok(lista.datos.combos.length >= 7);
+    const combo = lista.datos.combos.find((c) => c.actividades.length === 2);
+    assert.ok(combo.referencia.total < combo.referencia.normal);
+
+    const entrada = fecha(50);
+    const minimo = Math.max(...combo.actividades.map((a) => a.dia)) + 1;
+    const corta = await api(`/combos/${combo.id}/cotizacion?entrada=${entrada}&noches=${minimo - 1 || 0}&personas=2&habitaciones=1`);
+    assert.equal(corta.status, 400, 'las noches deben cubrir los días de las actividades');
+
+    const q = await api(`/combos/${combo.id}/cotizacion?entrada=${entrada}&noches=${minimo}&personas=2&habitaciones=1`);
+    assert.equal(q.status, 200);
+    assert.equal(q.datos.lineas.length, 3);
+    assert.equal(q.datos.disponible, true);
+    assert.ok(Math.abs(q.datos.normal - q.datos.total - q.datos.ahorro) < 0.01);
+
+    const sinSesion = await api(`/combos/${combo.id}/reservar`, { metodo: 'POST', cuerpo: { entrada, noches: minimo, personas: 2, habitaciones: 1 } });
+    assert.equal(sinSesion.status, 401);
+    const rechazada = await api(`/combos/${combo.id}/reservar`, {
+        metodo: 'POST', token: tokens.cliente,
+        cuerpo: { entrada, noches: minimo, personas: 2, habitaciones: 1, pago: Object.assign({}, TARJETA_PRUEBA, { numero: '4000000000000002' }) }
+    });
+    assert.equal(rechazada.status, 402);
+    const antes = (await api('/reservas', { token: tokens.cliente })).datos.reservas.length;
+    assert.equal(antes, (await api('/reservas', { token: tokens.cliente })).datos.reservas.length, 'la tarjeta rechazada no crea reservas');
+
+    const reserva = await api(`/combos/${combo.id}/reservar`, {
+        metodo: 'POST', token: tokens.cliente,
+        cuerpo: { entrada, noches: minimo, personas: 2, habitaciones: 1, pago: TARJETA_PRUEBA }
+    });
+    assert.equal(reserva.status, 201);
+    assert.equal(reserva.datos.reservas.length, 3);
+    assert.equal(reserva.datos.total, q.datos.total);
+    const mias = (await api('/reservas', { token: tokens.cliente })).datos.reservas;
+    assert.equal(mias.length, antes + 3);
+    assert.equal(mias.filter((r) => r.combo && r.combo.id === combo.id && reserva.datos.reservas.some((x) => x.codigo === r.codigo)).length, 3);
+});
+
+test('tienda: compra con entrega, existencias, cancelación y seguimiento', async () => {
+    const { datos } = await api('/tienda/productos');
+    assert.ok(datos.productos.length >= 11);
+    const producto = datos.productos[0];
+
+    const sinPago = await api('/tienda/pedidos', {
+        metodo: 'POST', token: tokens.cliente,
+        cuerpo: { productos: [{ id: producto.id, cantidad: 1 }], entrega: 'hotel', destinatario: 'Laura Peña', direccion: 'Coralia Grand, Punta Cana', pago: { metodo: 'en_destino' } }
+    });
+    assert.equal(sinPago.status, 400, 'la tienda solo acepta tarjeta');
+    const demasiados = await api('/tienda/pedidos', {
+        metodo: 'POST', token: tokens.cliente,
+        cuerpo: { productos: [{ id: producto.id, cantidad: producto.existencias + 1 }], entrega: 'hotel', destinatario: 'Laura Peña', direccion: 'Coralia Grand, Punta Cana', pago: TARJETA_PRUEBA }
+    });
+    assert.ok([400, 409].includes(demasiados.status));
+
+    const pedido = await api('/tienda/pedidos', {
+        metodo: 'POST', token: tokens.cliente,
+        cuerpo: { productos: [{ id: producto.id, cantidad: 2 }], entrega: 'domicilio', destinatario: 'Laura Peña', direccion: 'Calle El Conde 12, Santo Domingo', pago: TARJETA_PRUEBA }
+    });
+    assert.equal(pedido.status, 201);
+    assert.equal(pedido.datos.envio, 450);
+    assert.equal(pedido.datos.total, producto.precio * 2 + 450);
+    const despues = (await api('/tienda/productos')).datos.productos.find((p) => p.id === producto.id);
+    assert.equal(despues.existencias, producto.existencias - 2);
+
+    const cancelado = await api(`/tienda/pedidos/${pedido.datos.id}/cancelar`, { metodo: 'PATCH', token: tokens.cliente });
+    assert.equal(cancelado.status, 200);
+    assert.equal(cancelado.datos.reembolso.ultimos4, '4242');
+    assert.equal((await api('/tienda/productos')).datos.productos.find((p) => p.id === producto.id).existencias, producto.existencias);
+
+    const otro = await api('/tienda/pedidos', {
+        metodo: 'POST', token: tokens.cliente,
+        cuerpo: { productos: [{ id: producto.id, cantidad: 1 }], entrega: 'hotel', destinatario: 'Laura Peña', direccion: 'Coralia Grand, Punta Cana', pago: TARJETA_PRUEBA }
+    });
+    assert.equal(otro.status, 201);
+    assert.equal((await api(`/admin/pedidos/${otro.datos.id}/avanzar`, { metodo: 'PATCH', token: tokens.admin })).datos.estado, 'enviado');
+    assert.equal((await api(`/tienda/pedidos/${otro.datos.id}/cancelar`, { metodo: 'PATCH', token: tokens.cliente })).status, 409, 'enviado: ya no se cancela');
+    assert.equal((await api(`/admin/pedidos/${otro.datos.id}/avanzar`, { metodo: 'PATCH', token: tokens.admin })).datos.estado, 'entregado');
+    const mios = await api('/tienda/pedidos', { token: tokens.cliente });
+    assert.ok(mios.datos.pedidos.some((p) => p.codigo === otro.datos.codigo && p.estado === 'entregado'));
+    assert.equal((await api('/admin/pedidos', { token: tokens.cliente })).status, 403);
 });
 
 /* ---------------------------------------------------------------------------

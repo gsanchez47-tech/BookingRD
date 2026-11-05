@@ -1,0 +1,119 @@
+<!-- @pagina titulo="Tienda de artesanía dominicana | BookingRD" descripcion="Larimar, ámbar, arte taíno, café y cacao de origen de talleres dominicanos certificados, con entrega en tu hotel o a domicilio." css="tienda" nav="tienda" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <header class="cabecera-caribe cabecera-foto cabecera-tienda" style="--foto-cabecera: url('../img/paginas/tienda-mercado.jpg')">
+            <div class="contenedor">
+                <nav class="migas" aria-label="Ruta de navegación">
+                    <a href="index.html">Inicio</a>
+                    <span aria-hidden="true">/</span>
+                    <span>Tienda de artesanía</span>
+                </nav>
+                <p class="etiqueta-caribe">Hecho en República Dominicana</p>
+                <h1>Llévate la isla <em>en una pieza</em></h1>
+                <p class="cabecera-entrada">Artesanía certificada de talleres locales: larimar del sur, ámbar de la Cordillera Septentrional, arte taíno, café de altura y cacao del Cibao. Te la llevamos a la recepción de tu hotel sin costo, o a tu casa.</p>
+            </div>
+        </header>
+
+        <div class="contenedor layout-lateral">
+            <aside class="panel-lateral" aria-label="Filtros de la tienda">
+                <fieldset>
+                    <legend>Categoría</legend>
+                    <div class="opciones-lateral" id="filtro-categoria-tienda"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Ordenar por</legend>
+                    <div class="opciones-lateral">
+                        <label><input type="radio" name="orden-tienda" value="destacados" checked><span>Destacados</span></label>
+                        <label><input type="radio" name="orden-tienda" value="precio-asc"><span>Menor precio</span></label>
+                        <label><input type="radio" name="orden-tienda" value="precio-desc"><span>Mayor precio</span></label>
+                    </div>
+                </fieldset>
+                <p class="panel-nota">
+                    <strong>Origen garantizado</strong>
+                    Cada pieza indica el taller que la hizo y de dónde viene. El larimar y el ámbar llevan certificado de autenticidad.
+                </p>
+            </aside>
+
+            <section aria-labelledby="titulo-productos">
+                <div class="resultado-cabecera">
+                    <h2 id="titulo-productos" class="visualmente-oculto">Productos</h2>
+                    <p id="conteo-productos" aria-live="polite"></p>
+                </div>
+                <ul class="productos" id="lista-productos"></ul>
+            </section>
+        </div>
+
+        <button type="button" class="boton-carrito" id="boton-carrito" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 11.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6.2M9 20.5a1 1 0 1 0 0-.1M17 20.5a1 1 0 1 0 0-.1"/></svg>
+            <span>Carrito</span>
+            <strong id="carrito-cantidad">0</strong>
+            <span id="carrito-total-boton"></span>
+        </button>
+    </main>
+
+    <!-- Carrito y datos de entrega. POST /api/tienda/pedidos -->
+    <dialog class="modal modal-carrito" id="modal-carrito" aria-labelledby="carrito-titulo">
+        <form class="carrito" id="form-carrito" novalidate>
+            <header class="carrito-cabecera">
+                <h2 id="carrito-titulo">Tu carrito</h2>
+                <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+            </header>
+            <ul class="carrito-lineas" id="carrito-lineas"></ul>
+
+            <fieldset class="carrito-entrega">
+                <legend>Entrega</legend>
+                <label class="pago-metodo">
+                    <input type="radio" name="entrega" value="hotel" checked>
+                    <span><strong>En la recepción de tu hotel</strong><small>Gratis, en 24 a 48 horas en las zonas turísticas.</small></span>
+                </label>
+                <label class="pago-metodo">
+                    <input type="radio" name="entrega" value="domicilio">
+                    <span><strong>A domicilio</strong><small>RD$450, en 2 a 4 días laborables en todo el país.</small></span>
+                </label>
+            </fieldset>
+            <div class="campo">
+                <label for="pedido-destinatario">Quién recibe</label>
+                <input type="text" id="pedido-destinatario" maxlength="100" autocomplete="name">
+            </div>
+            <div class="campo">
+                <label for="pedido-direccion" id="etiqueta-direccion">Hotel y ciudad</label>
+                <input type="text" id="pedido-direccion" maxlength="300" placeholder="Ej.: Coralia Grand Resort, Punta Cana">
+            </div>
+            <div class="campo">
+                <label for="pedido-telefono">Teléfono <small>(opcional)</small></label>
+                <input type="tel" id="pedido-telefono" maxlength="20" autocomplete="tel" placeholder="809-555-0000">
+            </div>
+
+            <dl class="carrito-importes" id="carrito-importes"></dl>
+            <p class="mensaje-formulario error" id="carrito-error" role="alert" hidden></p>
+            <button type="submit" class="btn-rojo btn-bloque" id="boton-comprar">Ir al pago</button>
+        </form>
+    </dialog>
+
+    <!-- @pago -->
+
+    <dialog class="modal" id="modal-confirmacion" aria-labelledby="confirmacion-titulo">
+        <div class="confirmacion">
+            <svg class="confirmacion-icono" viewBox="0 0 84 84" aria-hidden="true">
+                <circle cx="42" cy="42" r="38"></circle>
+                <path d="M26 43 l11 11 l21 -23"></path>
+            </svg>
+            <h2 id="confirmacion-titulo">Pedido confirmado</h2>
+            <p id="confirmacion-texto"></p>
+            <p class="confirmacion-codigo" id="confirmacion-codigo" translate="no"></p>
+            <p class="confirmacion-pago" id="confirmacion-pago"></p>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Seguir comprando</button>
+                <button type="button" class="btn-outline" id="boton-recibo-pedido">Ver recibo</button>
+                <a class="btn-primario" href="mis-reservas.html?vista=pedidos">Mis pedidos</a>
+            </div>
+        </div>
+    </dialog>
+
+<!-- @pie -->
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/pagos.js"></script>
+    <script src="js/tienda.js"></script>

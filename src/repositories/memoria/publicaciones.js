@@ -231,6 +231,7 @@ async function eliminar(tipo, id, idEmpresa) {
     const p = A.publicacion(tipo, id);
     if (!p || p.id_empresa !== idEmpresa) return 'no-existe';
     if (A.bd.reservas.some((r) => r[columnaId] === id)) return 'con-reservas';
+    if (tipo !== 'vehiculo' && A.bd.combos.some((c) => c[columnaId] === id || (tipo === 'actividad' && c.id_actividad2 === id))) return 'con-reservas';
     A.bd.favoritos = A.bd.favoritos.filter((f) => f[columnaId] !== id);
     A.bd[tabla] = A.bd[tabla].filter((fila) => fila[columnaId] !== id);
     return 'eliminada';

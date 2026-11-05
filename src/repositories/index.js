@@ -34,6 +34,8 @@ function cargarMemoria() {
         favoritosRepo: varios.favoritos,
         imagenesRepo: varios.imagenes,
         contactoRepo: varios.contacto,
+        combosRepo: require('./memoria/combos'),
+        tiendaRepo: require('./memoria/tienda'),
         conTransaccion: conTransaccionEnMemoria
     };
 }
@@ -48,6 +50,8 @@ function cargarSql() {
         favoritosRepo: require('./favoritos.repo'),
         imagenesRepo: require('./imagenes.repo'),
         contactoRepo: require('./contacto.repo'),
+        combosRepo: require('./combos.repo'),
+        tiendaRepo: require('./tienda.repo'),
         conTransaccion: require('../config/db').conTransaccion
     };
 }

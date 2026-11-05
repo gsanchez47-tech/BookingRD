@@ -80,22 +80,27 @@ El asistente pregunta los cuatro datos del paso 3. Luego:
 
 1. Genera el archivo `.env` con la conexión y una clave segura para las sesiones (`JWT_SECRET`).
 2. Prueba la conexión. La primera vez puede tardar hasta un minuto porque la base se está reanudando.
-3. Pregunta **¿Crear o actualizar las tablas ahora? (s/n)**: responder `s`. Ejecuta los 285 lotes del script (tablas, índices y datos de demostración) y al final muestra cuántos registros tiene cada tabla.
+3. Pregunta **¿Crear o actualizar las tablas ahora? (s/n)**: responder `s`. Ejecuta los 324 lotes del script (tablas, índices y datos de demostración) y al final muestra cuántos registros tiene cada tabla.
 
 Conteos esperados con los datos de demostración:
 
 | Tabla | Registros |
 |---|---|
-| usuarios | 20 |
-| empresas | 7 |
-| hoteles | 15 |
-| actividades | 34 |
+| usuarios | 21 |
+| empresas | 8 |
+| imagenes | 0 |
+| hoteles | 16 |
+| actividades | 50 |
 | vehiculos | 11 |
-| reservas | 90 |
-| pagos | 90 |
+| combos | 7 |
+| reservas | 93 |
+| pagos | 93 |
 | resenas | 74 |
 | favoritos | 6 |
 | mensajes_contacto | 2 |
+| productos | 11 |
+| pedidos | 2 |
+| pedido_detalle | 4 |
 
 ### Alternativa: cargar el script a mano
 

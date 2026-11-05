@@ -11,10 +11,11 @@
  * Las reservas se agrupan en próximas, pasadas y canceladas en el cliente.
  * Solo se ofrece cancelar las reservas confirmadas que empiezan después de
  * hoy, y reseñar las confirmadas ya terminadas; el servidor aplica las
- * mismas reglas. ?vista=guardados|resenas abre esa pestaña.
+ * mismas reglas. ?vista=guardados|resenas|pedidos abre esa pestaña. La pestaña
+ * Pedidos muestra las compras de la tienda de artesanía.
  */
 
-const PESTANAS = ['proximas', 'pasadas', 'canceladas', 'guardados', 'resenas'];
+const PESTANAS = ['proximas', 'pasadas', 'canceladas', 'guardados', 'resenas', 'pedidos'];
 
 let reservas = [];
 let guardados = [];
@@ -22,6 +23,8 @@ let misResenas = [];
 let pendientes = [];
 let filtroActual = 'proximas';
 let reservaPorCancelar = null;
+let pedidos = [];
+let pedidoPorCancelar = null;
 let reservaPorResenar = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -40,6 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (resenar) abrirFormularioResena(Number(resenar.dataset.resenar));
         const recibo = evento.target.closest('[data-recibo]');
         if (recibo) verRecibo(Number(recibo.dataset.recibo));
+        const reciboPedido = evento.target.closest('[data-recibo-pedido]');
+        if (reciboPedido) verReciboPedido(Number(reciboPedido.dataset.reciboPedido));
+        const cancelarPedido = evento.target.closest('[data-cancelar-pedido]');
+        if (cancelarPedido) pedirCancelacionPedido(Number(cancelarPedido.dataset.cancelarPedido));
     });
     document.getElementById('aviso-resenas').addEventListener('click', (evento) => {
         const resenar = evento.target.closest('[data-resenar]');
@@ -71,11 +78,13 @@ async function cargarTodo() {
     const lista = document.getElementById('lista-reservas');
     lista.innerHTML = Array.from({ length: 3 }, () => '<div class="reserva reserva-esqueleto esqueleto" aria-hidden="true"></div>').join('');
     try {
-        const [respuestaReservas, respuestaGuardados, respuestaResenas] = await Promise.all([
+        const [respuestaReservas, respuestaGuardados, respuestaResenas, respuestaPedidos] = await Promise.all([
             apiFetch('/reservas'),
             apiFetch('/favoritos'),
-            apiFetch('/resenas')
+            apiFetch('/resenas'),
+            apiFetch('/tienda/pedidos')
         ]);
+        pedidos = respuestaPedidos.pedidos;
         reservas = respuestaReservas.reservas;
         guardados = respuestaGuardados.publicaciones;
         misResenas = respuestaResenas.resenas;
@@ -111,7 +120,7 @@ function pintarCifras() {
 }
 
 function pintarConteos() {
-    const conteo = { proximas: 0, pasadas: 0, canceladas: 0, guardados: guardados.length, resenas: pendientes.length };
+    const conteo = { proximas: 0, pasadas: 0, canceladas: 0, guardados: guardados.length, resenas: pendientes.length, pedidos: pedidos.length };
     reservas.forEach((reserva) => { conteo[grupoDe(reserva)] += 1; });
     Object.entries(conteo).forEach(([grupo, valor]) => {
         document.querySelector(`[data-conteo="${grupo}"]`).textContent = valor;
@@ -137,7 +146,7 @@ function seleccionarPestana(filtro) {
     filtroActual = filtro;
     marcarPestana();
     const url = new URL(window.location.href);
-    if (['guardados', 'resenas'].includes(filtro)) url.searchParams.set('vista', filtro);
+    if (['guardados', 'resenas', 'pedidos'].includes(filtro)) url.searchParams.set('vista', filtro);
     else url.searchParams.delete('vista');
     history.replaceState(null, '', url);
     pintarAvisoResenas();
@@ -157,6 +166,7 @@ function pintarLista() {
     lista.classList.toggle('es-rejilla', filtroActual === 'guardados');
     if (filtroActual === 'guardados') return pintarGuardados(lista);
     if (filtroActual === 'resenas') return pintarResenas(lista);
+    if (filtroActual === 'pedidos') return pintarPedidos(lista);
 
     let visibles = reservas.filter((reserva) => grupoDe(reserva) === filtroActual);
     // Próximas: la más cercana primero. El servidor entrega de la más lejana a la más antigua.
@@ -256,6 +266,7 @@ function crearTarjetaReserva(reserva) {
                     <span class="reserva-estado">${etiquetas[grupo]}</span>
                     <span class="reserva-codigo" translate="no">${escaparHtml(reserva.codigo)}</span>
                 </div>
+                ${reserva.combo ? `<a class="reserva-combo" href="combos.html?combo=${reserva.combo.id}">Combo <span translate="no">${escaparHtml(reserva.combo.nombre)}</span></a>` : ''}
                 <h3 translate="no"><a href="${enlaceDetalle({ tipo: reserva.tipo, id: reserva.idPublicacion })}">${escaparHtml(reserva.publicacion)}</a></h3>
                 <p class="reserva-datos">${escaparHtml(reserva.ciudad)}, con ${escaparHtml(reserva.proveedor)}</p>
                 <ul class="reserva-detalles">
@@ -305,8 +316,11 @@ function verRecibo(id) {
 }
 
 function pedirCancelacion(id) {
+    pedidoPorCancelar = null;
     reservaPorCancelar = reservas.find((reserva) => reserva.id === id);
     if (!reservaPorCancelar) return;
+    document.getElementById('cancelar-titulo').textContent = 'Cancelar reserva';
+    document.getElementById('cancelar-intro').innerHTML = 'Vas a cancelar la reserva <strong id="cancelar-codigo"></strong> de <strong id="cancelar-nombre"></strong>. Esta acción no se puede deshacer y libera el cupo para otros viajeros.';
     document.getElementById('cancelar-codigo').textContent = reservaPorCancelar.codigo;
     document.getElementById('cancelar-nombre').textContent = reservaPorCancelar.publicacion;
     const pago = reservaPorCancelar.pago;
@@ -318,6 +332,7 @@ function pedirCancelacion(id) {
 }
 
 async function confirmarCancelacion() {
+    if (pedidoPorCancelar) return confirmarCancelacionPedido();
     if (!reservaPorCancelar) return;
     const boton = document.getElementById('boton-confirmar-cancelar');
     const mensaje = document.getElementById('cancelar-error');
@@ -426,5 +441,100 @@ async function publicarResena(evento) {
         if (errorServidor.campo) marcarCampo(errorServidor.campo);
     } finally {
         botonNormal(boton, 'Publicar reseña');
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   PEDIDOS DE LA TIENDA (GET /api/tienda/pedidos)
+   ---------------------------------------------------------------------------- */
+
+const ESTADOS_PEDIDO = { pagado: 'Preparando', enviado: 'En camino', entregado: 'Entregado', cancelado: 'Cancelado' };
+
+function pintarPedidos(lista) {
+    if (!pedidos.length) {
+        lista.innerHTML = crearEstado({
+            titulo: 'Aún no has comprado en la tienda',
+            texto: 'Larimar, ámbar, café y artesanía de talleres dominicanos, con entrega en tu hotel.',
+            accion: '<a href="tienda.html" class="btn-primario">Ir a la tienda</a>'
+        });
+        return;
+    }
+    lista.innerHTML = pedidos.map((p) => `
+        <article class="reserva pedido es-${p.estado === 'cancelado' ? 'canceladas' : 'proximas'}">
+            <div class="pedido-fotos" aria-hidden="true">
+                ${p.lineas.slice(0, 4).map((l) => `<img src="${escaparHtml(urlRecurso(l.imagen || ''))}" alt="" loading="lazy">`).join('')}
+            </div>
+            <div class="reserva-cuerpo">
+                <div class="reserva-encabezado">
+                    <span class="reserva-estado">${ESTADOS_PEDIDO[p.estado]}</span>
+                    <span class="reserva-codigo" translate="no">${escaparHtml(p.codigo)}</span>
+                </div>
+                <h3>Pedido de artesanía</h3>
+                <ul class="pedido-lineas">
+                    ${p.lineas.map((l) => `<li><span>${l.cantidad} x <span translate="no">${escaparHtml(l.nombre)}</span></span><span>${formatoMoneda.format(l.precio * l.cantidad)}</span></li>`).join('')}
+                </ul>
+                <ul class="reserva-detalles">
+                    <li><span>Fecha</span>${escaparHtml(formatoFechaLarga.format(new Date(p.fecha)))}</li>
+                    <li><span>Entrega</span>${escaparHtml(CATALOGOS.entregasPedido[p.entrega].nombre)}: <span translate="no">${escaparHtml(p.direccion)}</span></li>
+                    <li><span>Total</span><strong>${formatoMoneda.format(p.total)}</strong>${p.envio ? ` (envío ${formatoMoneda.format(p.envio)})` : ''}</li>
+                    <li><span>Pago</span>${chipPago(p.pago)}</li>
+                </ul>
+                <div class="reserva-acciones">
+                    ${p.estado === 'pagado' ? `<button type="button" class="boton-cancelar" data-cancelar-pedido="${p.id}">Cancelar pedido</button>` : ''}
+                    <button type="button" class="boton-recibo" data-recibo-pedido="${p.id}">Ver recibo</button>
+                </div>
+            </div>
+        </article>`).join('');
+}
+
+function verReciboPedido(id) {
+    const p = pedidos.find((x) => x.id === id);
+    if (!p) return;
+    const usuario = obtenerUsuario();
+    abrirRecibo({
+        codigo: p.codigo,
+        etiquetaCodigo: 'Código del pedido',
+        etiquetaServicio: 'Productos',
+        publicacion: p.lineas.map((l) => `${l.cantidad} x ${l.nombre}`).join(', '),
+        etiquetaFechas: 'Entrega',
+        fechas: `${CATALOGOS.entregasPedido[p.entrega].nombre}: ${p.direccion}`,
+        cliente: usuario ? usuario.nombre : '',
+        total: p.total,
+        pago: p.pago
+    });
+}
+
+function pedirCancelacionPedido(id) {
+    reservaPorCancelar = null;
+    pedidoPorCancelar = pedidos.find((p) => p.id === id);
+    if (!pedidoPorCancelar) return;
+    document.getElementById('cancelar-titulo').textContent = 'Cancelar pedido';
+    document.getElementById('cancelar-intro').innerHTML = `Vas a cancelar el pedido <strong translate="no">${escaparHtml(pedidoPorCancelar.codigo)}</strong>. Los productos vuelven a la tienda.`;
+    const pago = pedidoPorCancelar.pago;
+    document.getElementById('cancelar-reembolso').textContent =
+        `Te reembolsaremos ${formatoMoneda.format(pedidoPorCancelar.total)} a tu ${pago.marca} terminada en ${pago.ultimos4}.`;
+    document.getElementById('cancelar-error').classList.remove('visible');
+    abrirModal('modal-cancelar');
+}
+
+async function confirmarCancelacionPedido() {
+    const boton = document.getElementById('boton-confirmar-cancelar');
+    const mensaje = document.getElementById('cancelar-error');
+    botonCargando(boton, 'Cancelando...');
+    try {
+        const resultado = await apiFetch(`/tienda/pedidos/${pedidoPorCancelar.id}/cancelar`, { method: 'PATCH' });
+        pedidoPorCancelar.estado = 'cancelado';
+        pedidoPorCancelar.pago.estado = 'reembolsado';
+        pedidoPorCancelar.pago.fechaReembolso = new Date().toISOString();
+        cerrarModal('modal-cancelar');
+        const r = resultado.reembolso;
+        mostrarAviso(`Pedido ${pedidoPorCancelar.codigo} cancelado. Reembolso de ${formatoMoneda.format(r.monto)} a ${r.marca} •••• ${r.ultimos4}.`, 'exito', 7000);
+        pedidoPorCancelar = null;
+        pintarLista();
+    } catch (error) {
+        mensaje.textContent = error.message;
+        mensaje.classList.add('visible');
+    } finally {
+        botonNormal(boton, 'Sí, cancelar');
     }
 }

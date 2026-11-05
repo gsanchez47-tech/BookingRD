@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Combos de hotel y tours | BookingRD</title>
+    <meta name="description" content="Paquetes de alojamiento y excursiones en República Dominicana con descuento: Samaná, Bayahíbe, Punta Cana, Costa Norte, Jarabacoa y más. Reserva todo en un paso.">
+    <meta name="theme-color" content="#003087">
+    <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+    <link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/nunito.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/combos.css">
+</head>
+<body class="pagina-combos">
+    <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
+    <!-- Encabezado común. Los elementos con data-sesion se muestran según la
+         sesión activa (comun.js: aplicarEstadoSesion). -->
+    <header class="header-principal">
+        <div class="contenedor header-fila">
+            <a href="index.html" class="marca" aria-label="BookingRD, página de inicio">
+                <span class="marca-sello" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                <span>Booking<b>RD</b></span>
+            </a>
+
+            <nav class="nav-principal" aria-label="Principal">
+                <a href="explorar.html?tipo=hotel" data-nav="alojamiento">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad" data-nav="actividades">Actividades</a>
+                <a href="combos.html" data-nav="combos" aria-current="page">Combos</a>
+                <a href="autos.html" data-nav="autos">Autos</a>
+                <a href="ruta.html" data-nav="ruta">En ruta</a>
+                <a href="tienda.html" data-nav="tienda">Tienda</a>
+            </nav>
+
+            <div class="header-acciones">
+                <div class="preferencias" data-preferencias></div>
+
+                <div class="acciones-escritorio" data-sesion="invitado">
+                    <a href="login.html" class="enlace-header">Iniciar sesión</a>
+                    <a href="registro.html" class="btn-primario btn-chico">Crear cuenta</a>
+                </div>
+                <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <a href="mis-reservas.html?vista=guardados" class="enlace-header enlace-guardados" data-sesion="cliente" hidden aria-label="Guardados">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6s-7.6-4.6-9.4-9.3C1.4 8 3.4 4.6 6.9 4.6c2 0 3.6 1.1 4.6 2.7h1c1-1.6 2.6-2.7 4.6-2.7 3.5 0 5.5 3.4 4.3 6.7-1.8 4.7-9.4 9.3-9.4 9.3z"/></svg>
+                        <span class="contador-favoritos" data-contador-favoritos hidden>0</span>
+                    </a>
+                    <a href="mis-reservas.html" class="enlace-header" data-sesion="cliente" hidden>Mis reservas</a>
+                    <a href="panel-empresa.html" class="enlace-header" data-sesion="empresa" hidden>Mi panel</a>
+                    <a href="admin.html" class="enlace-header" data-sesion="admin" hidden>Administración</a>
+                    <span class="usuario-chip">
+                        <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                        <span data-nombre-usuario></span>
+                    </span>
+                    <button type="button" class="boton-enlace" data-accion="cerrar-sesion">Salir</button>
+                </div>
+
+                <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-expanded="false" aria-controls="menu-movil" aria-label="Abrir menú">
+                    <span aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-movil" id="menu-movil">
+            <nav aria-label="Menú móvil">
+                <a href="explorar.html?tipo=hotel">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="combos.html">Combos con descuento</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <a href="ruta.html">Ruta del Parador y asistencia vial</a>
+                <a href="tienda.html">Tienda de artesanía</a>
+                <a href="index.html#destinos">Destinos</a>
+                <a href="registro.html?tipo=empresa">Para empresas</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="contenido">
+        <header class="cabecera-caribe cabecera-foto" style="--foto-cabecera: url('../img/paginas/combos-viajera.jpg')">
+            <div class="contenedor">
+                <nav class="migas" aria-label="Ruta de navegación">
+                    <a href="index.html">Inicio</a>
+                    <span aria-hidden="true">/</span>
+                    <span>Combos</span>
+                </nav>
+                <p class="etiqueta-caribe roja"><span class="bandera-mini" aria-hidden="true"><i></i><b></b></span>Combos con descuento</p>
+                <h1>Tu hotel y tus tours, <em>en un solo paso</em></h1>
+                <p class="cabecera-entrada">Cada combo junta un alojamiento con las excursiones del destino y las reparte en los días de tu estadía. Eliges la llegada, ves el ahorro al instante y pagas una sola vez.</p>
+            </div>
+        </header>
+
+        <div class="contenedor layout-lateral">
+            <aside class="panel-lateral" aria-label="Filtros de combos">
+                <fieldset>
+                    <legend>Destino</legend>
+                    <div class="opciones-lateral" id="filtro-destino-combo"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Ordenar por</legend>
+                    <div class="opciones-lateral">
+                        <label><input type="radio" name="orden-combo" value="destacados" checked><span>Destacados</span></label>
+                        <label><input type="radio" name="orden-combo" value="ahorro"><span>Mayor ahorro</span></label>
+                        <label><input type="radio" name="orden-combo" value="precio"><span>Menor precio</span></label>
+                    </div>
+                </fieldset>
+                <p class="panel-nota">
+                    <strong>Cómo funciona</strong>
+                    El descuento se aplica a cada parte del combo. Recibes un código de reserva por el hotel y otro por cada tour, y puedes verlos juntos en Mis reservas.
+                </p>
+            </aside>
+
+            <section aria-labelledby="titulo-lista-combos">
+                <div class="resultado-cabecera">
+                    <h2 id="titulo-lista-combos" class="visualmente-oculto">Combos disponibles</h2>
+                    <p id="conteo-combos" aria-live="polite"></p>
+                </div>
+                <ul class="combos-lista" id="lista-combos"></ul>
+            </section>
+        </div>
+    </main>
+
+    <!-- Armar el combo: fechas, personas y desglose con el descuento.
+         GET /api/combos/:id/cotizacion y POST /api/combos/:id/reservar -->
+    <dialog class="modal modal-combo" id="modal-combo" aria-labelledby="combo-titulo">
+        <form class="armar-combo" id="form-combo" novalidate>
+            <header class="armar-cabecera">
+                <img id="combo-imagen" alt="" width="96" height="96">
+                <div>
+                    <p class="etiqueta-caribe">Arma tu combo</p>
+                    <h2 id="combo-titulo" translate="no"></h2>
+                    <p id="combo-lema"></p>
+                </div>
+                <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+            </header>
+
+            <div class="fila-campos dos">
+                <div class="campo">
+                    <label for="combo-entrada">Llegada</label>
+                    <input type="date" id="combo-entrada" required>
+                </div>
+                <div class="campo">
+                    <label for="combo-noches">Noches</label>
+                    <select id="combo-noches"></select>
+                </div>
+            </div>
+            <div class="fila-campos dos">
+                <div class="campo">
+                    <label for="combo-personas">Personas</label>
+                    <input type="number" id="combo-personas" min="1" max="30" value="2" inputmode="numeric">
+                </div>
+                <div class="campo">
+                    <label for="combo-habitaciones">Habitaciones</label>
+                    <input type="number" id="combo-habitaciones" min="1" max="10" value="1" inputmode="numeric">
+                </div>
+            </div>
+
+            <div class="combo-desglose" id="combo-desglose" aria-live="polite"></div>
+            <p class="mensaje-formulario error" id="combo-error" role="alert" hidden></p>
+
+            <button type="submit" class="btn-rojo btn-bloque" id="boton-reservar-combo" disabled>Reservar combo</button>
+            <p class="nota-reserva">Cancelación gratuita de cada parte hasta un día antes, desde Mis reservas.</p>
+        </form>
+    </dialog>
+
+    <!-- Pago de la reserva (pasarela SIMULADA: no se realiza ningún cargo real).
+         La reserva se envía con el pago en POST /api/reservas. -->
+    <dialog class="modal modal-pago" id="modal-pago" aria-labelledby="pago-titulo">
+        <form class="pago" id="form-pago" novalidate>
+            <header class="pago-cabecera">
+                <div>
+                    <p class="etiqueta-caribe">Modo de prueba</p>
+                    <h2 id="pago-titulo">Pago seguro</h2>
+                </div>
+                <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
+            </header>
+
+            <div class="pago-pedido">
+                <img id="pago-imagen" alt="" width="72" height="72">
+                <div>
+                    <strong id="pago-publicacion" translate="no"></strong>
+                    <span id="pago-fechas"></span>
+                </div>
+                <p class="pago-total"><span>Total</span><strong id="pago-total"></strong></p>
+            </div>
+
+            <fieldset class="pago-metodos">
+                <legend>Cómo quieres pagar</legend>
+                <label class="pago-metodo">
+                    <input type="radio" name="pago-metodo" value="tarjeta" checked>
+                    <span><strong>Tarjeta de crédito o débito</strong><small>Se cobra ahora y recibes el recibo al instante.</small></span>
+                </label>
+                <label class="pago-metodo">
+                    <input type="radio" name="pago-metodo" value="en_destino">
+                    <span><strong id="pago-destino-titulo">Pagar en el destino</strong><small id="pago-destino-texto">Pagas al llegar, directamente a la empresa.</small></span>
+                </label>
+            </fieldset>
+
+            <div class="pago-tarjeta" id="pago-tarjeta">
+                <div class="tarjeta-visual" id="tarjeta-visual" aria-hidden="true" translate="no">
+                    <span class="tarjeta-chip"></span>
+                    <span class="tarjeta-marca" id="tarjeta-visual-marca">BookingRD</span>
+                    <span class="tarjeta-numero" id="tarjeta-visual-numero">•••• •••• •••• ••••</span>
+                    <span class="tarjeta-pie">
+                        <span id="tarjeta-visual-titular">NOMBRE DEL TITULAR</span>
+                        <span id="tarjeta-visual-vence">MM/AA</span>
+                    </span>
+                </div>
+
+                <div class="campo">
+                    <label for="pago-titular">Nombre en la tarjeta</label>
+                    <input type="text" id="pago-titular" autocomplete="cc-name" maxlength="100" placeholder="Como aparece en la tarjeta">
+                </div>
+                <div class="campo">
+                    <label for="pago-numero">Número de tarjeta</label>
+                    <input type="text" id="pago-numero" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="1234 5678 9012 3456">
+                    <small class="campo-ayuda" id="pago-marca-texto">Visa, Mastercard o American Express.</small>
+                </div>
+                <div class="fila-campos dos">
+                    <div class="campo">
+                        <label for="pago-vencimiento">Vencimiento</label>
+                        <input type="text" id="pago-vencimiento" inputmode="numeric" autocomplete="cc-exp" maxlength="5" placeholder="MM/AA">
+                    </div>
+                    <div class="campo">
+                        <label for="pago-cvv">Código de seguridad</label>
+                        <input type="password" id="pago-cvv" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="CVV">
+                    </div>
+                </div>
+
+                <details class="tarjetas-prueba">
+                    <summary>Tarjetas de prueba para la demostración</summary>
+                    <ul id="lista-tarjetas-prueba"></ul>
+                    <p>Cualquier nombre, un vencimiento futuro y cualquier CVV.</p>
+                </details>
+            </div>
+
+            <p class="mensaje-formulario error" id="pago-error" role="alert" hidden></p>
+
+            <p class="pago-aviso">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3M5 11h14v10H5z"></path></svg>
+                Simulación académica: no se realiza ningún cargo y BookingRD no guarda el número completo ni el código de seguridad.
+            </p>
+
+            <button type="submit" class="btn-primario btn-bloque" id="boton-pagar">Pagar</button>
+
+            <div class="pago-procesando" id="pago-procesando" hidden>
+                <span class="spinner spinner-grande" aria-hidden="true"></span>
+                <p id="pago-procesando-texto" aria-live="polite">Conectando con el banco...</p>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Confirmación del combo -->
+    <dialog class="modal" id="modal-confirmacion" aria-labelledby="confirmacion-titulo">
+        <div class="confirmacion">
+            <svg class="confirmacion-icono" viewBox="0 0 84 84" aria-hidden="true">
+                <circle cx="42" cy="42" r="38"></circle>
+                <path d="M26 43 l11 11 l21 -23"></path>
+            </svg>
+            <h2 id="confirmacion-titulo">Combo reservado</h2>
+            <p id="confirmacion-texto"></p>
+            <ul class="confirmacion-reservas" id="confirmacion-reservas"></ul>
+            <p class="confirmacion-pago" id="confirmacion-pago"></p>
+            <div class="modal-acciones">
+                <button type="button" class="btn-outline" data-cerrar-modal>Seguir viendo combos</button>
+                <button type="button" class="btn-outline" id="boton-recibo-combo">Ver recibo</button>
+                <a class="btn-primario" href="mis-reservas.html">Ir a Mis reservas</a>
+            </div>
+        </div>
+    </dialog>
+
+    <footer class="pie">
+        <div class="contenedor">
+            <div class="pie-rejilla">
+                <div class="pie-marca">
+                    <a href="index.html" class="marca">
+                        <span class="marca-sello" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                        <span>Booking<b>RD</b></span>
+                    </a>
+                    <p>Hoteles, villas, excursiones y autos de empresas turísticas dominicanas, con disponibilidad real y confirmación inmediata.</p>
+                </div>
+                <div>
+                    <h2>Explorar</h2>
+                    <ul>
+                        <li><a href="explorar.html?tipo=hotel">Alojamiento</a></li>
+                        <li><a href="explorar.html?tipo=actividad">Actividades</a></li>
+                        <li><a href="combos.html">Combos</a></li>
+                        <li><a href="autos.html">Alquiler de autos</a></li>
+                        <li><a href="index.html#destinos">Destinos</a></li>
+                        <li><a href="tienda.html">Tienda de artesanía</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h2>Empresas</h2>
+                    <ul>
+                        <li><a href="registro.html?tipo=empresa">Publicar mi empresa</a></li>
+                        <li><a href="login.html">Entrar al panel</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h2>Ayuda</h2>
+                    <ul>
+                        <li><a href="index.html#contacto">Contacto</a></li>
+                        <li><a href="mis-reservas.html">Mis reservas</a></li>
+                        <li><a href="ruta.html#asistencia">Asistencia vial</a></li>
+                        <li><a href="autos.html#preguntas">Preguntas sobre autos</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="pie-legal">
+                <span>&copy; 2026 BookingRD. Proyecto académico.</span>
+                <span>Clima por <a href="https://open-meteo.com" rel="noopener" target="_blank">Open-Meteo</a>. Tasas por <a href="https://www.exchangerate-api.com" rel="noopener" target="_blank">Exchange Rate API</a>.</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/pagos.js"></script>
+    <script src="js/combos-comun.js"></script>
+    <script src="js/combos.js"></script>
+</body>
+</html>

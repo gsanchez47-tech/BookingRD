@@ -105,6 +105,8 @@ app.use(express.json({ limit: '20kb' }));
 
 app.use('/api/auth', limiteAutenticacion, rutasAuth);
 app.use('/api/reservas', rutasReservas);
+app.use('/api/combos', require('./routes/combos.routes'));
+app.use('/api/tienda', require('./routes/tienda.routes'));
 app.use('/api/empresa', rutasEmpresa);
 app.use('/api/admin', rutasAdmin);
 app.use('/api', rutasCatalogo);

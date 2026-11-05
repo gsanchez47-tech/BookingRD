@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ruta del Parador y asistencia vial | BookingRD</title>
+    <meta name="description" content="Paradas para comer en la Autopista Duarte, la Autovía del Este, la Carretera Sánchez y la costa norte de República Dominicana, y asistencia vial con un toque.">
+    <meta name="theme-color" content="#003087">
+    <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+    <link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/nunito.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/ruta.css">
+</head>
+<body class="pagina-ruta">
+    <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
+    <!-- Encabezado común. Los elementos con data-sesion se muestran según la
+         sesión activa (comun.js: aplicarEstadoSesion). -->
+    <header class="header-principal">
+        <div class="contenedor header-fila">
+            <a href="index.html" class="marca" aria-label="BookingRD, página de inicio">
+                <span class="marca-sello" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                <span>Booking<b>RD</b></span>
+            </a>
+
+            <nav class="nav-principal" aria-label="Principal">
+                <a href="explorar.html?tipo=hotel" data-nav="alojamiento">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad" data-nav="actividades">Actividades</a>
+                <a href="combos.html" data-nav="combos">Combos</a>
+                <a href="autos.html" data-nav="autos">Autos</a>
+                <a href="ruta.html" data-nav="ruta" aria-current="page">En ruta</a>
+                <a href="tienda.html" data-nav="tienda">Tienda</a>
+            </nav>
+
+            <div class="header-acciones">
+                <div class="preferencias" data-preferencias></div>
+
+                <div class="acciones-escritorio" data-sesion="invitado">
+                    <a href="login.html" class="enlace-header">Iniciar sesión</a>
+                    <a href="registro.html" class="btn-primario btn-chico">Crear cuenta</a>
+                </div>
+                <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <a href="mis-reservas.html?vista=guardados" class="enlace-header enlace-guardados" data-sesion="cliente" hidden aria-label="Guardados">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6s-7.6-4.6-9.4-9.3C1.4 8 3.4 4.6 6.9 4.6c2 0 3.6 1.1 4.6 2.7h1c1-1.6 2.6-2.7 4.6-2.7 3.5 0 5.5 3.4 4.3 6.7-1.8 4.7-9.4 9.3-9.4 9.3z"/></svg>
+                        <span class="contador-favoritos" data-contador-favoritos hidden>0</span>
+                    </a>
+                    <a href="mis-reservas.html" class="enlace-header" data-sesion="cliente" hidden>Mis reservas</a>
+                    <a href="panel-empresa.html" class="enlace-header" data-sesion="empresa" hidden>Mi panel</a>
+                    <a href="admin.html" class="enlace-header" data-sesion="admin" hidden>Administración</a>
+                    <span class="usuario-chip">
+                        <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                        <span data-nombre-usuario></span>
+                    </span>
+                    <button type="button" class="boton-enlace" data-accion="cerrar-sesion">Salir</button>
+                </div>
+
+                <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-expanded="false" aria-controls="menu-movil" aria-label="Abrir menú">
+                    <span aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-movil" id="menu-movil">
+            <nav aria-label="Menú móvil">
+                <a href="explorar.html?tipo=hotel">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="combos.html">Combos con descuento</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <a href="ruta.html">Ruta del Parador y asistencia vial</a>
+                <a href="tienda.html">Tienda de artesanía</a>
+                <a href="index.html#destinos">Destinos</a>
+                <a href="registro.html?tipo=empresa">Para empresas</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="contenido">
+        <header class="cabecera-caribe cabecera-foto cabecera-ruta" style="--foto-cabecera: url('../img/paginas/ruta-autobuses.jpg')">
+            <div class="contenedor">
+                <nav class="migas" aria-label="Ruta de navegación">
+                    <a href="index.html">Inicio</a>
+                    <span aria-hidden="true">/</span>
+                    <span>En ruta</span>
+                </nav>
+                <p class="etiqueta-caribe roja"><span class="bandera-mini" aria-hidden="true"><i></i><b></b></span>Ruta del Parador</p>
+                <h1>Para, come y sigue <em>sin perderte nada</em></h1>
+                <p class="cabecera-entrada">Las paradas de siempre en las carreteras del país: chicharrón en la Duarte, catibías en el este, dulces en el sur y quesos en la costa norte. Y si algo pasa en el camino, la asistencia está a un toque.</p>
+            </div>
+        </header>
+
+        <!-- Asistencia vial: llamadas directas y grúas por provincia -->
+        <section class="contenedor asistencia" id="asistencia" aria-labelledby="titulo-asistencia">
+            <div class="asistencia-panel">
+                <div class="asistencia-texto">
+                    <h2 id="titulo-asistencia">Asistencia vial <em>24/7</em></h2>
+                    <p>Goma ponchada en la montaña, el carro atascado en la arena o una avería en la autopista: llama primero a emergencias y, si necesitas remolque, a una grúa de la provincia donde estás.</p>
+                </div>
+                <div class="asistencia-llamadas">
+                    <a class="llamada llamada-emergencia" href="tel:911">
+                        <strong>911</strong>
+                        <span>Emergencias, accidentes y asistencia en carretera</span>
+                    </a>
+                    <a class="llamada" href="tel:*462">
+                        <strong>*462</strong>
+                        <span>Línea de atención del Gobierno: orientación y servicios públicos</span>
+                    </a>
+                    <button type="button" class="llamada llamada-ubicacion" id="boton-ubicacion">
+                        <strong>Mi ubicación</strong>
+                        <span id="texto-ubicacion">Copia un enlace del mapa con tu posición para dárselo a la grúa</span>
+                    </button>
+                </div>
+                <div class="gruas">
+                    <div class="campo">
+                        <label for="provincia-grua">Grúas en la provincia</label>
+                        <select id="provincia-grua"></select>
+                    </div>
+                    <ul class="gruas-lista" id="gruas-lista" aria-live="polite"></ul>
+                    <p class="gruas-aviso">Red de grúas de ejemplo para la demostración académica: los nombres y teléfonos no son reales.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="contenedor layout-lateral">
+            <aside class="panel-lateral" aria-label="Filtros de la ruta">
+                <fieldset>
+                    <legend>Carretera</legend>
+                    <div class="opciones-lateral" id="filtro-carretera"></div>
+                </fieldset>
+                <fieldset>
+                    <legend>Qué se te antoja</legend>
+                    <div class="opciones-lateral" id="filtro-antojo"></div>
+                </fieldset>
+                <p class="panel-nota">
+                    <strong>Antes de salir</strong>
+                    Lleva efectivo en pesos para los paradores y los peajes, revisa la goma de repuesto y evita manejar de noche por la montaña.
+                </p>
+            </aside>
+
+            <section aria-labelledby="titulo-paradas">
+                <div class="resultado-cabecera">
+                    <h2 id="titulo-paradas" class="visualmente-oculto">Paradas en la carretera</h2>
+                    <p id="conteo-paradas" aria-live="polite"></p>
+                    <a class="btn-outline btn-chico" href="autos.html">Alquilar un auto</a>
+                </div>
+                <div id="lista-rutas"></div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="pie">
+        <div class="contenedor">
+            <div class="pie-rejilla">
+                <div class="pie-marca">
+                    <a href="index.html" class="marca">
+                        <span class="marca-sello" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                        <span>Booking<b>RD</b></span>
+                    </a>
+                    <p>Hoteles, villas, excursiones y autos de empresas turísticas dominicanas, con disponibilidad real y confirmación inmediata.</p>
+                </div>
+                <div>
+                    <h2>Explorar</h2>
+                    <ul>
+                        <li><a href="explorar.html?tipo=hotel">Alojamiento</a></li>
+                        <li><a href="explorar.html?tipo=actividad">Actividades</a></li>
+                        <li><a href="combos.html">Combos</a></li>
+                        <li><a href="autos.html">Alquiler de autos</a></li>
+                        <li><a href="index.html#destinos">Destinos</a></li>
+                        <li><a href="tienda.html">Tienda de artesanía</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h2>Empresas</h2>
+                    <ul>
+                        <li><a href="registro.html?tipo=empresa">Publicar mi empresa</a></li>
+                        <li><a href="login.html">Entrar al panel</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h2>Ayuda</h2>
+                    <ul>
+                        <li><a href="index.html#contacto">Contacto</a></li>
+                        <li><a href="mis-reservas.html">Mis reservas</a></li>
+                        <li><a href="ruta.html#asistencia">Asistencia vial</a></li>
+                        <li><a href="autos.html#preguntas">Preguntas sobre autos</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="pie-legal">
+                <span>&copy; 2026 BookingRD. Proyecto académico.</span>
+                <span>Clima por <a href="https://open-meteo.com" rel="noopener" target="_blank">Open-Meteo</a>. Tasas por <a href="https://www.exchangerate-api.com" rel="noopener" target="_blank">Exchange Rate API</a>.</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/ruta.js"></script>
+</body>
+</html>

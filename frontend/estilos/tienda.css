@@ -1,0 +1,274 @@
+/* Tienda de artesanía: catálogo con filtros a la izquierda, carrito
+   flotante y ventana de compra con el pago simulado. */
+
+/* @incluir lateral.css */
+/* @incluir pago.css */
+
+.cabecera-tienda {
+    background-position: center 30%;
+}
+
+.estado-vacio {
+    grid-column: 1 / -1;
+    padding: var(--e-6);
+    border: 1px dashed var(--linea-fuerte);
+    border-radius: 16px;
+    color: var(--tinta-2);
+    text-align: center;
+}
+
+.productos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--e-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.producto {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+    border: 1px solid var(--linea);
+    border-radius: 18px;
+    background: var(--superficie);
+}
+
+.producto img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+}
+
+.producto-cuerpo {
+    display: grid;
+    align-content: start;
+    gap: var(--e-2);
+    padding: var(--e-4) var(--e-4) var(--e-2);
+}
+
+.producto-categoria {
+    color: var(--caribe-deep);
+    font-size: var(--t-xs);
+    font-weight: 900;
+}
+
+.producto h3 {
+    font-size: var(--t-l);
+    line-height: 1.2;
+}
+
+.producto-cuerpo p {
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+    line-height: 1.5;
+}
+
+.producto-cuerpo .producto-origen {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.producto-pie {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0 var(--e-3);
+    padding: var(--e-3) var(--e-4) var(--e-4);
+}
+
+.producto-pie strong {
+    color: var(--azul);
+    font-family: 'Fraunces', serif;
+    font-size: var(--t-l);
+}
+
+.producto-pie small {
+    grid-row: 2;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+}
+
+.producto-pie button {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+}
+
+/* Botón flotante del carrito */
+.boton-carrito {
+    position: fixed;
+    right: var(--e-4);
+    bottom: var(--e-4);
+    z-index: 30;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-2);
+    min-height: 52px;
+    padding: 0 var(--e-5);
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(135deg, var(--rojo) 0%, #9E0D1E 100%);
+    box-shadow: 0 16px 34px -14px rgba(206, 17, 38, 0.7);
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.boton-carrito svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.boton-carrito strong {
+    display: grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--rojo);
+    font-size: var(--t-xs);
+}
+
+/* Carrito */
+dialog.modal-carrito {
+    width: min(96vw, 560px);
+}
+
+.carrito {
+    display: grid;
+    gap: var(--e-4);
+    padding: var(--e-5);
+}
+
+.carrito-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.carrito-cabecera h2 {
+    font-size: var(--t-xl);
+}
+
+.carrito-lineas {
+    display: grid;
+    gap: var(--e-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.carrito-lineas li {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    grid-template-areas: "foto nombre importe" "foto cantidad importe";
+    align-items: center;
+    gap: 4px var(--e-3);
+}
+
+.carrito-lineas img {
+    grid-area: foto;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.carrito-nombre {
+    grid-area: nombre;
+    font-size: var(--t-s);
+    font-weight: 800;
+}
+
+.carrito-cantidad {
+    grid-area: cantidad;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-2);
+}
+
+.carrito-cantidad button {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--linea-fuerte);
+    border-radius: 8px;
+    background: var(--superficie);
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.carrito-cantidad button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.carrito-lineas strong {
+    grid-area: importe;
+}
+
+.carrito-vacio {
+    display: block !important;
+    color: var(--tinta-3);
+    text-align: center;
+}
+
+.carrito-entrega {
+    display: grid;
+    gap: var(--e-2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.carrito-entrega legend {
+    margin-bottom: var(--e-2);
+    font-weight: 900;
+}
+
+.carrito-importes {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: var(--e-3) var(--e-4);
+    border-radius: 12px;
+    background: var(--superficie-suave);
+}
+
+.carrito-importes div {
+    display: flex;
+    justify-content: space-between;
+}
+
+.carrito-importes dd {
+    margin: 0;
+    font-weight: 800;
+}
+
+.carrito-total {
+    padding-top: 4px;
+    border-top: 1px solid var(--linea);
+    font-size: var(--t-l);
+}
+
+.carrito-total dd {
+    color: var(--azul);
+}
+
+.confirmacion .modal-acciones {
+    flex-wrap: wrap;
+}
+
+.pagina-tienda .pie {
+    margin-top: 0;
+    padding-bottom: 90px;
+}
