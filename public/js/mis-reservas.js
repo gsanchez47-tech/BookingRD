@@ -248,7 +248,7 @@ function crearTarjetaReserva(reserva) {
     const resena = misResenas.find((r) => r.idReserva === reserva.id);
     const etiquetas = { proximas: 'Confirmada', pasadas: 'Realizada', canceladas: 'Cancelada' };
     const media = reserva.imagen
-        ? `<img src="${escaparHtml(urlRecurso(reserva.imagen))}" alt="" loading="lazy" onerror="this.parentElement.classList.add('sin-foto')">`
+        ? `<img src="${escaparHtml(urlMiniatura(reserva.imagen))}" alt="" loading="lazy" onerror="this.parentElement.classList.add('sin-foto')">`
         : '';
 
     let accion = '';
@@ -325,7 +325,7 @@ function pedirCancelacion(id) {
     document.getElementById('cancelar-nombre').textContent = reservaPorCancelar.publicacion;
     const pago = reservaPorCancelar.pago;
     document.getElementById('cancelar-reembolso').textContent = pago && pago.metodo === 'tarjeta' && pago.estado === 'pagado'
-        ? `Te reembolsaremos ${formatoMoneda.format(reservaPorCancelar.total)} a tu ${pago.marca} terminada en ${pago.ultimos4}.`
+        ? `Te reembolsaremos ${importeCobrado(pago)} a tu ${pago.marca} terminada en ${pago.ultimos4}.`
         : 'No se realizó ningún cobro por adelantado, así que no hay nada que reembolsar.';
     document.getElementById('cancelar-error').classList.remove('visible');
     abrirModal('modal-cancelar');
@@ -348,7 +348,7 @@ async function confirmarCancelacion() {
         cerrarModal('modal-cancelar');
         const r = resultado && resultado.reembolso;
         mostrarAviso(r
-            ? `Reserva ${reservaPorCancelar.codigo} cancelada. Reembolso de ${formatoMoneda.format(r.monto)} a ${r.marca} •••• ${r.ultimos4}.`
+            ? `Reserva ${reservaPorCancelar.codigo} cancelada. Reembolso de ${importeCobrado(r)} a ${r.marca} •••• ${r.ultimos4}.`
             : `Reserva ${reservaPorCancelar.codigo} cancelada.`, 'exito', 7000);
         pintarCifras();
         pintarConteos();
@@ -512,7 +512,7 @@ function pedirCancelacionPedido(id) {
     document.getElementById('cancelar-intro').innerHTML = `Vas a cancelar el pedido <strong translate="no">${escaparHtml(pedidoPorCancelar.codigo)}</strong>. Los productos vuelven a la tienda.`;
     const pago = pedidoPorCancelar.pago;
     document.getElementById('cancelar-reembolso').textContent =
-        `Te reembolsaremos ${formatoMoneda.format(pedidoPorCancelar.total)} a tu ${pago.marca} terminada en ${pago.ultimos4}.`;
+        `Te reembolsaremos ${importeCobrado(pago)} a tu ${pago.marca} terminada en ${pago.ultimos4}.`;
     document.getElementById('cancelar-error').classList.remove('visible');
     abrirModal('modal-cancelar');
 }
@@ -528,7 +528,7 @@ async function confirmarCancelacionPedido() {
         pedidoPorCancelar.pago.fechaReembolso = new Date().toISOString();
         cerrarModal('modal-cancelar');
         const r = resultado.reembolso;
-        mostrarAviso(`Pedido ${pedidoPorCancelar.codigo} cancelado. Reembolso de ${formatoMoneda.format(r.monto)} a ${r.marca} •••• ${r.ultimos4}.`, 'exito', 7000);
+        mostrarAviso(`Pedido ${pedidoPorCancelar.codigo} cancelado. Reembolso de ${importeCobrado(r)} a ${r.marca} •••• ${r.ultimos4}.`, 'exito', 7000);
         pedidoPorCancelar = null;
         pintarLista();
     } catch (error) {

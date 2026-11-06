@@ -2048,6 +2048,51 @@ dialog.modal.cerrando {
     color: var(--tinta-3);
 }
 
+.preferencias-otro {
+    display: grid;
+    gap: 4px;
+    margin-top: 4px;
+    font-size: var(--t-xs);
+    font-weight: 700;
+    color: var(--tinta-2);
+}
+
+.preferencias-otro select {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--linea);
+    border-radius: var(--r-s);
+    background: var(--superficie);
+    font: inherit;
+    font-size: var(--t-s);
+    color: var(--tinta);
+}
+
+.preferencias-otro.activo select {
+    border-color: var(--azul);
+    background: var(--azul-tenue);
+    color: var(--azul);
+}
+
+/* Traducción automática: se ocultan la barra y las ventanas del traductor
+   (el idioma se cambia desde el selector del encabezado). */
+html.traduccion-automatica body {
+    top: 0 !important;
+    position: static !important;
+}
+
+html.traduccion-automatica .skiptranslate:not(#traductor-google),
+html.traduccion-automatica iframe.goog-te-banner-frame,
+html.traduccion-automatica #goog-gt-tt,
+html.traduccion-automatica .goog-te-balloon-frame {
+    display: none !important;
+}
+
+html.traduccion-automatica font {
+    background: none !important;
+    box-shadow: none !important;
+}
+
 .nota-moneda {
     display: block;
     margin-top: 4px;
@@ -3282,6 +3327,62 @@ dialog.modal-pago {
 .pago-metodo small {
     color: var(--tinta-2);
     font-size: var(--t-s);
+}
+
+/* Moneda del cobro: pesos o dólares */
+.pago-monedas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e-2);
+    margin: 0 0 var(--e-2);
+    padding: 0;
+    border: 0;
+}
+
+.pago-monedas legend {
+    margin-bottom: var(--e-2);
+    font-weight: 800;
+}
+
+.pago-moneda {
+    display: flex;
+    gap: var(--e-2);
+    align-items: flex-start;
+    padding: 10px var(--e-3);
+    border: 1.5px solid var(--linea);
+    border-radius: var(--r-m);
+    cursor: pointer;
+}
+
+.pago-moneda:has(input:checked) {
+    border-color: var(--azul);
+    background: var(--azul-tenue);
+}
+
+.pago-moneda input {
+    margin-top: 3px;
+    accent-color: var(--azul);
+}
+
+.pago-moneda strong,
+.pago-moneda small {
+    display: block;
+}
+
+.pago-moneda strong {
+    font-size: var(--t-s);
+}
+
+.pago-moneda small {
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+    font-weight: 800;
+}
+
+.pago-moneda-nota {
+    grid-column: 1 / -1;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
 }
 
 /* Tarjeta: vista previa con los colores del mar Caribe */

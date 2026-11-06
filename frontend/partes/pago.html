@@ -32,6 +32,19 @@
             </fieldset>
 
             <div class="pago-tarjeta" id="pago-tarjeta">
+                <fieldset class="pago-monedas">
+                    <legend>Moneda del cobro</legend>
+                    <label class="pago-moneda">
+                        <input type="radio" name="pago-moneda" value="DOP" checked>
+                        <span><strong>Pesos dominicanos</strong><small id="pago-monto-DOP" translate="no"></small></span>
+                    </label>
+                    <label class="pago-moneda">
+                        <input type="radio" name="pago-moneda" value="USD">
+                        <span><strong>Dólares estadounidenses</strong><small id="pago-monto-USD" translate="no"></small></span>
+                    </label>
+                    <p class="pago-moneda-nota" id="pago-moneda-nota"></p>
+                </fieldset>
+
                 <div class="tarjeta-visual" id="tarjeta-visual" aria-hidden="true" translate="no">
                     <span class="tarjeta-chip"></span>
                     <span class="tarjeta-marca" id="tarjeta-visual-marca">BookingRD</span>

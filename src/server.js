@@ -15,6 +15,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 
 const rutasAuth = require('./routes/auth.routes');
@@ -85,6 +86,9 @@ app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
+
+// Compresión gzip de HTML, CSS, JS y JSON (las fotografías ya van comprimidas).
+app.use(compression());
 
 // CORS habilitado: permite consumir la API desde páginas abiertas con file://.
 // La autenticación usa el encabezado Authorization (no cookies).

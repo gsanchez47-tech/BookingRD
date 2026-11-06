@@ -34,12 +34,27 @@
 
 const CLAVE_PREFERENCIAS = 'bookingrd_preferencias';
 
-/** @returns {{idioma: 'es'|'en', moneda: 'DOP'|'USD'|'EUR'}} */
+/**
+ * Idiomas con traducción automática (código de Google Translate y nombre en
+ * su propio idioma). Español e inglés tienen traducción propia revisada.
+ */
+const IDIOMAS_AUTOMATICOS = {
+    fr: 'Français', pt: 'Português', de: 'Deutsch', it: 'Italiano', ht: 'Kreyòl ayisyen', nl: 'Nederlands',
+    ca: 'Català', gl: 'Galego', eu: 'Euskara', ru: 'Русский', uk: 'Українська', pl: 'Polski', cs: 'Čeština',
+    sk: 'Slovenčina', hu: 'Magyar', ro: 'Română', bg: 'Български', el: 'Ελληνικά', sr: 'Српски', hr: 'Hrvatski',
+    sv: 'Svenska', no: 'Norsk', da: 'Dansk', fi: 'Suomi', is: 'Íslenska', ga: 'Gaeilge', tr: 'Türkçe',
+    ar: 'العربية', he: 'עברית', fa: 'فارسی', ur: 'اردو', hi: 'हिन्दी', bn: 'বাংলা', 'zh-CN': '简体中文',
+    'zh-TW': '繁體中文', ja: '日本語', ko: '한국어', th: 'ไทย', vi: 'Tiếng Việt', id: 'Bahasa Indonesia',
+    ms: 'Bahasa Melayu', tl: 'Filipino', sw: 'Kiswahili', yo: 'Yorùbá', af: 'Afrikaans', gn: 'Avañeʼẽ', qu: 'Runasimi'
+};
+
+/** @returns {{idioma: string, moneda: 'DOP'|'USD'|'EUR'}} idioma: 'es', 'en' o un código de IDIOMAS_AUTOMATICOS */
 function leerPreferencias() {
     try {
         const guardadas = JSON.parse(localStorage.getItem(CLAVE_PREFERENCIAS)) || {};
+        const idioma = String(guardadas.idioma || 'es');
         return {
-            idioma: guardadas.idioma === 'en' ? 'en' : 'es',
+            idioma: idioma === 'en' || Object.hasOwn(IDIOMAS_AUTOMATICOS, idioma) ? idioma : 'es',
             moneda: ['USD', 'EUR'].includes(guardadas.moneda) ? guardadas.moneda : 'DOP'
         };
     } catch (_) {
@@ -49,7 +64,11 @@ function leerPreferencias() {
 
 const PREFERENCIAS = leerPreferencias();
 
-/** Configuración regional para fechas y números según el idioma elegido. */
+/**
+ * Configuración regional para fechas y números según el idioma elegido. Con
+ * traducción automática se usa la del español: el traductor convierte los
+ * textos de las fechas junto con el resto de la página.
+ */
 const LOCALE = PREFERENCIAS.idioma === 'en' ? 'en-US' : 'es-DO';
 
 /* ============================================================================
@@ -517,6 +536,26 @@ function urlRecurso(ruta) {
     return ruta.startsWith('/api/') ? `${ORIGEN_SERVIDOR}${ruta}` : ruta;
 }
 
+/**
+ * Versión reducida (640 px de ancho) de las fotografías del sitio para
+ * tarjetas y listas: img/publicaciones/x.jpg -> img/mini/publicaciones/x.jpg.
+ * Las fotos subidas por las empresas (/api/imagenes/...) y las ilustraciones
+ * se usan tal cual. Si falta la miniatura, se carga la foto original.
+ */
+function urlMiniatura(ruta) {
+    if (/^img\/(destinos|publicaciones|servicios)\/[\w-]+\.jpg$/.test(ruta || '')) return ruta.replace(/^img\//, 'img/mini/');
+    return urlRecurso(ruta);
+}
+
+document.addEventListener('error', (evento) => {
+    const imagen = evento.target;
+    if (imagen.tagName === 'IMG' && imagen.getAttribute('src')?.startsWith('img/mini/')) {
+        // Se detiene el evento para que el manejador de la tarjeta no la marque sin foto.
+        evento.stopPropagation();
+        imagen.src = imagen.getAttribute('src').replace('img/mini/', 'img/');
+    }
+}, true);
+
 /** Símbolo de cada moneda admitida. */
 const SIMBOLOS_MONEDA = { DOP: 'RD$', USD: 'US$', EUR: '€' };
 const formatoEntero = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
@@ -529,6 +568,12 @@ function formatearMonto(valor, moneda = 'DOP') {
 
 /** Importe en pesos dominicanos (paneles, reservas y pagos siempre se muestran en RD$). */
 const formatoMoneda = { format: (pesos) => formatearMonto(pesos, 'DOP') };
+
+/** Importe exacto con centavos (cobros en dólares). */
+function formatearExacto(valor, moneda) {
+    const numero = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor);
+    return `${SIMBOLOS_MONEDA[moneda]}${numero}`;
+}
 const formatoFechaLarga = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 /**
@@ -671,7 +716,7 @@ function crearTarjetaPublicacion(publicacion) {
                     <li>${escaparHtml(textoKilometraje(publicacion.kmPorDia))}</li>
                 </ul>` : '';
     const media = publicacion.imagen
-        ? `<img src="${escaparHtml(urlRecurso(publicacion.imagen))}" alt="" loading="lazy" onerror="this.closest('.tarjeta-media').classList.add('sin-foto'); this.remove();">`
+        ? `<img src="${escaparHtml(urlMiniatura(publicacion.imagen))}" alt="" loading="lazy" onerror="this.closest('.tarjeta-media').classList.add('sin-foto'); this.remove();">`
         : '';
     const insignia = insigniaPublicacion(publicacion);
     return `

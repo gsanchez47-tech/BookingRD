@@ -1,14 +1,14 @@
 /**
  * @file public/js/preferencias.js
- * @description Idioma (español o inglés) y moneda (RD$, US$ o €) elegidos
- *   por el visitante, guardados en este navegador.
+ * @description Idioma y moneda (RD$, US$ o €) elegidos por el visitante,
+ *   guardados en este navegador.
  *
  *   Moneda
  *     Los precios públicos (tarjetas, filtros, detalle) se convierten con las
  *     tasas de GET /api/monedas, guardadas en el navegador durante seis horas.
- *     Las reservas se pagan siempre en pesos dominicanos: los paneles, Mis
- *     reservas y los importes a pagar muestran RD$, con una nota que indica el
- *     importe en pesos cuando se eligió otra moneda.
+ *     Los pagos se hacen en pesos dominicanos o en dólares (se elige en la
+ *     ventana de pago); el euro y las demás monedas son solo una referencia.
+ *     Los paneles y Mis reservas muestran los importes en RD$.
  *
  *   Idioma
  *     El sitio está escrito en español. Con inglés se carga idioma-en.js
@@ -17,6 +17,11 @@
  *     que se agregan después (MutationObserver). Los textos escritos por
  *     usuarios y empresas (nombres, descripciones, reseñas) no se traducen:
  *     se marcan con translate="no".
+ *     Cualquier otro idioma (IDIOMAS_AUTOMATICOS en comun.js) usa la
+ *     traducción automática de Google Translate, que se carga solo al
+ *     elegirlo, respeta translate="no" y traduce también el contenido que se
+ *     agrega después. Requiere conexión a internet; si no carga, se avisa y
+ *     se vuelve al español.
  *
  *   El idioma predeterminado es siempre el español. Al cambiar una
  *   preferencia la página se vuelve a cargar en la misma posición.
@@ -70,7 +75,7 @@ if (PREFERENCIAS.moneda !== 'DOP') {
  */
 function notaMonedaPago(pesos) {
     if (PREFERENCIAS.moneda === 'DOP') return '';
-    return `<small class="nota-moneda">Importe aproximado. Se paga en pesos dominicanos: ${formatoMoneda.format(pesos)}</small>`;
+    return `<small class="nota-moneda">Importe aproximado. Se paga en pesos o en dólares: ${formatoMoneda.format(pesos)}</small>`;
 }
 
 /* ----------------------------------------------------------------------------
@@ -78,6 +83,8 @@ function notaMonedaPago(pesos) {
    ------------------------------------------------------------------------- */
 
 function guardarPreferencias(cambios) {
+    // Al dejar la traducción automática se borra su cookie para que no siga traduciendo.
+    if (cambios.idioma && !Object.hasOwn(IDIOMAS_AUTOMATICOS, cambios.idioma)) borrarCookieTraductor();
     try {
         localStorage.setItem(CLAVE_PREFERENCIAS, JSON.stringify(Object.assign({}, PREFERENCIAS, cambios)));
         sessionStorage.setItem(CLAVE_POSICION, JSON.stringify({ ruta: location.pathname + location.search, y: window.scrollY }));
@@ -102,10 +109,12 @@ function restaurarPosicion() {
 function iniciarSelectorPreferencias() {
     const contenedor = document.querySelector('[data-preferencias]');
     if (!contenedor) return;
-    const etiquetaIdioma = PREFERENCIAS.idioma === 'en' ? 'EN' : 'ES';
+    const etiquetaIdioma = PREFERENCIAS.idioma.slice(0, 2).toUpperCase();
+    const nombreIdioma = PREFERENCIAS.idioma === 'en' ? 'English' : PREFERENCIAS.idioma === 'es' ? 'Español' : IDIOMAS_AUTOMATICOS[PREFERENCIAS.idioma];
+    const automatico = Object.hasOwn(IDIOMAS_AUTOMATICOS, PREFERENCIAS.idioma);
     contenedor.innerHTML = `
         <button type="button" class="preferencias-boton" aria-expanded="false" aria-controls="panel-preferencias"
-                aria-label="Idioma y moneda: ${PREFERENCIAS.idioma === 'en' ? 'English' : 'Español'}, ${SIMBOLOS_MONEDA[PREFERENCIAS.moneda]}">
+                aria-label="Idioma y moneda: ${nombreIdioma}, ${SIMBOLOS_MONEDA[PREFERENCIAS.moneda]}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>
             <span translate="no">${etiquetaIdioma} / ${SIMBOLOS_MONEDA[PREFERENCIAS.moneda]}</span>
         </button>
@@ -114,6 +123,15 @@ function iniciarSelectorPreferencias() {
                 <legend>Idioma</legend>
                 <button type="button" class="preferencias-opcion" data-idioma="es" aria-pressed="${PREFERENCIAS.idioma === 'es'}" translate="no">Español</button>
                 <button type="button" class="preferencias-opcion" data-idioma="en" aria-pressed="${PREFERENCIAS.idioma === 'en'}" translate="no">English</button>
+                <label class="preferencias-otro${automatico ? ' activo' : ''}">
+                    <span>Otro idioma (traducción automática)</span>
+                    <select data-idioma-automatico translate="no">
+                        <option value="">${automatico ? '' : 'Elegir...'}</option>
+                        ${Object.entries(IDIOMAS_AUTOMATICOS)
+                            .sort((a, b) => a[1].localeCompare(b[1]))
+                            .map(([codigo, nombre]) => `<option value="${codigo}"${codigo === PREFERENCIAS.idioma ? ' selected' : ''}>${nombre}</option>`).join('')}
+                    </select>
+                </label>
             </fieldset>
             <fieldset>
                 <legend>Moneda de los precios</legend>
@@ -122,7 +140,7 @@ function iniciarSelectorPreferencias() {
                         <span>${NOMBRES_MONEDA[moneda]}</span><small translate="no">${SIMBOLOS_MONEDA[moneda]}</small>
                     </button>`).join('')}
             </fieldset>
-            <p class="preferencias-nota">Los pagos se realizan en pesos dominicanos. Las demás monedas son una referencia aproximada.</p>
+            <p class="preferencias-nota">Los pagos se realizan en pesos dominicanos o en dólares. El euro es una referencia aproximada.</p>
         </div>`;
 
     const boton = contenedor.querySelector('.preferencias-boton');
@@ -140,6 +158,13 @@ function iniciarSelectorPreferencias() {
             cambiar(false);
             boton.focus();
         }
+    });
+
+    panel.querySelector('[data-idioma-automatico]').addEventListener('change', (evento) => {
+        const codigo = evento.target.value;
+        if (!codigo || codigo === PREFERENCIAS.idioma) return;
+        guardarPreferencias({ idioma: codigo });
+        location.reload();
     });
 
     panel.addEventListener('click', async (evento) => {
@@ -304,10 +329,67 @@ function iniciarTraduccion() {
 }
 
 /* ----------------------------------------------------------------------------
+   Traducción automática (cualquier otro idioma)
+   ------------------------------------------------------------------------- */
+
+const URL_TRADUCTOR = 'https://translate.google.com/translate_a/element.js?cb=iniciarTraductorBookingRD';
+
+function borrarCookieTraductor() {
+    const vencida = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    document.cookie = vencida;
+    document.cookie = `${vencida}; domain=${location.hostname}`;
+    document.cookie = `${vencida}; domain=.${location.hostname}`;
+}
+
+/** Vuelve al español cuando el traductor no está disponible (sin internet, bloqueado...). */
+function traductorNoDisponible() {
+    borrarCookieTraductor();
+    document.documentElement.lang = 'es';
+    document.documentElement.classList.remove('traduccion-automatica');
+    const avisar = () => {
+        if (typeof mostrarAviso === 'function') {
+            mostrarAviso('No se pudo cargar la traducción automática (requiere internet). La página se muestra en español; también puedes usar el traductor de tu navegador.', 'error', 9000);
+        }
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', avisar);
+    else avisar();
+}
+
+function iniciarTraduccionAutomatica(codigo) {
+    document.documentElement.lang = codigo;
+    document.documentElement.classList.add('traduccion-automatica');
+    // El traductor lee el idioma de destino de esta cookie y traduce al cargar.
+    document.cookie = `googtrans=/es/${codigo}; path=/; SameSite=Lax`;
+    window.iniciarTraductorBookingRD = () => {
+        try {
+            const contenedor = document.createElement('div');
+            contenedor.id = 'traductor-google';
+            contenedor.hidden = true;
+            document.body.appendChild(contenedor);
+            new window.google.translate.TranslateElement({ pageLanguage: 'es', autoDisplay: false }, 'traductor-google');
+        } catch (_) {
+            traductorNoDisponible();
+        }
+    };
+    const script = document.createElement('script');
+    script.src = URL_TRADUCTOR;
+    script.async = true;
+    script.onerror = traductorNoDisponible;
+    const cargar = () => document.body.appendChild(script);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', cargar);
+    else cargar();
+    setTimeout(() => {
+        if (!(window.google && window.google.translate)) traductorNoDisponible();
+    }, 12000);
+}
+
+/* ----------------------------------------------------------------------------
    Inicio
    ------------------------------------------------------------------------- */
 
-if (PREFERENCIAS.idioma === 'en') {
+if (Object.hasOwn(IDIOMAS_AUTOMATICOS, PREFERENCIAS.idioma)) {
+    iniciarTraduccionAutomatica(PREFERENCIAS.idioma);
+} else if (PREFERENCIAS.idioma === 'en') {
     // Oculta la página hasta traducirla para no mostrar primero el español.
     document.documentElement.classList.add('idioma-cargando');
     iniciarTraduccion();

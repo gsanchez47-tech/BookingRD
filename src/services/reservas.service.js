@@ -300,7 +300,7 @@ async function crearReserva(usuario, datos) {
     if (!idPublicacion) throw solicitudInvalida('Publicación no válida.');
     const solicitud = validarSolicitud(tipo, datos);
     const comentario = textoLimpio(datos.comentario).slice(0, 500);
-    const pagoValidado = pagosService.validarPago(datos.pago);
+    const pagoValidado = await pagosService.prepararCobro(pagosService.validarPago(datos.pago));
 
     for (let intento = 1; ; intento++) {
         try {
@@ -357,6 +357,8 @@ async function crearReserva(usuario, datos) {
                         estado: p.estado,
                         monto: p.monto,
                         moneda: p.moneda,
+                        montoCobrado: p.montoCobrado == null ? p.monto : p.montoCobrado,
+                        tasa: p.tasa,
                         marca: p.marca,
                         ultimos4: p.ultimos4,
                         titular: p.titular,
@@ -386,7 +388,7 @@ function notificarReserva(idUsuario, reserva, publicacion) {
 
 /**
  * Cancela una reserva futura del propio viajero y reembolsa o anula su pago.
- * @returns {Promise<{reembolso: {monto: number, marca: string, ultimos4: string}|null}>}
+ * @returns {Promise<{reembolso: {monto: number, moneda: string, montoCobrado: number, marca: string, ultimos4: string}|null}>}
  */
 async function cancelarReserva(usuario, idReserva) {
     const id = aEnteroPositivo(idReserva);
@@ -402,7 +404,7 @@ async function cancelarReserva(usuario, idReserva) {
         const pago = reserva.pago;
         return {
             reembolso: pago && pago.metodo === 'tarjeta' && pago.estado === 'pagado'
-                ? { monto: reserva.total, marca: pago.marca, ultimos4: pago.ultimos4 }
+                ? { monto: reserva.total, moneda: pago.moneda, montoCobrado: pago.montoCobrado, marca: pago.marca, ultimos4: pago.ultimos4 }
                 : null
         };
     });
@@ -522,7 +524,7 @@ async function reservarCombo(usuario, combo, datos) {
     if (usuario.rol !== 'cliente') throw prohibido('Las reservas se realizan con una cuenta de viajero.');
     const solicitud = validarSolicitudCombo(combo, datos);
     const desglose = desgloseCombo(combo, solicitud);
-    const pagoValidado = pagosService.validarPago(datos.pago);
+    const pagoValidado = await pagosService.prepararCobro(pagosService.validarPago(datos.pago));
     const comentario = textoLimpio(datos.comentario).slice(0, 500);
 
     for (let intento = 1; ; intento++) {
@@ -575,7 +577,9 @@ async function reservarCombo(usuario, combo, datos) {
                     metodo: primero.metodo,
                     estado: primero.estado,
                     monto: desglose.total,
-                    moneda: 'DOP',
+                    moneda: primero.moneda,
+                    montoCobrado: primero.moneda === 'USD' ? Math.round(creadas.reduce((suma, c) => suma + c.pago.montoCobrado, 0) * 100) / 100 : desglose.total,
+                    tasa: primero.tasa,
                     marca: primero.marca,
                     ultimos4: primero.ultimos4,
                     titular: primero.titular,

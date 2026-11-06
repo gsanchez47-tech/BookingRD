@@ -62,12 +62,16 @@ async function crearPedido(transaccion, pedido) {
         .input('titular', sql.NVarChar(100), pedido.pago.titular)
         .input('referencia', sql.Char(11), pedido.pago.referencia)
         .input('autorizacion', sql.Char(6), pedido.pago.autorizacion)
+        .input('moneda', sql.Char(3), pedido.pago.moneda || 'DOP')
+        .input('montoCobrado', sql.Decimal(12, 2), pedido.pago.montoCobrado)
+        .input('tasa', sql.Decimal(12, 6), pedido.pago.tasa)
         .query(`
             INSERT INTO dbo.pedidos (codigo, id_usuario, entrega, destinatario, direccion, telefono, subtotal, envio, total,
-                                     pago_marca, pago_ultimos4, pago_titular, pago_referencia, pago_autorizacion)
+                                     pago_marca, pago_ultimos4, pago_titular, pago_referencia, pago_autorizacion,
+                                     pago_moneda, pago_monto_cobrado, pago_tasa_cambio)
             OUTPUT INSERTED.id_pedido AS id
             VALUES (@codigo, @idUsuario, @entrega, @destinatario, @direccion, @telefono, @subtotal, @envio, @total,
-                    @marca, @ultimos4, @titular, @referencia, @autorizacion)`);
+                    @marca, @ultimos4, @titular, @referencia, @autorizacion, @moneda, @montoCobrado, @tasa)`);
     const idPedido = resultado.recordset[0].id;
     for (const linea of pedido.lineas) {
         const detalle = await peticion(transaccion);
@@ -87,6 +91,7 @@ async function crearPedido(transaccion, pedido) {
 const COLUMNAS_PEDIDO = `
     pe.id_pedido, pe.codigo, pe.entrega, pe.destinatario, pe.direccion, pe.telefono, pe.subtotal, pe.envio, pe.total,
     pe.estado, pe.pago_marca, pe.pago_ultimos4, pe.pago_titular, pe.pago_referencia, pe.pago_autorizacion, pe.fecha_creacion,
+    pe.pago_moneda, pe.pago_monto_cobrado, pe.pago_tasa_cambio,
     u.nombre AS cliente_nombre, u.correo AS cliente_correo`;
 
 /** Pedidos (filas) con sus líneas, en la forma que usa el frontend. */
@@ -119,7 +124,9 @@ function aPedido(f, lineas) {
             metodo: 'tarjeta',
             estado: f.estado === 'cancelado' ? 'reembolsado' : 'pagado',
             monto: Number(f.total),
-            moneda: 'DOP',
+            moneda: f.pago_moneda || 'DOP',
+            montoCobrado: f.pago_monto_cobrado != null ? Number(f.pago_monto_cobrado) : Number(f.total),
+            tasa: f.pago_tasa_cambio != null ? Number(f.pago_tasa_cambio) : null,
             marca: f.pago_marca,
             ultimos4: f.pago_ultimos4,
             titular: f.pago_titular,
@@ -162,10 +169,26 @@ async function bloquearPedido(transaccion, id) {
     const consulta = await peticion(transaccion);
     const resultado = await consulta
         .input('id', sql.Int, id)
-        .query(`SELECT id_pedido, id_usuario, estado, total, pago_marca, pago_ultimos4
+        .query(`SELECT id_pedido, id_usuario, estado, total, pago_marca, pago_ultimos4, pago_moneda,
+                       ISNULL(pago_monto_cobrado, total) AS pago_monto_cobrado
                 FROM dbo.pedidos WITH (UPDLOCK, HOLDLOCK) WHERE id_pedido = @id`);
-    const f = resultado.recordset[0];
-    return f ? { id: f.id_pedido, idUsuario: f.id_usuario, estado: f.estado, total: Number(f.total), marca: f.pago_marca, ultimos4: f.pago_ultimos4 } : null;
+    return aPedidoBloqueado(resultado.recordset[0]);
+}
+
+/** Fila de un pedido bloqueado a la forma que usa el servicio. */
+function aPedidoBloqueado(f) {
+    return f
+        ? {
+            id: f.id_pedido,
+            idUsuario: f.id_usuario,
+            estado: f.estado,
+            total: Number(f.total),
+            marca: f.pago_marca,
+            ultimos4: f.pago_ultimos4,
+            moneda: f.pago_moneda || 'DOP',
+            montoCobrado: Number(f.pago_monto_cobrado == null ? f.total : f.pago_monto_cobrado)
+        }
+        : null;
 }
 
 /** Cambia el estado; al cancelar, repone las existencias. */
@@ -187,6 +210,7 @@ async function cambiarEstadoPedido(transaccion, id, estado) {
 module.exports = {
     aProducto,
     aPedido,
+    aPedidoBloqueado,
     listarProductos,
     bloquearProducto,
     crearPedido,

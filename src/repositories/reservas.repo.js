@@ -177,20 +177,24 @@ async function registrarPago(transaccion, idReserva, pago) {
         .input('metodo', sql.VarChar(12), pago.metodo)
         .input('estado', sql.VarChar(12), pago.estado)
         .input('monto', sql.Decimal(12, 2), pago.monto)
+        .input('moneda', sql.Char(3), pago.moneda || 'DOP')
+        .input('montoCobrado', sql.Decimal(12, 2), pago.montoCobrado)
+        .input('tasa', sql.Decimal(12, 6), pago.tasa)
         .input('marca', sql.VarChar(20), pago.marca)
         .input('ultimos4', sql.Char(4), pago.ultimos4)
         .input('titular', sql.NVarChar(100), pago.titular)
         .input('referencia', sql.Char(11), pago.referencia)
         .input('autorizacion', sql.Char(6), pago.autorizacion)
         .query(`
-            INSERT INTO dbo.pagos (id_reserva, metodo, estado, monto, marca, ultimos4, titular, referencia, autorizacion)
-            VALUES (@idReserva, @metodo, @estado, @monto, @marca, @ultimos4, @titular, @referencia, @autorizacion)
+            INSERT INTO dbo.pagos (id_reserva, metodo, estado, monto, moneda, monto_cobrado, tasa_cambio, marca, ultimos4, titular, referencia, autorizacion)
+            VALUES (@idReserva, @metodo, @estado, @monto, @moneda, @montoCobrado, @tasa, @marca, @ultimos4, @titular, @referencia, @autorizacion)
         `);
 }
 
 /** Columnas del pago (alias pg) con prefijo pago_, para aPago(fila, 'pago_'). */
 const COLUMNAS_PAGO = `
     pg.metodo AS pago_metodo, pg.estado AS pago_estado, pg.monto AS pago_monto, pg.moneda AS pago_moneda,
+    pg.monto_cobrado AS pago_monto_cobrado, pg.tasa_cambio AS pago_tasa_cambio,
     pg.marca AS pago_marca, pg.ultimos4 AS pago_ultimos4, pg.titular AS pago_titular,
     pg.referencia AS pago_referencia, pg.autorizacion AS pago_autorizacion,
     pg.fecha_pago AS pago_fecha_pago, pg.fecha_reembolso AS pago_fecha_reembolso`;
@@ -294,7 +298,8 @@ async function bloquearReserva(transaccion, idReserva) {
     const resultado = await consulta
         .input('id', sql.Int, idReserva)
         .query(`SELECT r.id_reserva, r.id_usuario, r.estado, r.fecha_inicio, r.total,
-                       pg.metodo AS pago_metodo, pg.estado AS pago_estado, pg.marca AS pago_marca, pg.ultimos4 AS pago_ultimos4
+                       pg.metodo AS pago_metodo, pg.estado AS pago_estado, pg.marca AS pago_marca, pg.ultimos4 AS pago_ultimos4,
+                       pg.moneda AS pago_moneda, ISNULL(pg.monto_cobrado, pg.monto) AS pago_monto_cobrado
                 FROM dbo.reservas r WITH (UPDLOCK, HOLDLOCK)
                 LEFT JOIN dbo.pagos pg WITH (UPDLOCK, HOLDLOCK) ON pg.id_reserva = r.id_reserva
                 WHERE r.id_reserva = @id`);
@@ -307,7 +312,14 @@ async function bloquearReserva(transaccion, idReserva) {
             fechaInicio: aIso(fila.fecha_inicio),
             total: Number(fila.total),
             pago: fila.pago_metodo
-                ? { metodo: fila.pago_metodo, estado: fila.pago_estado, marca: fila.pago_marca, ultimos4: fila.pago_ultimos4 }
+                ? {
+                    metodo: fila.pago_metodo,
+                    estado: fila.pago_estado,
+                    marca: fila.pago_marca,
+                    ultimos4: fila.pago_ultimos4,
+                    moneda: fila.pago_moneda,
+                    montoCobrado: Number(fila.pago_monto_cobrado)
+                }
                 : null
         }
         : null;

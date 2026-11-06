@@ -228,6 +228,7 @@ async function listarReservas({ estado }) {
                    e.nombre_comercial AS proveedor,
                    u.nombre AS cliente_nombre, u.correo AS cliente_correo,
                    pg.metodo AS pago_metodo, pg.estado AS pago_estado, pg.monto AS pago_monto, pg.moneda AS pago_moneda,
+                   pg.monto_cobrado AS pago_monto_cobrado, pg.tasa_cambio AS pago_tasa_cambio,
                    pg.marca AS pago_marca, pg.ultimos4 AS pago_ultimos4, pg.titular AS pago_titular,
                    pg.referencia AS pago_referencia, pg.autorizacion AS pago_autorizacion,
                    pg.fecha_pago AS pago_fecha_pago, pg.fecha_reembolso AS pago_fecha_reembolso

@@ -36,7 +36,7 @@ Con Azure: `npm run configurar`. Demostración que no guarda nada: `npm run demo
 | Mis reservas | Próximas, pasadas, canceladas (con la etiqueta del combo), estado del pago y recibo, guardados, reseñas y pedidos de la tienda. |
 | Panel de empresa | Resumen con gráficos, publicaciones con fotografía, reservas con estado del pago y *Marcar cobrado*, CSV, respuesta a reseñas, perfil. |
 | Administración | Indicadores, suspensión de cuentas, moderación de publicaciones y reseñas, reservas con su pago, pedidos de la tienda, mensajes. |
-| Idioma y moneda | Español o inglés; RD$, US$ o € con tasa del día; el pago siempre en pesos. |
+| Idioma y moneda | Español e inglés con traducción propia, y cualquier otro idioma con traducción automática; precios en RD$, US$ o € con la tasa del día; el pago en pesos o en dólares, con la tasa guardada en el recibo. |
 | Correos | Bienvenida y confirmación de reserva por SMTP, o guardados en `correos-enviados/`. |
 | Base de datos | 15 tablas (incluye `combos`, `pagos`, `productos`, `pedidos` y `pedido_detalle`); datos de ejemplo en un solo archivo (`database/datos-demo.js`) que alimenta la base local y los scripts SQL: 21 cuentas, 8 empresas, 16 alojamientos, 50 actividades, 11 autos, 7 combos, 93 reservas con su pago, 74 reseñas, 11 productos y 2 pedidos. |
 
@@ -53,7 +53,7 @@ Con Azure: `npm run configurar`. Demostración que no guarda nada: `npm run demo
 
 ## Verificación
 
-- 28 de 28 pruebas de la API (`npm run probar`), incluidos combos, tienda, pagos aprobados, rechazados, en destino y reembolsos.
+- 29 de 29 pruebas de la API (`npm run probar`), incluidos combos, tienda, pagos en pesos y en dólares, aprobados, rechazados, en destino y reembolsos.
 - 39 + 25 comprobaciones en navegador automatizado (recorrido general, combos, tienda, ruta y administración), sin errores de JavaScript.
 - El guion de la demostración en clase (`docs/GUIA-DEMOSTRACION.md`) se ejecutó de forma automática: 12 de 12 pasos.
 - Consultas SQL de los repositorios validadas contra el esquema; script de instalación analizado con un parser de T-SQL.

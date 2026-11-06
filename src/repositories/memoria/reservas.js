@@ -124,12 +124,22 @@ async function listarPorEmpresa(idEmpresa) {
 
 async function registrarPago(transaccion, idReserva, pago) {
     if (A.bd.pagos.some((p) => p.referencia === pago.referencia)) throw A.errorDuplicado('UQ_pagos_referencia');
-    A.insertar('pagos', 'id_pago', Object.assign({}, pago, {
+    A.insertar('pagos', 'id_pago', {
         id_reserva: idReserva,
-        moneda: 'DOP',
+        metodo: pago.metodo,
+        estado: pago.estado,
+        monto: pago.monto,
+        moneda: pago.moneda || 'DOP',
+        monto_cobrado: pago.montoCobrado == null ? null : pago.montoCobrado,
+        tasa_cambio: pago.tasa == null ? null : pago.tasa,
+        marca: pago.marca,
+        ultimos4: pago.ultimos4,
+        titular: pago.titular,
+        referencia: pago.referencia,
+        autorizacion: pago.autorizacion,
         fecha_pago: A.ahora(),
         fecha_reembolso: null
-    }));
+    });
 }
 
 async function bloquearReserva(transaccion, idReserva) {
@@ -142,7 +152,16 @@ async function bloquearReserva(transaccion, idReserva) {
         estado: r.estado,
         fechaInicio: r.fecha_inicio,
         total: Number(r.total),
-        pago: pago ? { metodo: pago.metodo, estado: pago.estado, marca: pago.marca, ultimos4: pago.ultimos4 } : null
+        pago: pago
+            ? {
+                metodo: pago.metodo,
+                estado: pago.estado,
+                marca: pago.marca,
+                ultimos4: pago.ultimos4,
+                moneda: pago.moneda || 'DOP',
+                montoCobrado: Number(pago.monto_cobrado == null ? pago.monto : pago.monto_cobrado)
+            }
+            : null
     };
 }
 

@@ -330,6 +330,9 @@ GO
 --            (tarjeta de una reserva cancelada) o 'anulado' (en destino cancelado).
 --   referencia: identificador del pago (PAY + 8 caracteres); autorizacion: código
 --            de 6 dígitos que devuelve la pasarela al aprobar una tarjeta.
+--   monto:   importe en pesos (igual al total de la reserva).
+--   moneda:  moneda del cobro, 'DOP' o 'USD'. En dólares se guardan además el
+--            importe cobrado (monto_cobrado) y la tasa usada (pesos por dólar).
 IF OBJECT_ID(N'dbo.pagos', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.pagos (
@@ -340,6 +343,8 @@ BEGIN
         estado              VARCHAR(12)     NOT NULL,
         monto               DECIMAL(12,2)   NOT NULL,
         moneda              CHAR(3)         NOT NULL CONSTRAINT DF_pagos_moneda DEFAULT 'DOP',
+        monto_cobrado       DECIMAL(12,2)   NULL,
+        tasa_cambio         DECIMAL(12,6)   NULL,
         marca               VARCHAR(20)     NULL,
         ultimos4            CHAR(4)         NULL,
         titular             NVARCHAR(100)   NULL,
@@ -350,11 +355,18 @@ BEGIN
         CONSTRAINT CK_pagos_metodo CHECK (metodo IN ('tarjeta', 'en_destino')),
         CONSTRAINT CK_pagos_estado CHECK (estado IN ('pagado', 'pendiente', 'reembolsado', 'anulado')),
         CONSTRAINT CK_pagos_monto CHECK (monto > 0),
+        CONSTRAINT CK_pagos_moneda CHECK (moneda IN ('DOP', 'USD')),
+        CONSTRAINT CK_pagos_cambio CHECK (moneda = 'DOP' OR (monto_cobrado > 0 AND tasa_cambio > 0)),
         CONSTRAINT CK_pagos_tarjeta CHECK (
             metodo = 'en_destino'
             OR (marca IS NOT NULL AND ultimos4 IS NOT NULL AND titular IS NOT NULL AND autorizacion IS NOT NULL))
     );
 END
+GO
+
+-- Bases instaladas con una versión anterior: columnas del cobro en dólares.
+IF COL_LENGTH(N'dbo.pagos', N'monto_cobrado') IS NULL
+    ALTER TABLE dbo.pagos ADD monto_cobrado DECIMAL(12,2) NULL, tasa_cambio DECIMAL(12,6) NULL;
 GO
 
 -- mensajes_contacto: mensajes enviados desde el formulario de contacto.
@@ -440,7 +452,8 @@ END
 GO
 
 -- pedidos: compras de la tienda. Se pagan con tarjeta al confirmar (pasarela
--- SIMULADA: solo marca, últimos 4 dígitos, titular, referencia y autorización).
+-- SIMULADA: solo marca, últimos 4 dígitos, titular, referencia y autorización),
+-- en pesos o en dólares (pago_moneda, con el importe cobrado y la tasa).
 --   entrega:  'hotel' (en la recepción del alojamiento) o 'domicilio'.
 --   estado:   'pagado' -> 'enviado' -> 'entregado', o 'cancelado' (reembolsado).
 IF OBJECT_ID(N'dbo.pedidos', N'U') IS NULL
@@ -462,10 +475,15 @@ BEGIN
         pago_titular        NVARCHAR(100)   NOT NULL,
         pago_referencia     CHAR(11)        NOT NULL CONSTRAINT UQ_pedidos_referencia UNIQUE,
         pago_autorizacion   CHAR(6)         NOT NULL,
+        pago_moneda         CHAR(3)         NOT NULL CONSTRAINT DF_pedidos_moneda DEFAULT 'DOP',
+        pago_monto_cobrado  DECIMAL(12,2)   NULL,
+        pago_tasa_cambio    DECIMAL(12,6)   NULL,
         fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_pedidos_creacion DEFAULT SYSUTCDATETIME(),
         CONSTRAINT CK_pedidos_entrega CHECK (entrega IN ('hotel', 'domicilio')),
         CONSTRAINT CK_pedidos_estado CHECK (estado IN ('pagado', 'enviado', 'entregado', 'cancelado')),
-        CONSTRAINT CK_pedidos_total CHECK (subtotal > 0 AND envio >= 0 AND total = subtotal + envio)
+        CONSTRAINT CK_pedidos_total CHECK (subtotal > 0 AND envio >= 0 AND total = subtotal + envio),
+        CONSTRAINT CK_pedidos_moneda CHECK (pago_moneda IN ('DOP', 'USD')),
+        CONSTRAINT CK_pedidos_cambio CHECK (pago_moneda = 'DOP' OR (pago_monto_cobrado > 0 AND pago_tasa_cambio > 0))
     );
 END
 GO

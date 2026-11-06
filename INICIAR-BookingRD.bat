@@ -14,7 +14,7 @@ where node >nul 2>nul
 if errorlevel 1 goto sin_node
 
 rem 2. Dependencias, solo la primera vez
-if exist "node_modules\mssql\" goto arrancar
+if exist "node_modules\mssql\" if exist "node_modules\compression\" goto arrancar
 echo   Instalando las dependencias. Solo la primera vez, tarda uno o dos minutos...
 echo.
 call npm install --no-audit --no-fund

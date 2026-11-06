@@ -170,6 +170,62 @@ dialog.modal-pago {
     font-size: var(--t-s);
 }
 
+/* Moneda del cobro: pesos o dólares */
+.pago-monedas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--e-2);
+    margin: 0 0 var(--e-2);
+    padding: 0;
+    border: 0;
+}
+
+.pago-monedas legend {
+    margin-bottom: var(--e-2);
+    font-weight: 800;
+}
+
+.pago-moneda {
+    display: flex;
+    gap: var(--e-2);
+    align-items: flex-start;
+    padding: 10px var(--e-3);
+    border: 1.5px solid var(--linea);
+    border-radius: var(--r-m);
+    cursor: pointer;
+}
+
+.pago-moneda:has(input:checked) {
+    border-color: var(--azul);
+    background: var(--azul-tenue);
+}
+
+.pago-moneda input {
+    margin-top: 3px;
+    accent-color: var(--azul);
+}
+
+.pago-moneda strong,
+.pago-moneda small {
+    display: block;
+}
+
+.pago-moneda strong {
+    font-size: var(--t-s);
+}
+
+.pago-moneda small {
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+    font-weight: 800;
+}
+
+.pago-moneda-nota {
+    grid-column: 1 / -1;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+}
+
 /* Tarjeta: vista previa con los colores del mar Caribe */
 .pago-tarjeta {
     display: grid;

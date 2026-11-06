@@ -5,7 +5,7 @@
 
 'use strict';
 
-const { aProducto, aPedido } = require('../tienda.repo');
+const { aProducto, aPedido, aPedidoBloqueado } = require('../tienda.repo');
 const A = require('./almacen');
 
 async function listarProductos() {
@@ -38,6 +38,9 @@ async function crearPedido(transaccion, pedido) {
         pago_titular: pedido.pago.titular,
         pago_referencia: pedido.pago.referencia,
         pago_autorizacion: pedido.pago.autorizacion,
+        pago_moneda: pedido.pago.moneda || 'DOP',
+        pago_monto_cobrado: pedido.pago.montoCobrado == null ? null : pedido.pago.montoCobrado,
+        pago_tasa_cambio: pedido.pago.tasa == null ? null : pedido.pago.tasa,
         fecha_creacion: A.ahora()
     });
     for (const linea of pedido.lineas) {
@@ -71,8 +74,7 @@ async function listarPedidos() {
 }
 
 async function bloquearPedido(transaccion, id) {
-    const f = A.bd.pedidos.find((p) => p.id_pedido === id);
-    return f ? { id: f.id_pedido, idUsuario: f.id_usuario, estado: f.estado, total: Number(f.total), marca: f.pago_marca, ultimos4: f.pago_ultimos4 } : null;
+    return aPedidoBloqueado(A.bd.pedidos.find((p) => p.id_pedido === id));
 }
 
 async function cambiarEstadoPedido(transaccion, id, estado) {

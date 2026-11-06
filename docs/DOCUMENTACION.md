@@ -21,7 +21,7 @@
 | Contacto | Mensajes guardados en `dbo.mensajes_contacto`. |
 | Correos | Bienvenida al registrarse (viajero o empresa) y confirmación de cada reserva, por SMTP con nodemailer (sección 7.1). |
 | Pagos (simulados) | Al reservar: tarjeta (Visa, Mastercard, American Express) o pago en el destino. Validación de Luhn, vencimiento y CVV; tarjetas de prueba aprobadas y rechazadas; recibo imprimible; reembolso automático al cancelar; la empresa registra los cobros en destino (sección 4.2). |
-| Idioma y moneda | Interfaz en español o inglés; precios en RD$, US$ o € con la tasa del día (el pago siempre en pesos); clima actual y pronóstico de cada destino (sección 6.8). |
+| Idioma y moneda | Interfaz en español o inglés (traducción propia) y en cualquier otro idioma con traducción automática; precios en RD$, US$ o € con la tasa del día; pago en pesos o en dólares; clima actual y pronóstico de cada destino (sección 6.8). |
 
 Fuera de alcance: pagos en línea, recuperación automática de contraseña por correo y edición de datos legales de la empresa desde el panel (RNC, razón social y tipo de servicio quedan a cargo de la administración).
 
@@ -212,8 +212,9 @@ El precio se guarda en la reserva (`precio_unitario`), por lo que un cambio post
 
 1. **Validación** (también en el navegador, `public/js/pagos.js`): titular con letras; número de 13 a 19 dígitos que supera el algoritmo de Luhn; marca por los primeros dígitos (Visa `4`, Mastercard `51-55` y `2221-2720`, American Express `34`/`37`); vencimiento `MM/AA` no vencido; CVV de 3 dígitos, o 4 en American Express.
 2. **Cobro** dentro de la transacción de la reserva, después de comprobar el cupo: las tarjetas `4000 0000 0000 0002` (rechazada), `4000 0000 0000 9995` (fondos insuficientes) y `4000 0000 0000 0127` (CVV incorrecto) responden 402 y la transacción se deshace, así que no queda reserva sin pago. Cualquier otra tarjeta válida se aprueba.
-3. **Pago en el destino:** la reserva se crea con el pago `pendiente`; la empresa lo marca como `pagado` desde *Reservas recibidas* (`PATCH /api/empresa/reservas/:id/cobro`).
-4. **Cancelación:** en la misma transacción, la tarjeta pasa a `reembolsado` (con fecha de reembolso) y el pago en destino a `anulado`.
+3. **Moneda del cobro:** pesos (`DOP`) o dólares (`USD`); cualquier otra responde 400 (`pago-moneda`). Los precios y `monto` están en pesos; en dólares, antes de abrir la transacción `prepararCobro` toma la tasa del día de `externos.tasas()` (pesos por dólar; si el servicio no responde, la de respaldo `TASA_USD`) y se guardan `monto_cobrado` (total / tasa, a centavos) y `tasa_cambio`. Las reservas de un combo usan la misma tasa. Los reembolsos se hacen en la moneda del cobro. Los pedidos de la tienda guardan lo mismo en `pago_moneda`, `pago_monto_cobrado` y `pago_tasa_cambio`.
+4. **Pago en el destino:** se registra en pesos (al llegar se puede pagar en pesos o en dólares a la tasa del día); la reserva se crea con el pago `pendiente`; la empresa lo marca como `pagado` desde *Reservas recibidas* (`PATCH /api/empresa/reservas/:id/cobro`).
+5. **Cancelación:** en la misma transacción, la tarjeta pasa a `reembolsado` (con fecha de reembolso) y el pago en destino a `anulado`.
 
 Estados: `pagado`, `pendiente`, `reembolsado`, `anulado`. El viajero ve el estado y el recibo (imprimible o en PDF desde el navegador) en *Mis reservas*; la empresa y la administración, en sus tablas de reservas; la administración suma lo cobrado en línea, lo pendiente en destino y lo reembolsado.
 
@@ -313,12 +314,21 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 
 | Carpeta | Uso |
 |---|---|
-| `img/publicaciones/` | Una fotografía por publicación de demostración (60) |
-| `img/destinos/` | Ficha de 9 destinos en el mapa del inicio |
+| `img/publicaciones/` | Una fotografía por publicación de demostración |
+| `img/destinos/` | Ficha de 15 destinos en el mapa del inicio |
 | `img/servicios/` | Tarjetas de *¿Qué quieres reservar?* y cabecera de Explorar de 8 categorías |
-| `img/paginas/` | Portada y banda de empresas del inicio, autos, registro e inicio de sesión |
+| `img/paginas/` | Portada y banda de empresas del inicio, autos, combos, tienda, ruta, registro e inicio de sesión |
+| `img/ilustraciones/` | 20 ilustraciones SVG propias: equipo de aventura, fotógrafos y productos de la tienda |
+| `img/mini/` | Copias de 640 px de ancho de `publicaciones/`, `destinos/` y `servicios/` para tarjetas, listas y fichas |
 
 Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado con un inventario automático de referencias más revisión visual). En las fotografías de autos se difuminaron las placas y se retiraron marcas de agua. El panel de empresa reduce las fotografías subidas a 1600 px (JPEG) antes de enviarlas.
+
+### 6.6.1 Rendimiento
+
+- Las tarjetas y listas cargan la miniatura de 640 px (`urlMiniatura` en `comun.js`) y la página de detalle, la fotografía completa; si falta una miniatura se carga la original. Las imágenes fuera de pantalla usan `loading="lazy"` y la de la portada, `fetchpriority="high"`.
+- El servidor comprime con gzip el HTML, CSS, JavaScript y JSON (`compression`) y los archivos estáticos se guardan en caché una hora.
+- Las tipografías son locales (precargadas) y el traductor automático y el catálogo en inglés se cargan solo cuando se eligen.
+- Peso medido en el primer acceso (sin mapa externo): Explorar pasó de 2,26 MB a 1,08 MB, el inicio en móvil de 1,40 MB a 0,97 MB y Combos de 1,30 MB a 0,72 MB.
 
 ### 6.7 Sesión en el navegador
 
@@ -328,9 +338,10 @@ Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado 
 
 ### 6.8 Idioma, moneda y clima
 
-- `preferencias.js` guarda en el navegador el idioma (`es` / `en`) y la moneda (`DOP` / `USD` / `EUR`) elegidos en el encabezado.
+- `preferencias.js` guarda en el navegador el idioma (`es`, `en` o un código de `IDIOMAS_AUTOMATICOS`) y la moneda (`DOP` / `USD` / `EUR`) elegidos en el encabezado.
+- Otros idiomas (unos 50, en `comun.js`): se carga bajo demanda el traductor de sitios de Google (`translate_a/element.js`) con la cookie `googtrans=/es/<idioma>`; respeta `translate="no"`, traduce también el contenido que se agrega después y se ocultan su barra y sus ventanas. Si no carga en 12 s (sin internet o bloqueado), se borra la cookie, la página queda en español y se muestra un aviso. Al volver a español o inglés se borra la cookie.
 - Inglés: se carga `idioma-en.js` y se traducen los textos y atributos visibles (placeholder, aria-label, title, alt), también los que se agregan después (MutationObserver). `CATALOGO_EN` traduce textos fijos, `PATRONES_EN` textos con cantidades o nombres y `REEMPLAZOS_EN` frases compuestas. El contenido escrito por usuarios y empresas lleva `translate="no"`. Fechas, horas (10:00 AM) y decimales siguen la configuración regional.
-- Moneda: `formatearPrecio` convierte con las tasas de `/api/monedas`; los importes a pagar se muestran siempre en RD$ con una nota del equivalente.
+- Moneda: `formatearPrecio` convierte con las tasas de `/api/monedas`. En la ventana de pago se elige pesos o dólares (por defecto, dólares si el visitante ve los precios en US$); el total y el botón muestran el importe en la moneda del cobro y el recibo, el importe cobrado, el equivalente en pesos y la tasa.
 - Clima: `clima.js` pinta el estado actual y el pronóstico de `/api/clima` en la ficha del mapa, en Explorar y en el detalle; si el servicio no responde, la sección se oculta sin afectar la página.
 
 ## 7. Correo electrónico
@@ -369,9 +380,10 @@ El entorno de desarrollo no disponía de SQL Server ni de acceso a Azure, ni de 
 
 | Prueba | Resultado |
 |---|---|
-| `npm run probar`: catálogo, filtros, combos (cotización, noches mínimas, tarjeta rechazada sin reservas, reserva de tres partes), tienda (solo tarjeta, existencias, cancelación con reposición, envío y entrega), detalle, disponibilidad, reservas (sin cupo, fechas pasadas, empresa que intenta reservar), pagos (aprobado, Luhn inválido, vencida, CVV de American Express, rechazada, fondos insuficientes sin crear la reserva, pago en destino, cobro registrado por la empresa y no por otra), cancelación con reembolso, reseñas, favoritos, panel de empresa, administración (suspensión con efecto en catálogo, login y token), clima y monedas | 28 de 28 |
+| `npm run probar`: catálogo, filtros, combos (cotización, noches mínimas, tarjeta rechazada sin reservas, reserva de tres partes), tienda (solo tarjeta, existencias, cancelación con reposición, envío y entrega), detalle, disponibilidad, reservas (sin cupo, fechas pasadas, empresa que intenta reservar), pagos (aprobado, Luhn inválido, vencida, CVV de American Express, rechazada, fondos insuficientes sin crear la reserva, pago en destino, cobro registrado por la empresa y no por otra; pago en dólares con la tasa del día, moneda no admitida y reembolso en US$), cancelación con reembolso, reseñas, favoritos, panel de empresa, administración (suspensión con efecto en catálogo, login y token), clima y monedas | 29 de 29 |
 | Recorrido en navegador automatizado de los combos (inicio, filtro, desglose, inicio de sesión, pago y recibo), la tienda (filtro, carrito, entrega a domicilio, pago solo con tarjeta, pedido en *Mis reservas* y cancelación), la Ruta del Parador (filtros, grúas, 911), equipo por unidades, pedidos en la administración e inglés | 25 de 25, sin errores de JavaScript |
 | Recorrido en navegador automatizado: mapa del inicio (19 destinos, ficha), recomendados, buscador hacia Explorar, panel de filtros, vista de mapa, detalle, reserva de actividad con pago en destino, alquiler de auto con tarjeta inválida, rechazada y aprobada, recibo, mis reservas, cancelación con aviso de reembolso, reseña, respuesta de la empresa, publicación nueva, administración, registro de viajero y de empresa | 39 de 39, sin errores de JavaScript |
+| Recorrido en inglés con dólares, pago en dólares (botón, chip y recibo con tasa) y cambio a otro idioma (francés) con regreso al español si el traductor no está disponible | Correcto |
 | Recorrido en inglés con dólares: textos de la interfaz sin traducir (excluidos nombres propios y contenido de usuarios) | 0 pendientes |
 | Script SQL: esquema y lotes de inserción emulados; cada clave natural resuelve y los conteos coinciden con `datos-demo.js`. El lote de pagos se ejecutó dos veces sobre una emulación: 90 pagos, 90 referencias distintas, sin duplicados. Las 97 consultas de los repositorios se validaron contra el esquema y los lotes nuevos (combos, reservas de combo, productos y pedidos) se analizaron con un parser de T-SQL | Correcto |
 | Desbordamiento horizontal en 375, 768 y 1440 px y revisión visual de las 12 páginas | Sin incidencias |

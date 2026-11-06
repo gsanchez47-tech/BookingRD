@@ -62,8 +62,12 @@ function confirmacionReserva(cliente, reserva, publicacion) {
     if (reserva.comboNombre) detalle.unshift(['Combo', `${reserva.comboNombre} (precio con descuento)`]);
     if (reserva.pago && reserva.pago.metodo === 'tarjeta') {
         detalle.push(['Pago', `${reserva.pago.marca} terminada en ${reserva.pago.ultimos4} (simulado)`], ['Referencia del pago', reserva.pago.referencia]);
+        if (reserva.pago.moneda === 'USD') {
+            const dolares = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+            detalle.push(['Cobrado en dólares', `${dolares.format(reserva.pago.montoCobrado)} (1 US$ = RD$${reserva.pago.tasa.toFixed(2)})`]);
+        }
     } else if (reserva.pago) {
-        detalle.push(['Pago', 'En el destino, al llegar']);
+        detalle.push(['Pago', 'En el destino, al llegar (en pesos o en dólares a la tasa del día)']);
     }
     const mensaje = plantillas.confirmacionReserva({
         nombre: cliente.nombre, codigo: reserva.codigo, publicacion: publicacion.nombre,

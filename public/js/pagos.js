@@ -91,6 +91,12 @@ function validarTarjeta({ titular, numero, vencimiento, cvv }) {
    Etiquetas de estado
    ---------------------------------------------------------------------------- */
 
+/** Importe cobrado: en dólares con centavos, o en pesos. */
+function importeCobrado(pago) {
+    if (pago && pago.moneda === 'USD' && pago.montoCobrado) return formatearExacto(pago.montoCobrado, 'USD');
+    return formatoMoneda.format((pago && pago.monto) || 0);
+}
+
 /** Tarjeta abreviada: "Visa •••• 4242". */
 const tarjetaAbreviada = (pago) => `${pago.marca === 'American Express' ? 'Amex' : pago.marca} •••• ${pago.ultimos4}`;
 
@@ -103,8 +109,9 @@ const tarjetaAbreviada = (pago) => `${pago.marca === 'American Express' ? 'Amex'
 function estadoPago(pago, vista = 'viajero') {
     if (!pago) return { texto: 'Sin pago registrado', clase: 'neutro' };
     if (pago.metodo === 'tarjeta') {
-        if (pago.estado === 'reembolsado') return { texto: `Reembolsado a ${tarjetaAbreviada(pago)}`, clase: 'reembolsado' };
-        return { texto: `Pagado con ${tarjetaAbreviada(pago)}`, clase: 'pagado' };
+        const enDolares = pago.moneda === 'USD' ? ' en US$' : '';
+        if (pago.estado === 'reembolsado') return { texto: `Reembolsado a ${tarjetaAbreviada(pago)}${enDolares}`, clase: 'reembolsado' };
+        return { texto: `Pagado con ${tarjetaAbreviada(pago)}${enDolares}`, clase: 'pagado' };
     }
     if (pago.estado === 'pagado') return { texto: 'Pagado en el destino', clase: 'pagado' };
     if (pago.estado === 'anulado') return { texto: 'Pago en destino anulado', clase: 'neutro' };
@@ -151,6 +158,8 @@ function abrirRecibo(datos) {
         ['Método', esTarjeta ? `${pago.marca} terminada en ${pago.ultimos4}` : 'Pago en el destino', true],
         esTarjeta ? ['Titular', pago.titular, false] : null,
         ['Estado', { pagado: 'Pagado', pendiente: 'Pendiente de pago en el destino', reembolsado: 'Reembolsado', anulado: 'Anulado' }[pago.estado] || '', true],
+        pago.moneda === 'USD' ? ['Equivalente en pesos', formatoMoneda.format(pago.monto || datos.total), false] : null,
+        pago.moneda === 'USD' && pago.tasa ? ['Tasa aplicada', `1 US$ = ${formatearExacto(pago.tasa, 'DOP')}`, false] : null,
         ['Referencia', pago.referencia, false],
         esTarjeta ? ['Autorización', pago.autorizacion, false] : null,
         pago.fechaPago ? ['Fecha', formatoFechaHoraRecibo.format(new Date(pago.fechaPago)), true] : null,
@@ -164,7 +173,7 @@ function abrirRecibo(datos) {
                 <button type="button" class="modal-cerrar" data-cerrar-modal aria-label="Cerrar"></button>
             </header>
             <h2 id="recibo-titulo">${esTarjeta && pago.estado !== 'reembolsado' ? 'Comprobante de pago' : 'Comprobante de reserva'}</h2>
-            <p class="recibo-monto">${escaparHtml(formatoMoneda.format(pago.monto || datos.total))}</p>
+            <p class="recibo-monto" translate="no">${escaparHtml(pago.moneda === 'USD' ? importeCobrado(pago) : formatoMoneda.format(pago.monto || datos.total))}</p>
             <dl class="recibo-datos">
                 ${filas.map(([etiqueta, valor, traducible]) => `<div><dt>${escaparHtml(etiqueta)}</dt><dd${traducible ? '' : ' translate="no"'}>${escaparHtml(valor)}</dd></div>`).join('')}
             </dl>
@@ -216,6 +225,28 @@ function prepararPago({ alPagar }) {
     const textoProcesando = document.getElementById('pago-procesando-texto');
     let total = 0;
 
+    /** Tasa del dólar del navegador (preferencias.js); el servidor confirma la del cobro. */
+    const tasaDolar = () => (typeof TASAS !== 'undefined' && TASAS.USD) || 61;
+    const enDolares = (pesos) => Math.round((pesos / tasaDolar()) * 100) / 100;
+    const moneda = () => formulario.querySelector('input[name="pago-moneda"]:checked').value;
+    const importe = () => (moneda() === 'USD' ? formatearExacto(enDolares(total), 'USD') : formatoMoneda.format(total));
+
+    function actualizarMoneda() {
+        document.getElementById('pago-monto-DOP').textContent = formatoMoneda.format(total);
+        document.getElementById('pago-monto-USD').textContent = `${formatearExacto(enDolares(total), 'USD')} aprox.`;
+        document.getElementById('pago-moneda-nota').textContent = moneda() === 'USD'
+            ? `Tasa del día: 1 US$ = ${formatearExacto(tasaDolar(), 'DOP')}. El importe exacto aparece en el recibo.`
+            : 'Los precios están en pesos dominicanos.';
+        // Total destacado en la moneda del cobro, con el equivalente debajo.
+        const conTarjeta = metodo() === 'tarjeta';
+        const enUsd = conTarjeta && moneda() === 'USD';
+        const equivalente = enUsd ? formatoMoneda.format(total) : formatearPrecio(total);
+        const principal = enUsd ? formatearExacto(enDolares(total), 'USD') : formatoMoneda.format(total);
+        document.getElementById('pago-total').innerHTML = escaparHtml(principal)
+            + (equivalente !== principal ? `<small>${enUsd ? '' : 'aprox. '}${escaparHtml(equivalente)}</small>` : '');
+        if (metodo() === 'tarjeta') boton.textContent = `Pagar ${importe()}`;
+    }
+
     /** Muestra u oculta el mensaje de error del pago. */
     function mostrarErrorPago(texto) {
         error.textContent = texto;
@@ -246,8 +277,9 @@ function prepararPago({ alPagar }) {
     function actualizarMetodo() {
         const conTarjeta = metodo() === 'tarjeta';
         document.getElementById('pago-tarjeta').hidden = !conTarjeta;
-        boton.textContent = conTarjeta ? `Pagar ${formatoMoneda.format(total)}` : 'Confirmar reserva';
+        boton.textContent = conTarjeta ? `Pagar ${importe()}` : 'Confirmar reserva';
         mostrarErrorPago('');
+        if (total) actualizarMoneda();
     }
 
     // Formato mientras se escribe.
@@ -267,6 +299,7 @@ function prepararPago({ alPagar }) {
     campos.cvv.addEventListener('input', () => { campos.cvv.value = soloDigitos(campos.cvv.value); });
     campos.titular.addEventListener('input', actualizarVista);
     formulario.querySelectorAll('input[name="pago-metodo"]').forEach((radio) => radio.addEventListener('change', actualizarMetodo));
+    formulario.querySelectorAll('input[name="pago-moneda"]').forEach((radio) => radio.addEventListener('change', actualizarMoneda));
     retirarMarcasAlEditar(formulario);
 
     // Tarjetas de prueba: un clic completa el formulario.
@@ -321,7 +354,7 @@ function prepararPago({ alPagar }) {
                 marcarCampo(problema.campo);
                 return;
             }
-            pago = Object.assign({ metodo: 'tarjeta' }, datos, { numero: soloDigitos(datos.numero) });
+            pago = Object.assign({ metodo: 'tarjeta', moneda: moneda() }, datos, { numero: soloDigitos(datos.numero) });
         }
 
         procesando.hidden = false;
@@ -352,10 +385,8 @@ function prepararPago({ alPagar }) {
             imagen.hidden = !pedido.imagen;
             document.getElementById('pago-publicacion').textContent = pedido.publicacion;
             document.getElementById('pago-fechas').textContent = pedido.fechas;
-            // Se cobra en pesos; con otra moneda elegida se muestra el equivalente.
-            const equivalente = formatearPrecio(pedido.total);
-            document.getElementById('pago-total').innerHTML = escaparHtml(formatoMoneda.format(pedido.total))
-                + (equivalente !== formatoMoneda.format(pedido.total) ? `<small>aprox. ${escaparHtml(equivalente)}</small>` : '');
+            // Moneda del cobro: dólares si el visitante ve los precios en dólares.
+            formulario.querySelector(`input[name="pago-moneda"][value="${PREFERENCIAS.moneda === 'USD' ? 'USD' : 'DOP'}"]`).checked = true;
             // La tienda solo acepta tarjeta: se oculta el pago en el destino.
             const opcionDestino = formulario.querySelector('input[name="pago-metodo"][value="en_destino"]');
             opcionDestino.closest('label').hidden = Boolean(pedido.soloTarjeta);
@@ -369,6 +400,7 @@ function prepararPago({ alPagar }) {
                 if (usuario) campos.titular.value = usuario.nombre;
             }
             actualizarMetodo();
+            actualizarMoneda();
             actualizarVista();
             abrirModal('modal-pago');
             setTimeout(() => (metodo() === 'tarjeta' ? campos.numero : boton).focus({ preventScroll: true }), 50);

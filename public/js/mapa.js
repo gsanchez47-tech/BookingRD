@@ -124,7 +124,7 @@ function marcadorPrecio(publicacion) {
 
 /** Contenido de la ventana emergente de un marcador. */
 function ventanaPublicacion(publicacion) {
-    const imagen = publicacion.imagen ? `<img src="${escaparHtml(urlRecurso(publicacion.imagen))}" alt="" loading="lazy">` : '';
+    const imagen = publicacion.imagen ? `<img src="${escaparHtml(urlMiniatura(publicacion.imagen))}" alt="" loading="lazy">` : '';
     const valoracion = publicacion.totalResenas
         ? `<span class="mapa-ventana-nota">${formatoPuntuacion(publicacion.puntuacion)}</span> ${etiquetaPuntuacion(publicacion.puntuacion)}, ${textoResenas(publicacion.totalResenas)}`
         : 'Nuevo en BookingRD';

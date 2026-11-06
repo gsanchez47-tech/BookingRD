@@ -208,7 +208,7 @@ function pintarFicha(ciudad) {
 
     ficha.innerHTML = `
         <div class="ficha-foto${foto ? '' : ' sin-foto'}">
-            ${foto ? `<img src="${foto.foto}" alt="${escaparHtml(foto.alt)}">` : ''}
+            ${foto ? `<img src="${urlMiniatura(foto.foto)}" alt="${escaparHtml(foto.alt)}">` : ''}
             <div class="ficha-cabecera">
                 <h3 translate="no">${escaparHtml(ciudad)}</h3>
                 <span class="ficha-provincia" translate="no">${escaparHtml(CATALOGOS.provincias[ciudad] || '')}</span>

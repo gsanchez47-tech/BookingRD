@@ -22,7 +22,7 @@ function tarjetaCombo(combo, { titulo = 'h3' } = {}) {
     return `
         <article class="combo-boleto">
             <a class="combo-foto" href="combos.html?combo=${combo.id}" tabindex="-1" aria-hidden="true">
-                <img src="${escaparHtml(combo.imagen || '')}" alt="" loading="lazy">
+                <img src="${escaparHtml(urlMiniatura(combo.imagen || ''))}" alt="" loading="lazy">
                 <span class="combo-ahorro">-${combo.descuento} %</span>
                 <span class="combo-destino" translate="no">${escaparHtml(combo.ciudad)}</span>
             </a>

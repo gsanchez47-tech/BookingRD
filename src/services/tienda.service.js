@@ -66,8 +66,9 @@ function validarPedido(datos) {
 async function crearPedido(usuario, datos) {
     if (usuario.rol !== 'cliente') throw prohibido('Las compras se realizan con una cuenta de viajero.');
     const solicitud = validarPedido(datos || {});
-    const pagoValidado = pagosService.validarPago(datos.pago);
-    if (pagoValidado.metodo !== 'tarjeta') throw solicitudInvalida('Los pedidos de la tienda se pagan con tarjeta.', 'pago-metodo');
+    const validado = pagosService.validarPago(datos.pago);
+    if (validado.metodo !== 'tarjeta') throw solicitudInvalida('Los pedidos de la tienda se pagan con tarjeta.', 'pago-metodo');
+    const pagoValidado = await pagosService.prepararCobro(validado);
 
     for (let intento = 1; ; intento++) {
         try {
@@ -112,7 +113,7 @@ async function crearPedido(usuario, datos) {
                     total,
                     estado: 'pagado',
                     lineas,
-                    pago: Object.assign({}, pago, { fechaPago: new Date().toISOString() })
+                    pago: Object.assign({}, pago, { montoCobrado: pago.montoCobrado == null ? pago.monto : pago.montoCobrado, fechaPago: new Date().toISOString() })
                 };
             });
         } catch (error) {
@@ -131,7 +132,7 @@ async function cancelarPedido(usuario, idPedido) {
         if (!pedido || pedido.idUsuario !== usuario.id) throw noEncontrado('El pedido no existe.');
         if (pedido.estado !== 'pagado') throw conflicto('Solo se pueden cancelar los pedidos que aún no se han enviado.');
         await tiendaRepo.cambiarEstadoPedido(transaccion, id, 'cancelado');
-        return { reembolso: { monto: pedido.total, marca: pedido.marca, ultimos4: pedido.ultimos4 } };
+        return { reembolso: { monto: pedido.total, moneda: pedido.moneda, montoCobrado: pedido.montoCobrado, marca: pedido.marca, ultimos4: pedido.ultimos4 } };
     });
 }
 

@@ -16,6 +16,9 @@
  *
  *   Métodos: 'tarjeta' (se cobra al reservar) o 'en_destino' (se paga en el
  *   hotel, al operador o en el mostrador; la empresa lo marca como cobrado).
+ *   Monedas del cobro: pesos dominicanos (DOP) o dólares (USD). Los precios
+ *   están en pesos; en dólares se cobra el total convertido con la tasa del
+ *   día (externos.service.js) y se guardan el importe cobrado y la tasa.
  *   Estados: 'pagado', 'pendiente', 'reembolsado' (tarjeta cancelada) y
  *   'anulado' (pago en destino de una reserva cancelada).
  */
@@ -23,10 +26,14 @@
 'use strict';
 
 const crypto = require('crypto');
+const externos = require('./externos.service');
 const { ErrorHttp, solicitudInvalida } = require('../utils/errores');
 const { textoLimpio } = require('../utils/validacion');
 
 const METODOS = ['tarjeta', 'en_destino'];
+
+/** Monedas en que se puede pagar. Las demás (euros, etc.) solo son referencia. */
+const MONEDAS_PAGO = ['DOP', 'USD'];
 
 /** Tarjetas de prueba que la pasarela rechaza, con el motivo que devuelve. */
 const TARJETAS_RECHAZADAS = {
@@ -88,7 +95,10 @@ function mesActualRD() {
 function validarPago(pago) {
     const metodo = pago && pago.metodo ? String(pago.metodo) : 'en_destino';
     if (!METODOS.includes(metodo)) throw solicitudInvalida('Selecciona cómo quieres pagar.', 'pago-metodo');
-    if (metodo === 'en_destino') return { metodo };
+    const moneda = pago && pago.moneda ? String(pago.moneda).toUpperCase() : 'DOP';
+    if (!MONEDAS_PAGO.includes(moneda)) throw solicitudInvalida('Se puede pagar en pesos dominicanos o en dólares.', 'pago-moneda');
+    // En el destino se paga con la tasa del día de llegada: se registra en pesos.
+    if (metodo === 'en_destino') return { metodo, moneda: 'DOP' };
 
     const titular = textoLimpio(pago.titular).slice(0, 100);
     if (titular.length < 3 || !/^[\p{L} .'-]+$/u.test(titular)) {
@@ -117,8 +127,24 @@ function validarPago(pago) {
         throw solicitudInvalida(`El código de seguridad tiene ${largoCvv} dígitos.`, 'pago-cvv');
     }
 
-    return { metodo, numero, marca, ultimos4: numero.slice(-4), titular };
+    return { metodo, moneda, numero, marca, ultimos4: numero.slice(-4), titular };
 }
+
+/**
+ * Agrega al pago validado la tasa del día (pesos por dólar) cuando se paga en
+ * dólares. Se llama antes de abrir la transacción, porque puede consultar el
+ * servicio de tasas.
+ */
+async function prepararCobro(pagoValidado) {
+    if (pagoValidado.moneda !== 'USD') return Object.assign({}, pagoValidado, { tasa: null });
+    const { tasas } = await externos.tasas();
+    const tasa = Number(tasas.USD);
+    if (!(tasa > 0)) throw new ErrorHttp(503, 'No hay tasa del dólar disponible. Paga en pesos o inténtalo más tarde.', 'pago-moneda');
+    return Object.assign({}, pagoValidado, { tasa: Math.round(tasa * 1e6) / 1e6 });
+}
+
+/** Importe en dólares de un total en pesos con la tasa dada (redondeado a centavos). */
+const enDolares = (pesos, tasa) => Math.round((pesos / tasa) * 100) / 100;
 
 /** Referencia legible del pago: PAY + 8 caracteres. */
 function generarReferencia() {
@@ -133,7 +159,16 @@ function generarReferencia() {
  * @returns {object} registro de pago listo para guardar
  */
 function cobrar(pagoValidado, monto) {
-    const base = { metodo: pagoValidado.metodo, monto, moneda: 'DOP', referencia: generarReferencia() };
+    const enUsd = pagoValidado.moneda === 'USD' && pagoValidado.metodo === 'tarjeta';
+    if (enUsd && !(pagoValidado.tasa > 0)) throw new Error('Falta la tasa del dólar: llama a prepararCobro antes de cobrar.');
+    const base = {
+        metodo: pagoValidado.metodo,
+        monto,
+        moneda: enUsd ? 'USD' : 'DOP',
+        montoCobrado: enUsd ? enDolares(monto, pagoValidado.tasa) : null,
+        tasa: enUsd ? pagoValidado.tasa : null,
+        referencia: generarReferencia()
+    };
     if (pagoValidado.metodo === 'en_destino') {
         return Object.assign(base, { estado: 'pendiente', marca: null, ultimos4: null, titular: null, autorizacion: null });
     }
@@ -162,6 +197,8 @@ function aPago(fila, prefijo = '') {
         estado: c('estado'),
         monto: Number(c('monto')),
         moneda: c('moneda') || 'DOP',
+        montoCobrado: c('monto_cobrado') != null ? Number(c('monto_cobrado')) : Number(c('monto')),
+        tasa: c('tasa_cambio') != null ? Number(c('tasa_cambio')) : null,
         marca: c('marca') || null,
         ultimos4: c('ultimos4') || null,
         titular: c('titular') || null,
@@ -174,8 +211,11 @@ function aPago(fila, prefijo = '') {
 
 module.exports = {
     METODOS,
+    MONEDAS_PAGO,
     TARJETAS_PRUEBA,
     validarPago,
+    prepararCobro,
+    enDolares,
     cobrar,
     estadoTrasCancelar,
     aPago,

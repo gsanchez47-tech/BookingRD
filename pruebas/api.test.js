@@ -336,6 +336,39 @@ test('mis reservas y cancelación con reembolso', async () => {
     assert.ok([403, 404].includes(otra.status));
 });
 
+test('pago en dólares: tasa del día, importe cobrado, recibo y reembolso en US$', async () => {
+    const cuerpo = (pago) => ({ tipo: 'hotel', idPublicacion: creadas.hotel.id, entrada: fecha(60), salida: fecha(62), habitaciones: 1, personas: 2, pago });
+    const tarjeta = { metodo: 'tarjeta', titular: 'Laura Peña', numero: '4242424242424242', vencimiento: '12/30', cvv: '123' };
+    const euros = await api('/reservas', { metodo: 'POST', token: tokens.nueva, cuerpo: cuerpo(Object.assign({ moneda: 'EUR' }, tarjeta)) });
+    assert.equal(euros.status, 400, 'solo pesos o dólares');
+    assert.equal(euros.datos.campo, 'pago-moneda');
+
+    const { datos: monedas } = await api('/monedas');
+    const usd = await api('/reservas', { metodo: 'POST', token: tokens.nueva, cuerpo: cuerpo(Object.assign({ moneda: 'USD' }, tarjeta)) });
+    assert.equal(usd.status, 201, JSON.stringify(usd.datos));
+    const pago = usd.datos.pago;
+    assert.equal(pago.moneda, 'USD');
+    assert.equal(pago.monto, usd.datos.total, 'el monto en pesos es el total de la reserva');
+    assert.ok(Math.abs(pago.tasa - monedas.tasas.USD) < 0.01, `usa la tasa del día: ${pago.tasa} / ${JSON.stringify(monedas)}`);
+    assert.equal(pago.montoCobrado, Math.round((usd.datos.total / pago.tasa) * 100) / 100);
+
+    const lista = await api('/reservas', { token: tokens.nueva });
+    const guardada = lista.datos.reservas.find((r) => r.id === usd.datos.id);
+    assert.equal(guardada.pago.moneda, 'USD');
+    assert.equal(guardada.pago.montoCobrado, pago.montoCobrado);
+
+    const cancelada = await api(`/reservas/${usd.datos.id}/cancelar`, { metodo: 'PATCH', token: tokens.nueva });
+    assert.equal(cancelada.status, 200);
+    assert.equal(cancelada.datos.reembolso.moneda, 'USD');
+    assert.equal(cancelada.datos.reembolso.montoCobrado, pago.montoCobrado);
+
+    // En el destino se registra en pesos aunque se pida dólares.
+    const destino = await api('/reservas', { metodo: 'POST', token: tokens.nueva, cuerpo: cuerpo({ metodo: 'en_destino', moneda: 'USD' }) });
+    assert.equal(destino.status, 201);
+    assert.equal(destino.datos.pago.moneda, 'DOP');
+    await api(`/reservas/${destino.datos.id}/cancelar`, { metodo: 'PATCH', token: tokens.nueva });
+});
+
 /* ---------------------------------------------------------------------------
  * Favoritos y reseñas
  * ------------------------------------------------------------------------- */

@@ -384,7 +384,7 @@ function pintarPublicaciones() {
     lista.innerHTML = visibles.map((p, indice) => {
         const categoria = CATALOGOS.categorias[p.categoria];
         const media = p.imagen
-            ? `<img src="${escaparHtml(urlRecurso(p.imagen))}" alt="" loading="lazy" onerror="this.parentElement.classList.add('sin-foto')">`
+            ? `<img src="${escaparHtml(urlMiniatura(p.imagen))}" alt="" loading="lazy" onerror="this.parentElement.classList.add('sin-foto')">`
             : '';
         const datos = `data-tipo="${p.tipo}" data-id="${p.id}"`;
         return `

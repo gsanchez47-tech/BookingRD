@@ -64,7 +64,7 @@ npm run iniciar
 | `npm run local:reiniciar` | Borra la base local en archivo; el próximo arranque carga de nuevo los datos de ejemplo |
 | `npm run demo` | Demostración en memoria con datos nuevos que no se guardan (no toca ninguna base) |
 | `npm run dev` | Igual que `start`, con reinicio automático al guardar cambios |
-| `npm run probar` | Pruebas automáticas de la API (28 casos) |
+| `npm run probar` | Pruebas automáticas de la API (29 casos) |
 | `npm run construir` | Regenera `public/*.html` y `public/css/` desde `frontend/` (sección 6) |
 
 Los datos de ejemplo (`database/datos-demo.js`) traen 21 cuentas, 8 empresas, 77 publicaciones (16 alojamientos, 50 actividades y servicios, 11 autos), 7 combos, 93 reservas con su pago, 74 reseñas y una tienda con 11 productos y 2 pedidos.
@@ -109,7 +109,7 @@ Unos 12 minutos. Guion completo con lo que se dice en cada paso: [`docs/GUIA-DEM
 8. **Mis reservas:** cancela la reserva pagada con tarjeta; el aviso confirma el **reembolso** a la Visa •••• 4242. Reseña la reserva terminada pendiente.
 9. **Empresa:** entra como `empresa@bookingrd.com`; en *Reservas recibidas* se ve el estado del pago de cada reserva y *Marcar cobrado* registra el pago en destino de *Senderismo al Salto El Limón*.
 10. **Administración:** entra como `admin@bookingrd.com`; el resumen muestra lo cobrado en línea, lo pendiente y lo reembolsado. Suspende una empresa y comprueba que sus publicaciones salen del catálogo; reactívala.
-11. **Idioma y moneda:** cambia a inglés y dólares con *ES / RD$*.
+11. **Idioma y moneda:** cambia a inglés y dólares con *ES / RD$*; en el mismo menú, *Otro idioma* traduce la página a cualquier idioma. Paga una reserva eligiendo *Dólares estadounidenses*: el recibo muestra US$, la tasa y el equivalente en pesos.
 
 Para empezar la demostración con los datos originales: con SQL Server, `npm run bd:reiniciar` (o `npm run sqlserver` y responder *s* a crear la base de nuevo); con la base local, cierra BookingRD y ejecuta `npm run local:reiniciar`. Si prefieres ensayar sin tocar la base, `npm run demo` usa datos en memoria que se descartan al cerrar.
 
@@ -133,7 +133,7 @@ Para empezar la demostración con los datos originales: con SQL Server, `npm run
 | Administración | Indicadores globales (incluye cobrado en línea, por cobrar y reembolsado), empresas y usuarios (suspender y reactivar), moderación de publicaciones y reseñas, todas las reservas con su pago, pedidos de la tienda (enviar y entregar) y mensajes de contacto. |
 | Registro e inicio de sesión | Registro sencillo de viajero y por pasos de empresa; *Recordarme*; cada rol llega a su espacio. |
 
-**Idioma y moneda.** El sitio está en español y se puede ver en inglés. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia); el pago siempre es en pesos y la reserva lo indica. Los textos escritos por usuarios y empresas no se traducen.
+**Idioma y moneda.** El sitio está en español, con traducción propia y revisada al inglés, y se puede ver en cualquier otro idioma (francés, portugués, alemán, italiano, criollo haitiano, chino, japonés, árabe y unos 45 más) con la traducción automática de Google, que se carga solo al elegirlo y necesita internet; si no carga, la página vuelve al español con un aviso. Los nombres propios y los textos de usuarios y empresas no se traducen. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia). **El pago se hace en pesos dominicanos o en dólares**: en la ventana de pago se elige la moneda; en dólares se cobra el total convertido con la tasa del día y el recibo muestra el importe cobrado, el equivalente en pesos y la tasa aplicada. El pago en el destino se registra en pesos.
 
 **Diseño caribeño y futurista.** Azules profundos del Caribe de noche con paneles de vidrio translúcido, bordes de luz y brillos turquesa; fotografías a pantalla completa bajo un velo azul (inicio, inicio de sesión, registro, empresas y categorías de Explorar); encabezado azul noche con la franja tricolor; píldoras sobre los títulos y segunda línea en cursiva turquesa; retícula de puntos en las bandas oscuras. Tipografías Fraunces y Nunito (incluidas en `public/fonts/`). Una sola animación: los puntos del mapa al cargar; sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (107) se usa en un solo lugar del sitio; el equipo, los fotógrafos y los productos de la tienda usan ilustraciones propias (`public/img/ilustraciones/`, 20 archivos SVG).
 

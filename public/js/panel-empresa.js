@@ -264,7 +264,7 @@ function crearFilaPublicacion(publicacion, indice) {
     const categoria = CATALOGOS.categorias[publicacion.categoria];
     const unidad = unidadPrecio(publicacion.tipo, publicacion.categoria);
     const media = publicacion.imagen
-        ? `<img src="${escaparHtml(urlRecurso(publicacion.imagen))}" alt="" loading="lazy" onerror="this.parentElement.classList.add('sin-foto')">`
+        ? `<img src="${escaparHtml(urlMiniatura(publicacion.imagen))}" alt="" loading="lazy" onerror="this.parentElement.classList.add('sin-foto')">`
         : '';
     const detalle = publicacion.tipo === 'vehiculo'
         ? `${resumenVehiculo(publicacion)}, ${publicacion.unidades} ${publicacion.unidades === 1 ? 'unidad' : 'unidades'}`

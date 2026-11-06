@@ -92,7 +92,9 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 
 ## 10. Cierre (30 segundos)
 
-- Botón **ES / RD$** del encabezado: cambia a **inglés** y **US$**. Los precios se convierten con la tasa del día; el pago sigue en pesos.
+- Botón **ES / RD$** del encabezado: cambia a **inglés** y **US$**. Los precios se convierten con la tasa del día.
+- En el mismo menú, **Otro idioma**: elige *Français* o *Kreyòl ayisyen*; la página se traduce automáticamente (necesita internet).
+  - *Qué decir:* el pago se hace en pesos o en dólares; en la ventana de pago se elige la moneda y el recibo guarda la tasa aplicada.
 - *Qué decir:* Node.js + Express por capas, SQL Server o Azure SQL Database (instalación en un clic, con una base local de respaldo), HTML, CSS y JavaScript sin frameworks, contraseñas con bcrypt y sesiones con JWT.
 
 ## Si algo falla
