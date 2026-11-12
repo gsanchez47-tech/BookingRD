@@ -42,8 +42,7 @@
     color: var(--caribe-deep);
     font-size: var(--t-xs);
     font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
 }
 
 .portada-cabecera h1 {

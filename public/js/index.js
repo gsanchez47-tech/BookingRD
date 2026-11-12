@@ -215,12 +215,14 @@ function pintarFicha(ciudad) {
             </div>
         </div>
         <div class="ficha-cuerpo">
+            <p class="ficha-resumen" id="ficha-resumen" hidden></p>
             <ul class="ficha-conteos">${enlaces || '<li class="sin-oferta">Pronto habrá publicaciones en este destino.</li>'}</ul>
             ${lugaresDe(ciudad)}
             <div class="ficha-clima" id="ficha-clima"></div>
             ${total ? `<a class="btn-primario btn-bloque" href="explorar.html?ciudad=${encodeURIComponent(ciudad)}">Ver todo en ${escaparHtml(ciudad)}</a>` : ''}
         </div>`;
     pintarClimaCompacto(document.getElementById('ficha-clima'), ciudad);
+    pintarResumenDestino(document.getElementById('ficha-resumen'), ciudad);
 }
 
 /** Lugares imperdibles del destino (public/js/lugares.js): los cinco primeros y el resto plegado. */

@@ -284,8 +284,7 @@ button {
     color: var(--caribe-deep);
     font-size: var(--t-xs);
     font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
 }
 
 .etiqueta-caribe.roja {
@@ -2026,11 +2025,15 @@ dialog.modal.cerrando {
     padding: 10px 12px;
     border: 1px solid var(--linea);
     border-radius: var(--r-s);
-    background: none;
+    background: var(--superficie);
+    color: var(--tinta);
     font-size: var(--t-s);
     font-weight: 700;
     text-align: left;
+    cursor: pointer;
 }
+
+.preferencias-opcion:hover { border-color: var(--caribe); }
 
 .preferencias-opcion[aria-pressed='true'] {
     border-color: var(--azul);
@@ -2055,6 +2058,46 @@ dialog.modal.cerrando {
     font-size: var(--t-xs);
     font-weight: 700;
     color: var(--tinta-2);
+}
+
+.preferencias-principales {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.preferencias-principal {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 10px 12px;
+    font-size: var(--t-m);
+}
+
+.preferencias-otro summary {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 2px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.preferencias-otro summary::-webkit-details-marker { display: none; }
+
+.preferencias-otro summary::after {
+    content: '+';
+    font-weight: 800;
+    color: var(--azul);
+}
+
+.preferencias-otro[open] summary::after { content: '\2212'; }
+
+.preferencias-otro summary small {
+    margin-right: auto;
+    font-weight: 600;
+    color: var(--tinta-3);
 }
 
 .preferencias-otro select {
@@ -2212,6 +2255,103 @@ html.idioma-cargando body {
 .clima-fuente {
     margin-top: var(--e-3);
 }
+
+.clima-sol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2) var(--e-4);
+    margin: var(--e-4) 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--t-s);
+}
+
+.clima-sol li {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.clima-sol span {
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.clima-sol em {
+    color: var(--rojo);
+    font-size: var(--t-xs);
+    font-style: normal;
+    font-weight: 700;
+}
+
+.clima-mar {
+    display: flex;
+    align-items: center;
+    gap: var(--e-3);
+    margin-top: var(--e-4);
+    padding: var(--e-3) var(--e-4);
+    border-radius: var(--r-s);
+    background: linear-gradient(90deg, rgba(0, 180, 216, 0.14) 0%, rgba(0, 48, 135, 0.06) 100%);
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+}
+
+.clima-mar[hidden],
+.clima-feriados[hidden] { display: none; }
+
+.clima-mar svg {
+    flex-shrink: 0;
+    fill: none;
+    stroke: var(--caribe-deep);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+}
+
+.clima-mar strong { color: var(--azul); }
+
+.clima-feriados {
+    margin-top: var(--e-4);
+    font-size: var(--t-s);
+}
+
+.clima-feriados h3 {
+    margin-bottom: var(--e-2);
+    font-family: var(--f-texto);
+    font-size: var(--t-s);
+    font-weight: 900;
+}
+
+.clima-feriados ul {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.clima-feriados time {
+    display: inline-block;
+    min-width: 7.5em;
+    color: var(--azul);
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+.clima-feriados p {
+    margin-top: var(--e-2);
+    color: var(--tinta-3);
+    font-size: 12px;
+}
+
+.ficha-resumen {
+    margin: 0 0 var(--e-3);
+    color: var(--tinta-2);
+    font-size: var(--t-s);
+    line-height: 1.5;
+}
+
+.ficha-resumen a { font-weight: 700; }
 
 /* ----------------------------------------------------------------------------
    Pagos simulados: estado del pago y recibo (public/js/pagos.js)
@@ -2399,8 +2539,7 @@ body:has(.banda-empresas) .pie {
     color: var(--caribe);
     font-size: var(--t-xs);
     font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
 }
 
 .cabecera-cuenta h1 {

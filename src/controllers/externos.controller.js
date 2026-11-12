@@ -25,4 +25,30 @@ async function obtenerMonedas(req, res) {
     res.json(await externos.tasas());
 }
 
-module.exports = { obtenerClima, obtenerMonedas };
+/** GET /api/mar?ciudad=Samaná (204 en destinos de montaña) */
+async function obtenerMar(req, res) {
+    const ciudad = String(req.query.ciudad || '');
+    if (!Object.hasOwn(DESTINOS, ciudad)) throw solicitudInvalida('Indica un destino válido.', 'ciudad');
+    const mar = await externos.mar(ciudad);
+    if (!mar) return res.status(204).end();
+    res.set('Cache-Control', 'public, max-age=1200');
+    res.json(mar);
+}
+
+/** GET /api/feriados */
+async function obtenerFeriados(req, res) {
+    res.set('Cache-Control', 'public, max-age=21600');
+    res.json(await externos.feriados());
+}
+
+/** GET /api/destinos/resumen?ciudad=Samaná */
+async function obtenerResumenDestino(req, res) {
+    const ciudad = String(req.query.ciudad || '');
+    if (!Object.hasOwn(DESTINOS, ciudad)) throw solicitudInvalida('Indica un destino válido.', 'ciudad');
+    const resumen = await externos.destino(ciudad);
+    if (!resumen) return res.status(204).end();
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.json(resumen);
+}
+
+module.exports = { obtenerClima, obtenerMonedas, obtenerMar, obtenerFeriados, obtenerResumenDestino };

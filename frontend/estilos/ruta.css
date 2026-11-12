@@ -185,6 +185,26 @@
     font-weight: 700;
 }
 
+.carretera header.con-foto {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    align-items: center;
+    gap: var(--e-4);
+}
+
+.carretera header img {
+    width: 120px;
+    height: 84px;
+    border-radius: 14px;
+    object-fit: cover;
+    box-shadow: 0 10px 24px -14px rgba(0, 48, 135, 0.55);
+}
+
+@media (max-width: 520px) {
+    .carretera header.con-foto { grid-template-columns: 84px 1fr; }
+    .carretera header img { width: 84px; height: 64px; }
+}
+
 /* La vía: franja gris con línea central amarilla discontinua. */
 .paradas {
     position: relative;

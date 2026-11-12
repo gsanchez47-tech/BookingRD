@@ -19,8 +19,7 @@
     color: var(--caribe);
     font-size: var(--t-xs);
     font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
 }
 
 .cabecera-cuenta h1 {

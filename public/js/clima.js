@@ -7,6 +7,13 @@
  *   pintarClima(contenedor, ciudad)          condición actual y pronóstico de
  *                                            cuatro días (página de detalle).
  *
+ *   pintarResumenDestino(contenedor, ciudad) resumen del destino en Wikipedia
+ *                                            (ficha del mapa de inicio).
+ *
+ *   La página de detalle incluye además amanecer, atardecer e índice UV,
+ *   el estado del mar en destinos de costa (Open-Meteo Marine) y los próximos
+ *   feriados de la República Dominicana (Nager.Date).
+ *
  *   Si el servicio no responde, el contenedor queda vacío y oculto: el clima
  *   es información complementaria y nunca bloquea la página.
  */
@@ -79,6 +86,62 @@ async function pintarClima(contenedor, ciudad) {
             </div>
         </div>
         <ul class="clima-pronostico" aria-label="Pronóstico de cuatro días">${dias}</ul>
-        <p class="clima-fuente">${clima.actualizado ? 'Datos de' : 'Último dato disponible de'} <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a>.</p>`;
+        ${lineaSol(clima.pronostico[0])}
+        <div class="clima-mar" data-mar hidden></div>
+        <div class="clima-feriados" data-feriados hidden></div>
+        <p class="clima-fuente">${clima.actualizado ? 'Datos de' : 'Último dato disponible de'} <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> y <a href="https://date.nager.at" target="_blank" rel="noopener">Nager.Date</a>.</p>`;
+    contenedor.hidden = false;
+    pintarMar(contenedor.querySelector('[data-mar]'), ciudad);
+    pintarFeriados(contenedor.querySelector('[data-feriados]'));
+}
+
+/** Amanecer, atardecer e índice UV del día. */
+function lineaSol(dia) {
+    if (!dia || (!dia.amanecer && !dia.atardecer)) return '';
+    const uv = dia.uv == null ? '' : `<li><span>Índice UV</span><strong>${dia.uv}</strong>${dia.uv >= 8 ? ' <em>muy alto, usa protector</em>' : ''}</li>`;
+    return `
+        <ul class="clima-sol" aria-label="Sol de hoy">
+            ${dia.amanecer ? `<li><span>Amanecer</span><strong>${escaparHtml(dia.amanecer)}</strong></li>` : ''}
+            ${dia.atardecer ? `<li><span>Atardecer</span><strong>${escaparHtml(dia.atardecer)}</strong></li>` : ''}
+            ${uv}
+        </ul>`;
+}
+
+/** Olas y temperatura del agua (solo destinos de costa). */
+async function pintarMar(contenedor, ciudad) {
+    if (!contenedor) return;
+    const mar = await apiFetch(`/mar?ciudad=${encodeURIComponent(ciudad)}`).catch(() => null);
+    if (!mar || (mar.olas == null && mar.agua == null)) return;
+    contenedor.innerHTML = `
+        <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true" focusable="false"><path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 14c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2M2 19c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/></svg>
+        <p><strong>${escaparHtml(mar.estado || 'Estado del mar')}</strong>
+        ${mar.olas != null ? ` olas de ${String(mar.olas).replace('.', LOCALE === 'en-US' ? '.' : ',')} m` : ''}${mar.olas != null && mar.agua != null ? ', ' : ''}${mar.agua != null ? `agua a ${mar.agua}°C` : ''}.</p>`;
+    contenedor.hidden = false;
+}
+
+const formatoFeriado = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/** Próximos tres feriados nacionales. */
+async function pintarFeriados(contenedor) {
+    if (!contenedor) return;
+    const datos = await apiFetch('/feriados').catch(() => null);
+    if (!datos || !datos.feriados || !datos.feriados.length) return;
+    contenedor.innerHTML = `
+        <h3>Próximos feriados</h3>
+        <ul>${datos.feriados.slice(0, 3).map((f) => `
+            <li><time datetime="${escaparHtml(f.fecha)}">${escaparHtml(formatoFeriado.format(new Date(`${f.fecha}T00:00:00Z`)))}</time> <span>${escaparHtml(PREFERENCIAS.idioma === 'en' && f.nombreEn ? f.nombreEn : f.nombre)}</span></li>`).join('')}
+        </ul>
+        <p>En los feriados hay más demanda y tráfico: reserva con tiempo.</p>`;
+    contenedor.hidden = false;
+}
+
+/** Resumen del destino en Wikipedia (solo en español y traducción automática). */
+async function pintarResumenDestino(contenedor, ciudad) {
+    if (!contenedor || PREFERENCIAS.idioma === 'en') return;
+    contenedor.hidden = true;
+    contenedor.dataset.ciudad = ciudad;
+    const datos = await apiFetch(`/destinos/resumen?ciudad=${encodeURIComponent(ciudad)}`).catch(() => null);
+    if (!datos || !datos.resumen || contenedor.dataset.ciudad !== ciudad) return;
+    contenedor.innerHTML = `${escaparHtml(datos.resumen)} <a href="${escaparHtml(datos.enlace)}" target="_blank" rel="noopener">Wikipedia</a>`;
     contenedor.hidden = false;
 }

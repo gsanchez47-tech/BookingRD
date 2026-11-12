@@ -774,16 +774,32 @@
 }
 
 .experiencia-grupo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    justify-self: start;
+    padding: 3px 10px 3px 8px;
+    border-radius: 999px;
+    background: rgba(0, 180, 216, 0.12);
     color: var(--caribe-deep);
     font-size: var(--t-xs);
     font-weight: 800;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
+}
+
+.experiencia-grupo::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--caribe) 0%, var(--azul) 100%);
 }
 
 .experiencia strong {
-    font-family: var(--f-display);
+    font-family: var(--f-texto);
     font-size: var(--t-l);
+    font-weight: 900;
+    letter-spacing: -0.015em;
     line-height: 1.2;
 }
 

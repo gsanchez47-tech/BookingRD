@@ -97,6 +97,12 @@ function pintarFiltros() {
     antojo.addEventListener('change', (e) => { filtrosRuta.antojo = e.target.value; pintarRutas(); });
 }
 
+/**
+ * Foto del antojo típico de cada carretera (una por carretera, sin repetir).
+ * Si una carretera no tiene foto, su encabezado queda solo con texto.
+ */
+const FOTOS_CARRETERA = {};
+
 function pintarRutas() {
     let total = 0;
     const html = CARRETERAS
@@ -107,9 +113,12 @@ function pintarRutas() {
             if (!paradas.length) return '';
             return `
                 <article class="carretera">
-                    <header>
-                        <h3 translate="no">${escaparHtml(c.nombre)}</h3>
-                        <p>${escaparHtml(c.tramo)}</p>
+                    <header class="${FOTOS_CARRETERA[c.id] ? 'con-foto' : ''}">
+                        ${FOTOS_CARRETERA[c.id] ? `<img src="${FOTOS_CARRETERA[c.id].foto}" alt="${escaparHtml(FOTOS_CARRETERA[c.id].alt)}" loading="lazy">` : ''}
+                        <div>
+                            <h3 translate="no">${escaparHtml(c.nombre)}</h3>
+                            <p>${escaparHtml(c.tramo)}</p>
+                        </div>
                     </header>
                     <ol class="paradas">
                         ${paradas.map((p) => `

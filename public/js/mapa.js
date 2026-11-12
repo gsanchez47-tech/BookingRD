@@ -97,11 +97,7 @@ function crearMapaRD(elemento, opciones = {}) {
         style: { color: '#003087', weight: 1.5, fillColor: '#FDEBD0', fillOpacity: 1 }
     }).addTo(mapa);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    }).addTo(mapa);
+    agregarMosaicos(mapa);
 
     // La rueda del ratón solo hace zoom después de hacer clic en el mapa,
     // para no interrumpir el desplazamiento de la página.
@@ -110,6 +106,40 @@ function crearMapaRD(elemento, opciones = {}) {
         mapa.on('mouseout', () => mapa.scrollWheelZoom.disable());
     }
     return mapa;
+}
+
+/**
+ * Mosaicos del mapa, sin clave de acceso. Primero OpenStreetMap; si sus
+ * mosaicos fallan varias veces (servicio caído o bloqueado en la red), se
+ * cambia a Esri World Street Map. Si ninguno carga, queda visible el contorno
+ * propio de la isla dibujado debajo, de modo que el mapa nunca sale vacío.
+ */
+const PROVEEDORES_MAPA = [
+    {
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        opciones: { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
+    },
+    {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+        opciones: { maxZoom: 19, attribution: 'Mapa &copy; <a href="https://www.esri.com">Esri</a>, HERE, Garmin, &copy; OpenStreetMap' }
+    }
+];
+
+function agregarMosaicos(mapa, indice = 0) {
+    const proveedor = PROVEEDORES_MAPA[indice];
+    if (!proveedor) return;
+    const capa = L.tileLayer(proveedor.url, Object.assign({ className: 'mosaicos-mapa' }, proveedor.opciones));
+    let fallos = 0;
+    let cargados = 0;
+    capa.on('tileload', () => { cargados += 1; });
+    capa.on('tileerror', () => {
+        fallos += 1;
+        if (fallos === 4 && cargados === 0) {
+            mapa.removeLayer(capa);
+            agregarMosaicos(mapa, indice + 1);
+        }
+    });
+    capa.addTo(mapa);
 }
 
 /** Marcador con el precio de la publicación, en forma de etiqueta. */

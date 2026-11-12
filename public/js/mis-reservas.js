@@ -462,7 +462,7 @@ function pintarPedidos(lista) {
     lista.innerHTML = pedidos.map((p) => `
         <article class="reserva pedido es-${p.estado === 'cancelado' ? 'canceladas' : 'proximas'}">
             <div class="pedido-fotos" aria-hidden="true">
-                ${p.lineas.slice(0, 4).map((l) => `<img src="${escaparHtml(urlRecurso(l.imagen || ''))}" alt="" loading="lazy">`).join('')}
+                ${p.lineas.slice(0, 4).map((l) => `<img src="${escaparHtml(urlMiniatura(l.imagen || ''))}" alt="" loading="lazy">`).join('')}
             </div>
             <div class="reserva-cuerpo">
                 <div class="reserva-encabezado">

@@ -83,7 +83,7 @@ function pintarProductos() {
         const agotado = p.existencias <= 0;
         return `
             <li class="producto">
-                <img src="${escaparHtml(p.imagen || '')}" alt="" loading="lazy">
+                <img src="${escaparHtml(urlMiniatura(p.imagen || ''))}" alt="" loading="lazy">
                 <div class="producto-cuerpo">
                     <span class="producto-categoria">${escaparHtml(CATALOGOS.categoriasProducto[p.categoria] || '')}</span>
                     <h3 translate="no">${escaparHtml(p.nombre)}</h3>
@@ -157,7 +157,7 @@ function pintarCarrito() {
         const p = productoPorId(id);
         return `
             <li>
-                <img src="${escaparHtml(p.imagen || '')}" alt="" width="56" height="56">
+                <img src="${escaparHtml(urlMiniatura(p.imagen || ''))}" alt="" width="56" height="56">
                 <span class="carrito-nombre" translate="no">${escaparHtml(p.nombre)}</span>
                 <span class="carrito-cantidad" role="group" aria-label="Cantidad de ${escaparHtml(p.nombre)}">
                     <button type="button" data-restar="${id}" aria-label="Quitar uno">-</button>

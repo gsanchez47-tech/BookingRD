@@ -739,8 +739,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
 .mapa-ventana-ciudad {
     font-size: 0.72rem;
     font-weight: 800;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    letter-spacing: 0.01em;
     color: var(--caribe-deep);
 }
 .mapa-ventana strong {
@@ -776,3 +775,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     line-height: 24px;
     color: var(--night);
 }
+
+/* Mosaicos de OpenStreetMap o Esri, algo menos saturados para que destaquen
+   los precios en rojo y el contorno azul de la isla. */
+.mosaicos-mapa { filter: saturate(0.82) brightness(1.03); }

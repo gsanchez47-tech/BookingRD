@@ -106,6 +106,9 @@ function restaurarPosicion() {
     }
 }
 
+/** Idiomas automáticos que se muestran primero (visitantes más frecuentes de la RD). */
+const IDIOMAS_FRECUENTES = ['fr', 'pt', 'de', 'it', 'ht', 'zh-CN', 'ru'];
+
 function iniciarSelectorPreferencias() {
     const contenedor = document.querySelector('[data-preferencias]');
     if (!contenedor) return;
@@ -121,17 +124,29 @@ function iniciarSelectorPreferencias() {
         <div class="preferencias-panel" id="panel-preferencias" hidden>
             <fieldset>
                 <legend>Idioma</legend>
-                <button type="button" class="preferencias-opcion" data-idioma="es" aria-pressed="${PREFERENCIAS.idioma === 'es'}" translate="no">Español</button>
-                <button type="button" class="preferencias-opcion" data-idioma="en" aria-pressed="${PREFERENCIAS.idioma === 'en'}" translate="no">English</button>
-                <label class="preferencias-otro${automatico ? ' activo' : ''}">
-                    <span>Otro idioma (traducción automática)</span>
-                    <select data-idioma-automatico translate="no">
-                        <option value="">${automatico ? '' : 'Elegir...'}</option>
-                        ${Object.entries(IDIOMAS_AUTOMATICOS)
-                            .sort((a, b) => a[1].localeCompare(b[1]))
-                            .map(([codigo, nombre]) => `<option value="${codigo}"${codigo === PREFERENCIAS.idioma ? ' selected' : ''}>${nombre}</option>`).join('')}
+                <div class="preferencias-principales">
+                    <button type="button" class="preferencias-opcion preferencias-principal" data-idioma="es" aria-pressed="${PREFERENCIAS.idioma === 'es'}" translate="no">
+                        <span>Español</span><small>ES</small>
+                    </button>
+                    <button type="button" class="preferencias-opcion preferencias-principal" data-idioma="en" aria-pressed="${PREFERENCIAS.idioma === 'en'}" translate="no">
+                        <span>English</span><small>EN</small>
+                    </button>
+                </div>
+                <details class="preferencias-otro${automatico ? ' activo' : ''}"${automatico ? ' open' : ''}>
+                    <summary>Más idiomas <small>traducción automática</small></summary>
+                    <select data-idioma-automatico translate="no" aria-label="Otro idioma (traducción automática)">
+                        <option value="">${automatico ? '' : 'Elegir idioma...'}</option>
+                        <optgroup label="${PREFERENCIAS.idioma === 'en' ? 'Most used' : 'Más usados'}">
+                            ${IDIOMAS_FRECUENTES.map((codigo) => `<option value="${codigo}"${codigo === PREFERENCIAS.idioma ? ' selected' : ''}>${IDIOMAS_AUTOMATICOS[codigo]}</option>`).join('')}
+                        </optgroup>
+                        <optgroup label="${PREFERENCIAS.idioma === 'en' ? 'All' : 'Todos'}">
+                            ${Object.entries(IDIOMAS_AUTOMATICOS)
+                                .filter(([codigo]) => !IDIOMAS_FRECUENTES.includes(codigo))
+                                .sort((a, b) => a[1].localeCompare(b[1]))
+                                .map(([codigo, nombre]) => `<option value="${codigo}"${codigo === PREFERENCIAS.idioma ? ' selected' : ''}>${nombre}</option>`).join('')}
+                        </optgroup>
                     </select>
-                </label>
+                </details>
             </fieldset>
             <fieldset>
                 <legend>Moneda de los precios</legend>
