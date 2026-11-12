@@ -31,11 +31,19 @@ $Raiz = Split-Path -Parent $PSScriptRoot
 $ArchivoEnv = Join-Path $Raiz '.env'
 $Utf8SinBom = New-Object System.Text.UTF8Encoding $false
 
+# Registro de la instalación (para revisar errores): database\local\sqlserver-instalacion.log
+$Bitacora = Join-Path $Raiz 'database\local\sqlserver-instalacion.log'
+New-Item -ItemType Directory -Force -Path (Split-Path $Bitacora) | Out-Null
+if ($Elevado) {
+    try { Start-Transcript -Path $Bitacora -Append | Out-Null } catch { }
+}
+
 function Escribir([string]$Texto, [string]$Color = 'Gray') {
     Write-Host $Texto -ForegroundColor $Color
 }
 
 function Terminar([int]$Codigo) {
+    if ($Elevado) { try { Stop-Transcript | Out-Null } catch { } }
     # La ventana con permisos de administrador es aparte: se deja abierta para leer el resultado.
     if ($Elevado) {
         Write-Host ''
@@ -65,6 +73,7 @@ if (-not $identidad.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         exit $proceso.ExitCode
     } catch {
         Escribir 'Se canceló el permiso de administrador.' Yellow
+        Add-Content -Path $Bitacora -Value "$(Get-Date -Format s) Se canceló el permiso de administrador: $($_.Exception.Message)" -ErrorAction SilentlyContinue
         exit 2
     }
 }
