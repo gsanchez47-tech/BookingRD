@@ -318,7 +318,7 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 | Carpeta | Uso |
 |---|---|
 | `img/publicaciones/` | Una fotografía por publicación de demostración |
-| `img/destinos/` | Ficha de 15 destinos en el mapa del inicio |
+| `img/destinos/` | Ficha de los 19 destinos en el mapa del inicio |
 | `img/servicios/` | Tarjetas de *¿Qué quieres reservar?* y cabecera de Explorar de 8 categorías |
 | `img/paginas/` | Portada y banda de empresas del inicio, autos, combos, tienda, ruta, registro e inicio de sesión |
 | `img/productos/` | Una fotografía por producto de la tienda de artesanía |

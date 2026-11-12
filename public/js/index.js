@@ -23,7 +23,11 @@ const FOTOS_DESTINO = [
     { ciudad: 'Río San Juan', foto: 'img/destinos/rio-san-juan.jpg', alt: 'Botes de colores en la laguna Gri-Gri vista desde el aire' },
     { ciudad: 'Sosúa', foto: 'img/destinos/sosua.jpg', alt: 'Terraza con balaustrada blanca sobre el mar de Sosúa' },
     { ciudad: 'Cabarete', foto: 'img/destinos/cabarete.jpg', alt: 'Bahía de Cabarete desde el aire con cometas de kitesurf' },
-    { ciudad: 'Miches', foto: 'img/destinos/miches.jpg', alt: 'Bahía de Miches vista desde Montaña Redonda' }
+    { ciudad: 'Miches', foto: 'img/destinos/miches.jpg', alt: 'Bahía de Miches vista desde Montaña Redonda' },
+    { ciudad: 'Las Terrenas', foto: 'img/destinos/las-terrenas.jpg', alt: 'Playa de arena dorada con cocoteros en Las Terrenas' },
+    { ciudad: 'Barahona', foto: 'img/destinos/barahona.jpg', alt: 'Letras de colores frente al mar Caribe en el malecón de Barahona' },
+    { ciudad: 'Montecristi', foto: 'img/destinos/montecristi.jpg', alt: 'El Morro de Montecristi y su bahía turquesa desde el aire' },
+    { ciudad: 'Baní', foto: 'img/destinos/bani.jpg', alt: 'Muelle de madera y bote azul en la bahía de Las Salinas, Baní' }
 ];
 
 /**

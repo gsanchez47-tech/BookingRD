@@ -101,7 +101,12 @@ function pintarFiltros() {
  * Foto del antojo típico de cada carretera (una por carretera, sin repetir).
  * Si una carretera no tiene foto, su encabezado queda solo con texto.
  */
-const FOTOS_CARRETERA = {};
+const FOTOS_CARRETERA = {
+    duarte: { foto: 'img/ruta/chicharron.jpg', alt: 'Plato de chicharrón de cerdo con limón' },
+    este: { foto: 'img/ruta/empanadas-yuca.jpg', alt: 'Empanadas de yuca con salsa' },
+    sanchez: { foto: 'img/ruta/dulces-criollos.jpg', alt: 'Caja de dulces criollos dominicanos' },
+    norte: { foto: 'img/ruta/quesos.jpg', alt: 'Quesos de hoja frescos' }
+};
 
 function pintarRutas() {
     let total = 0;
