@@ -23,7 +23,9 @@
 #>
 
 param(
-    [switch]$Elevado
+    [switch]$Elevado,
+    # Borra la base BookingRD existente sin preguntar (instalación limpia).
+    [switch]$Reinstalar
 )
 
 $ErrorActionPreference = 'Stop'
@@ -69,6 +71,7 @@ if (-not $identidad.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     Escribir 'Windows va a pedir permiso de administrador para configurar SQL Server.' Cyan
     try {
         $argumentos = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$PSCommandPath`"", '-Elevado')
+        if ($Reinstalar) { $argumentos += '-Reinstalar' }
         $proceso = Start-Process -FilePath 'powershell.exe' -ArgumentList $argumentos -Verb RunAs -Wait -PassThru
         exit $proceso.ExitCode
     } catch {
@@ -186,7 +189,12 @@ try {
 try {
     $existe = Ejecutar $admin "SELECT COUNT(*) FROM sys.databases WHERE name = N'BookingRD'"
     if ($existe -gt 0) {
-        $respuesta = Read-Host 'Ya existe una base BookingRD. Borrarla y crearla de nuevo con los datos de ejemplo? (s = de nuevo, n = conservar los datos)'
+        if ($Reinstalar) {
+            $respuesta = 's'
+            Escribir 'Instalación limpia: se reemplaza la base BookingRD anterior.' Cyan
+        } else {
+            $respuesta = Read-Host 'Ya existe una base BookingRD. Borrarla y crearla de nuevo con los datos de ejemplo? (s = de nuevo, n = conservar los datos)'
+        }
         if ($respuesta -match '^[sS]') {
             Escribir 'Eliminando la base anterior...'
             [void](Ejecutar $admin "ALTER DATABASE BookingRD SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE BookingRD;")

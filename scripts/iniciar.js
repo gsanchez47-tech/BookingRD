@@ -36,8 +36,10 @@ async function main() {
     // 1. Primera vez en Windows: SQL Server.
     if (!fs.existsSync(ARCHIVO_ENV) && process.platform === 'win32') {
         console.log('\n  Primera vez: se va a configurar SQL Server para guardar los datos de BookingRD.\n');
-        const resultado = spawnSync('powershell.exe',
-            ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT_SQLSERVER],
+        // BOOKINGRD_REINSTALAR=1 (instalador final): reemplaza la base anterior sin preguntar.
+        const argumentos = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT_SQLSERVER];
+        if (process.env.BOOKINGRD_REINSTALAR === '1') argumentos.push('-Reinstalar');
+        const resultado = spawnSync('powershell.exe', argumentos,
             { stdio: 'inherit', cwd: RAIZ });
         if (resultado.status !== 0 || !fs.existsSync(ARCHIVO_ENV)) {
             console.log('\n  No se configuró SQL Server. BookingRD usará la base local en archivo, que también guarda los datos.');

@@ -24,7 +24,7 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 - Muestra la portada: foto de playa, buscador sobre vidrio y las cifras de la plataforma.
 - Baja a **¿Qué quieres reservar?**: las tres puertas de entrada (alojamiento, actividades, autos), y a los **combos** destacados.
 - Baja al **mapa de la isla** y toca **Miches**, luego **Barahona**.
-  - *Qué decir:* son 19 destinos. La ficha muestra la foto, cuenta en tiempo real cuántos alojamientos, actividades y autos hay, lista los lugares imperdibles y el clima del momento (Open-Meteo).
+  - *Qué decir:* son 19 destinos. La ficha muestra la foto, cuenta en tiempo real cuántos alojamientos, actividades y autos hay, muestra un resumen del destino tomado de Wikipedia, lista los lugares imperdibles y el clima del momento (Open-Meteo). En el detalle de cualquier publicación, la sección *Ubicación y clima* añade amanecer y atardecer, índice UV, el estado del mar en los destinos de costa y los próximos feriados del país.
 - Baja a los **recomendados** y cambia entre Alojamiento, Actividades y Autos.
 
 ## 2. Buscar con filtros (1 minuto)
@@ -93,7 +93,7 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 ## 10. Cierre (30 segundos)
 
 - Botón **ES / RD$** del encabezado: cambia a **inglés** y **US$**. Los precios se convierten con la tasa del día.
-- En el mismo menú, **Otro idioma**: elige *Français* o *Kreyòl ayisyen*; la página se traduce automáticamente (necesita internet).
+- En el mismo menú, español e inglés aparecen destacados arriba (traducción propia). Debajo, **Más idiomas**: elige *Français* o *Kreyòl ayisyen*; la página se traduce automáticamente (necesita internet).
   - *Qué decir:* el pago se hace en pesos o en dólares; en la ventana de pago se elige la moneda y el recibo guarda la tasa aplicada.
 - *Qué decir:* Node.js + Express por capas, SQL Server o Azure SQL Database (instalación en un clic, con una base local de respaldo), HTML, CSS y JavaScript sin frameworks, contraseñas con bcrypt y sesiones con JWT.
 
@@ -102,7 +102,8 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 | Situación | Qué hacer |
 |---|---|
 | La página dice que el servidor no está en ejecución | Doble clic en `INICIAR-BookingRD.bat` y recarga |
-| El clima no aparece | No hay internet o Open-Meteo no responde; el resto funciona igual |
+| El clima, el estado del mar o el resumen del destino no aparecen | No hay internet o el servicio no responde; el resto funciona igual (los feriados usan una lista de respaldo) |
+| El mapa sale gris con el contorno del país | No cargan los mosaicos de OpenStreetMap ni los de Esri (sin internet); los precios del mapa siguen funcionando |
 | Una fecha no tiene disponibilidad | Elige otras fechas o menos personas |
 | Los datos quedaron alterados por los ensayos | `npm run bd:reiniciar` (SQL Server) o `npm run local:reiniciar` (base local) |
 | La consola dice "Base de datos local" y querías SQL Server | `npm run sqlserver`; revisa que el servicio de SQL Server esté iniciado |

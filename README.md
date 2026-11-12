@@ -8,7 +8,7 @@ Plataforma web para buscar y reservar alojamiento y tours en República Dominica
 | Base de datos | Azure SQL Database o SQL Server 2019+ mediante `mssql`; si no hay SQL Server, una base local en archivo que también guarda los datos |
 | Frontend | HTML, CSS y JavaScript sin frameworks; una hoja de estilos por página |
 | Seguridad | bcrypt, JWT, helmet, límite de intentos de acceso, consultas parametrizadas |
-| Servicios externos | Clima de [Open-Meteo](https://open-meteo.com) y tasas de cambio de [ExchangeRate-API](https://www.exchangerate-api.com), ambos gratuitos y sin clave |
+| Servicios externos | Clima, amanecer, índice UV y estado del mar de [Open-Meteo](https://open-meteo.com); tasas de cambio de [ExchangeRate-API](https://www.exchangerate-api.com); feriados de [Nager.Date](https://date.nager.at); resumen de los destinos de Wikipedia; mapas de [OpenStreetMap](https://www.openstreetmap.org) con Esri de respaldo. Todos gratuitos y sin clave |
 
 ---
 
@@ -135,7 +135,7 @@ Para empezar la demostración con los datos originales: con SQL Server, `npm run
 
 **Idioma y moneda.** El sitio está en español, con traducción propia y revisada al inglés, y se puede ver en cualquier otro idioma (francés, portugués, alemán, italiano, criollo haitiano, chino, japonés, árabe y unos 45 más) con la traducción automática de Google, que se carga solo al elegirlo y necesita internet; si no carga, la página vuelve al español con un aviso. Los nombres propios y los textos de usuarios y empresas no se traducen. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia). **El pago se hace en pesos dominicanos o en dólares**: en la ventana de pago se elige la moneda; en dólares se cobra el total convertido con la tasa del día y el recibo muestra el importe cobrado, el equivalente en pesos y la tasa aplicada. El pago en el destino se registra en pesos.
 
-**Diseño caribeño y futurista.** Azules profundos del Caribe de noche con paneles de vidrio translúcido, bordes de luz y brillos turquesa; fotografías a pantalla completa bajo un velo azul (inicio, inicio de sesión, registro, empresas y categorías de Explorar); encabezado azul noche con la franja tricolor; píldoras sobre los títulos y segunda línea en cursiva turquesa; retícula de puntos en las bandas oscuras. Tipografías Fraunces y Nunito (incluidas en `public/fonts/`). Una sola animación: los puntos del mapa al cargar; sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (107) se usa en un solo lugar del sitio; el equipo, los fotógrafos y los productos de la tienda usan ilustraciones propias (`public/img/ilustraciones/`, 20 archivos SVG).
+**Diseño caribeño y futurista.** Azules profundos del Caribe de noche con paneles de vidrio translúcido, bordes de luz y brillos turquesa; fotografías a pantalla completa bajo un velo azul (inicio, inicio de sesión, registro, empresas y categorías de Explorar); encabezado azul noche con la franja tricolor; píldoras sobre los títulos y segunda línea en cursiva turquesa; retícula de puntos en las bandas oscuras. Tipografías Fraunces y Nunito (incluidas en `public/fonts/`). Una sola animación: los puntos del mapa al cargar; sin carruseles ni elementos que se desplacen solos. Cada fotografía de `public/img/` (@FOTOS@) se usa en un solo lugar del sitio, incluidos el equipo de aventura, los fotógrafos y los productos de la tienda (`public/img/productos/`).
 
 **Correos.** Bienvenida al registrarse y confirmación de cada reserva por SMTP. Sin `SMTP_HOST` en `.env`, cada correo se guarda como HTML en `correos-enviados/`.
 
@@ -269,7 +269,7 @@ BookingRD/
 │   │                         combos-comun.js (tarjeta de combo), clima.js,
 │   │                         buscador.js, mapa.js y uno por página
 │   ├── img/                  destinos/, paginas/, publicaciones/, servicios/,
-│   │                         ilustraciones/ (equipo, fotógrafos y tienda)
+│   │                         productos/ (tienda) y mini/ (copias de 640 px)
 │   ├── fonts/                Fraunces y Nunito (licencia OFL)
 │   └── vendor/leaflet/       Mapa de resultados (Leaflet 1.9.4)
 ├── src/

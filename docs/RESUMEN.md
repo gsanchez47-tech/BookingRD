@@ -57,7 +57,8 @@ Con Azure: `npm run configurar`. Demostración que no guarda nada: `npm run demo
 - 39 + 25 comprobaciones en navegador automatizado (recorrido general, combos, tienda, ruta y administración), sin errores de JavaScript.
 - El guion de la demostración en clase (`docs/GUIA-DEMOSTRACION.md`) se ejecutó de forma automática: 12 de 12 pasos.
 - Consultas SQL de los repositorios validadas contra el esquema; script de instalación analizado con un parser de T-SQL.
-- 107 fotografías, cada una usada una sola vez; 20 ilustraciones propias para el equipo, los fotógrafos y la tienda.
+- @FOTOS@ fotografías, cada una usada una sola vez, incluidas las del equipo de aventura, los fotógrafos y los productos de la tienda.
+- Servicios gratuitos sin clave: clima, amanecer, UV y estado del mar (Open-Meteo), tasas (ExchangeRate-API), feriados (Nager.Date), resumen de destinos (Wikipedia) y mapas de OpenStreetMap con Esri de respaldo.
 - Sin desbordamiento horizontal en 375, 768 y 1440 px en las 12 páginas.
 
 ## Pendientes

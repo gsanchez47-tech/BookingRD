@@ -96,6 +96,9 @@ Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`camp
 | `POST /api/contacto` | `{ nombre, correo, asunto, mensaje }` |
 | `GET /api/clima?ciudad=` | Clima actual y pronóstico de 4 días del destino (Open-Meteo, caché de 15 minutos): `{ ciudad, actualizado, temperatura, sensacion, humedad, viento, estado, descripcion, pronostico[] }`. 503 si el servicio no responde |
 | `GET /api/monedas` | Tasas de RD$ a USD y EUR (ExchangeRate-API, caché de 6 horas); sin conexión responde las tasas de respaldo (`TASA_USD` y `TASA_EUR` en `.env`, por defecto 61 y 71) con `fuente: "respaldo"` |
+| `GET /api/mar?ciudad=` | Estado del mar en destinos de costa (Open-Meteo Marine, caché de 30 minutos): `{ ciudad, olas, agua, estado }`; 204 en Jarabacoa y Constanza |
+| `GET /api/feriados` | Próximos 6 feriados de la República Dominicana (Nager.Date, caché de 24 horas); sin conexión usa la lista de respaldo de 2026 y 2027: `{ feriados: [{ fecha, nombre, nombreEn }], fuente, actualizado }` |
+| `GET /api/destinos/resumen?ciudad=` | Dos primeras oraciones del artículo del destino en Wikipedia en español y su enlace (caché de 24 horas); 204 si no responde |
 | `GET /api/salud` | `{ estado: "ok", modo: "demostracion" \| "sql" }` |
 
 ### 3.2 Cuentas
@@ -297,7 +300,7 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 ### 6.3 Mapas
 
 - Inicio: `isla.js` contiene el contorno de República Dominicana y Haití (Natural Earth, dominio público) como trazados SVG y `ISLA.proyectar(lat, lon)`. Los 19 destinos se ubican con `COORDENADAS_DESTINOS` (`src/utils/catalogos.js`, también en `/api/catalogos`). Cada punto es un botón accesible por teclado.
-- Explorar y detalle: Leaflet 1.9.4 incluido en `public/vendor/leaflet/`, con mosaicos de CARTO / OpenStreetMap y el contorno del país debajo, legible aunque no carguen los mosaicos. Las publicaciones se ubican en su destino con un desplazamiento estable; el detalle enlaza a *Cómo llegar* en Google Maps.
+- Explorar y detalle: Leaflet 1.9.4 incluido en `public/vendor/leaflet/`, con mosaicos de OpenStreetMap (sin clave). Si sus mosaicos fallan cuatro veces sin cargar ninguno, `mapa.js` cambia solo a Esri World Street Map; y si tampoco cargan, queda visible el contorno del país dibujado debajo. (Los mosaicos de CARTO se retiraron porque ahora exigen clave y mostraban «API KEY REQUIRED».) Las publicaciones se ubican en su destino con un desplazamiento estable; el detalle enlaza a *Cómo llegar* en Google Maps.
 
 ### 6.4 Reseñas, favoritos y vistos recientemente
 
@@ -318,8 +321,9 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 | `img/destinos/` | Ficha de 15 destinos en el mapa del inicio |
 | `img/servicios/` | Tarjetas de *¿Qué quieres reservar?* y cabecera de Explorar de 8 categorías |
 | `img/paginas/` | Portada y banda de empresas del inicio, autos, combos, tienda, ruta, registro e inicio de sesión |
-| `img/ilustraciones/` | 20 ilustraciones SVG propias: equipo de aventura, fotógrafos y productos de la tienda |
-| `img/mini/` | Copias de 640 px de ancho de `publicaciones/`, `destinos/` y `servicios/` para tarjetas, listas y fichas |
+| `img/productos/` | Una fotografía por producto de la tienda de artesanía |
+| `img/ruta/` | Antojo típico de cada carretera en *En ruta* |
+| `img/mini/` | Copias de 640 px de ancho de `publicaciones/`, `destinos/`, `servicios/` y `productos/` para tarjetas, listas y fichas |
 
 Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado con un inventario automático de referencias más revisión visual). En las fotografías de autos se difuminaron las placas y se retiraron marcas de agua. El panel de empresa reduce las fotografías subidas a 1600 px (JPEG) antes de enviarlas.
 
@@ -376,7 +380,7 @@ Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado 
 
 ## 9. Pruebas realizadas
 
-El entorno de desarrollo no disponía de SQL Server ni de acceso a Azure, ni de salida a Open-Meteo o ExchangeRate-API. Las pruebas se ejecutaron con el backend real (Express, controladores, servicios, validadores, bcrypt y JWT) en modo de demostración; el clima se simuló en el navegador y la moneda usó las tasas de referencia.
+El entorno de desarrollo no disponía de SQL Server ni de acceso a Azure, ni de salida a Open-Meteo, ExchangeRate-API, Nager.Date, Wikipedia u OpenStreetMap (las respuestas de respaldo sí se probaron). Las pruebas se ejecutaron con el backend real (Express, controladores, servicios, validadores, bcrypt y JWT) en modo de demostración; el clima se simuló en el navegador y la moneda usó las tasas de referencia.
 
 | Prueba | Resultado |
 |---|---|
