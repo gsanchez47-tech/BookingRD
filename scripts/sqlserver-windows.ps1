@@ -202,6 +202,21 @@ try {
         }
     }
 
+    # Instalación limpia: también se eliminan bases de versiones anteriores del
+    # proyecto (rd_turismo de la primera fase o copias de BookingRD).
+    if ($Reinstalar) {
+        $viejas = @()
+        $lector = $admin.CreateCommand()
+        $lector.CommandText = "SELECT name FROM sys.databases WHERE name <> N'BookingRD' AND database_id > 4 AND (name LIKE N'%turismo%' OR name LIKE N'BookingRD%' OR name LIKE N'%booking%')"
+        $filas = $lector.ExecuteReader()
+        while ($filas.Read()) { $viejas += $filas.GetString(0) }
+        $filas.Close()
+        foreach ($vieja in $viejas) {
+            Escribir "Eliminando la base anterior $vieja..."
+            [void](Ejecutar $admin "ALTER DATABASE [$vieja] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$vieja];")
+        }
+    }
+
     Escribir 'Habilitando TCP/IP (puerto 1433) y la autenticación de SQL Server...'
     [void](Ejecutar-Archivo $admin (Join-Path $Raiz 'database\habilitar-sqlserver.sql'))
 
