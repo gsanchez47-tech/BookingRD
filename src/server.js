@@ -84,7 +84,10 @@ if (almacenLocal) {
 // política de recursos permite mostrar las imágenes de la API en esas páginas.
 app.use(helmet({
     contentSecurityPolicy: false,
-    crossOriginResourcePolicy: { policy: 'cross-origin' }
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // Los mosaicos de OpenStreetMap exigen la cabecera Referer; con la
+    // política predeterminada de helmet (no-referrer) responden 403.
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
 
 // Compresión gzip de HTML, CSS, JS y JSON (las fotografías ya van comprimidas).

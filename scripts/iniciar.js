@@ -39,9 +39,12 @@ async function main() {
         // BOOKINGRD_REINSTALAR=1 (instalador final): reemplaza la base anterior sin preguntar.
         const argumentos = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT_SQLSERVER];
         if (process.env.BOOKINGRD_REINSTALAR === '1') argumentos.push('-Reinstalar');
-        const resultado = spawnSync('powershell.exe', argumentos,
+        spawnSync('powershell.exe', argumentos,
             { stdio: 'inherit', cwd: RAIZ });
-        if (resultado.status !== 0 || !fs.existsSync(ARCHIVO_ENV)) {
+        // Si el script alcanzó a escribir .env con SQL Server, se conserva aunque
+        // haya terminado con error después (la conexión se prueba en el paso 2).
+        const envSqlServer = fs.existsSync(ARCHIVO_ENV) && /^DB_SERVER=\S+/m.test(fs.readFileSync(ARCHIVO_ENV, 'utf8'));
+        if (!envSqlServer) {
             console.log('\n  No se configuró SQL Server. BookingRD usará la base local en archivo, que también guarda los datos.');
             console.log('  Puedes intentarlo de nuevo cuando quieras con: npm run sqlserver\n');
             escribirEnvLocal();

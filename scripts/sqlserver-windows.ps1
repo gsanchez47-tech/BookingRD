@@ -41,7 +41,8 @@ if ($Elevado) {
 }
 
 function Escribir([string]$Texto, [string]$Color = 'Gray') {
-    Write-Host $Texto -ForegroundColor $Color
+    # Un color no válido nunca debe detener la instalación.
+    try { Write-Host $Texto -ForegroundColor $Color } catch { Write-Host $Texto }
 }
 
 function Terminar([int]$Codigo) {
@@ -268,5 +269,5 @@ PORT=3000
 
 Escribir ''
 Escribir 'SQL Server quedó listo. BookingRD guardará todo en la base BookingRD.' Green
-Escribir 'Para verla en SSMS: servidor localhost (o .\' + $instancia + '), autenticación de Windows.' DarkGray
+Escribir "Para verla en SSMS: servidor localhost (o .\$instancia), autenticación de Windows." DarkGray
 Terminar 0

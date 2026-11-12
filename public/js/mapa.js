@@ -128,7 +128,7 @@ const PROVEEDORES_MAPA = [
 function agregarMosaicos(mapa, indice = 0) {
     const proveedor = PROVEEDORES_MAPA[indice];
     if (!proveedor) return;
-    const capa = L.tileLayer(proveedor.url, Object.assign({ className: 'mosaicos-mapa' }, proveedor.opciones));
+    const capa = L.tileLayer(proveedor.url, Object.assign({ className: 'mosaicos-mapa', referrerPolicy: 'strict-origin-when-cross-origin' }, proveedor.opciones));
     let fallos = 0;
     let cargados = 0;
     capa.on('tileload', () => { cargados += 1; });
