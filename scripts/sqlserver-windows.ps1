@@ -39,7 +39,12 @@ function Terminar([int]$Codigo) {
     # La ventana con permisos de administrador es aparte: se deja abierta para leer el resultado.
     if ($Elevado) {
         Write-Host ''
-        Read-Host 'Pulsa Enter para continuar' | Out-Null
+        if ($Codigo -eq 0) {
+            Write-Host 'Esta ventana se cierra sola en 5 segundos.' -ForegroundColor DarkGray
+            Start-Sleep -Seconds 5
+        } else {
+            Read-Host 'Pulsa Enter para continuar' | Out-Null
+        }
     }
     exit $Codigo
 }
