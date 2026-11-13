@@ -25,7 +25,20 @@ git clone https://github.com/gsanchez47-tech/BookingRD.git
 cd BookingRD
 ```
 
-### 1.2 Instalar y arrancar con doble clic
+### 1.2 Instalación completa en un equipo nuevo (recomendado)
+
+Haz doble clic en **`INSTALAR-BookingRD.bat`** y pulsa **Sí** cuando Windows pida permiso de administrador. Hace todo con comandos, sin preguntas (`scripts/instalar-windows.ps1`):
+
+1. Instala **Node.js LTS** con `winget` si falta.
+2. Usa el **SQL Server** que ya tenga el equipo o instala **SQL Server 2022 Express** sin ventanas.
+3. Copia BookingRD a **`C:\BookingRD`** (reemplaza una instalación anterior) e instala las dependencias.
+4. Crea la base **BookingRD** con sus tablas y datos de ejemplo, habilita TCP/IP (puerto 1433; si está ocupado, usa la instancia con nombre por SQL Server Browser) y el usuario `bookingrd_app`, y escribe `.env`.
+5. Comprueba desde Node.js que la aplicación lee y escribe en la base (`scripts/verificar-instalacion.js`).
+6. Crea el acceso **BookingRD** en el escritorio y en el menú Inicio (con **Desinstalar BookingRD**) y abre la página.
+
+Después, para usarla: doble clic en **BookingRD** en el escritorio. El registro completo de la instalación queda en `C:\BookingRD-instalacion.log`.
+
+### 1.3 Arrancar sin instalar (desde la carpeta del proyecto)
 
 Haz doble clic en **`INICIAR-BookingRD.bat`**. Se encarga de todo:
 
@@ -40,7 +53,7 @@ Haz doble clic en **`INICIAR-BookingRD.bat`**. Se encarga de todo:
 
 Las siguientes veces solo arranca y abre el navegador. **No cierres la ventana negra** mientras usas la página; para apagar BookingRD, ciérrala o pulsa `Ctrl + C`.
 
-Todo lo que se haga en la página (registros, publicaciones, reservas, reseñas, moderación) se guarda en la base de datos. **Lo único simulado son los pagos con tarjeta** (sección 1.4).
+Todo lo que se haga en la página (registros, publicaciones, reservas, reseñas, moderación) se guarda en la base de datos. **Lo único simulado son los pagos con tarjeta** (sección 1.5).
 
 **Si no se pudo configurar SQL Server** (cancelaste el permiso, no quisiste instalarlo o dio un error), BookingRD se abre igual con una **base local en archivo** (`database/local/`), que también guarda todos los cambios entre un arranque y otro. Puedes volver a intentar SQL Server cuando quieras con `npm run sqlserver`. Si `.env` apunta a SQL Server y el servicio no responde, el arranque lo avisa y usa la base local mientras tanto.
 
@@ -69,7 +82,7 @@ npm run iniciar
 
 Los datos de ejemplo (`database/datos-demo.js`) traen 21 cuentas, 8 empresas, 77 publicaciones (16 alojamientos, 50 actividades y servicios, 11 autos), 7 combos, 93 reservas con su pago, 74 reseñas y una tienda con 11 productos y 2 pedidos.
 
-### 1.3 Cuentas de demostración
+### 1.4 Cuentas de demostración
 
 | Rol | Correo | Contraseña |
 |---|---|---|
@@ -82,7 +95,7 @@ Los datos de ejemplo (`database/datos-demo.js`) traen 21 cuentas, 8 empresas, 77
 
 Otros viajeros (`luis.fernandez`, `carmen.jimenez`, `ana.castillo`... todos `@correo.com`) usan `Cliente123!`; las demás empresas (`aventura@`, `montana@`, `cultura@`, `rentacar@bookingrd.com`) usan `Empresa123!`. En la página de inicio de sesión, los botones de *Cuentas de demostración* completan el formulario con un clic.
 
-### 1.4 Tarjetas de prueba (pagos simulados)
+### 1.5 Tarjetas de prueba (pagos simulados)
 
 Al reservar (una publicación o un combo) se elige pagar con tarjeta o en el destino; la tienda de artesanía solo acepta tarjeta. La pasarela es una **simulación**: no se conecta a ningún banco, no cobra nada y no guarda el número completo ni el CVV (solo la marca, los últimos 4 dígitos y el titular). Usa cualquier nombre y un vencimiento futuro; en la ventana de pago, *Tarjetas de prueba* completa el formulario con un clic.
 
@@ -95,7 +108,7 @@ Al reservar (una publicación o un combo) se elige pagar con tarjeta o en el des
 | 4000 0000 0000 9995 | Visa | Fondos insuficientes |
 | Un número con un dígito cambiado | | Número inválido (algoritmo de Luhn) |
 
-### 1.5 Guion para la demostración en clase
+### 1.6 Guion para la demostración en clase
 
 Unos 12 minutos. Guion completo con lo que se dice en cada paso: [`docs/GUIA-DEMOSTRACION.md`](docs/GUIA-DEMOSTRACION.md).
 
@@ -286,7 +299,9 @@ BookingRD/
 │   └── local/                Base local en archivo (se crea al usarla; no se versiona)
 ├── scripts/                  iniciar, sqlserver-windows.ps1, configurar, bd,
 │                             local-reiniciar, demo, generar-sql, construir-frontend
-├── INICIAR-BookingRD.bat     Instalación y arranque con doble clic (Windows)
+├── INSTALAR-BookingRD.bat    Instalación completa en C:\BookingRD con SQL Server (Windows)
+├── INICIAR-BookingRD.bat     Arranque con doble clic (Windows)
+├── DESINSTALAR-BookingRD.bat Quita C:\BookingRD, sus accesos y la base BookingRD
 ├── pruebas/api.test.js       Pruebas de la API
 └── docs/                     Documentación técnica, resumen y capturas
 ```

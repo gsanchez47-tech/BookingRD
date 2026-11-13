@@ -4,7 +4,7 @@ Recorrido de unos 14 minutos por BookingRD, con los tres roles (viajero, empresa
 
 ## Antes de empezar
 
-1. Doble clic en `INICIAR-BookingRD.bat` (o `npm run iniciar`). La consola dice si usa SQL Server o la base local y abre el navegador.
+1. Doble clic en **BookingRD** en el escritorio (instalado con `INSTALAR-BookingRD.bat`) o en `INICIAR-BookingRD.bat` (o `npm run iniciar`). La consola dice si usa SQL Server o la base local y abre el navegador.
 2. Abre <http://localhost:3000> en el navegador, a pantalla completa. Si vas a proyectar, usa un zoom del 100 al 110 %.
 3. Ten a mano esta guía y las tarjetas de prueba:
 

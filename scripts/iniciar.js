@@ -32,7 +32,25 @@ function escribirEnvLocal() {
     ].join('\n'));
 }
 
+/** true si ya hay algo escuchando en el puerto (BookingRD abierto en otra ventana). */
+function puertoOcupado(puerto) {
+    return new Promise((resolve) => {
+        const prueba = require('net').createServer();
+        prueba.once('error', () => resolve(true));
+        prueba.once('listening', () => prueba.close(() => resolve(false)));
+        prueba.listen(puerto);
+    });
+}
+
 async function main() {
+    // 0. Si BookingRD ya está abierto, solo se abre la página.
+    const puerto = Number(process.env.PORT || 3000);
+    if (await puertoOcupado(puerto)) {
+        console.log(`  BookingRD ya está abierto. Abriendo http://localhost:${puerto} ...`);
+        if (process.platform === 'win32') spawnSync('cmd', ['/c', 'start', '', `http://localhost:${puerto}`]);
+        return;
+    }
+
     // 1. Primera vez en Windows: SQL Server.
     if (!fs.existsSync(ARCHIVO_ENV) && process.platform === 'win32') {
         console.log('\n  Primera vez: se va a configurar SQL Server para guardar los datos de BookingRD.\n');

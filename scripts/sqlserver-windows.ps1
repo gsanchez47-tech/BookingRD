@@ -25,7 +25,9 @@
 param(
     [switch]$Elevado,
     # Borra la base BookingRD existente sin preguntar (instalación limpia).
-    [switch]$Reinstalar
+    [switch]$Reinstalar,
+    # Sin pausa al terminar (lo llama el instalador completo).
+    [switch]$SinPausa
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,7 +50,7 @@ function Escribir([string]$Texto, [string]$Color = 'Gray') {
 function Terminar([int]$Codigo) {
     if ($Elevado) { try { Stop-Transcript | Out-Null } catch { } }
     # La ventana con permisos de administrador es aparte: se deja abierta para leer el resultado.
-    if ($Elevado) {
+    if ($Elevado -and -not $SinPausa) {
         Write-Host ''
         if ($Codigo -eq 0) {
             Write-Host 'Esta ventana se cierra sola en 5 segundos.' -ForegroundColor DarkGray
@@ -260,6 +262,23 @@ for ($intento = 1; $intento -le 10 -and -not $conectado; $intento++) {
         Start-Sleep -Seconds 3
     }
 }
+# Si otra instancia ya ocupa el puerto 1433, se usa la instancia con nombre a
+# través del servicio SQL Server Browser (el controlador de Node lo admite).
+$usarInstancia = $false
+if (-not $conectado -and $instancia -ne 'MSSQLSERVER') {
+    Escribir "El puerto 1433 no responde ($ultimoError). Probando la instancia $instancia por SQL Server Browser..." Yellow
+    try {
+        Set-Service -Name 'SQLBrowser' -StartupType Automatic
+        Start-Service -Name 'SQLBrowser'
+        Start-Sleep -Seconds 2
+        $prueba = Abrir-Conexion "Server=localhost\$instancia;Database=BookingRD;User ID=bookingrd_app;Password=$clave;Connect Timeout=15"
+        $prueba.Close()
+        $conectado = $true
+        $usarInstancia = $true
+    } catch {
+        $ultimoError = $_.Exception.Message
+    }
+}
 if (-not $conectado) {
     Escribir "SQL Server no acepta conexiones en el puerto 1433: $ultimoError" Red
     Escribir 'Puede que otra instancia de SQL Server ya use ese puerto. BookingRD usará la base local.' Yellow
@@ -271,8 +290,8 @@ $contenido = @"
 # Generado por el instalador de BookingRD: SQL Server local ($instancia).
 # Para volver a configurarlo: npm run sqlserver
 DB_SERVER=localhost
-DB_PORT=1433
-DB_INSTANCE=
+DB_PORT=$(if ($usarInstancia) { '' } else { '1433' })
+DB_INSTANCE=$(if ($usarInstancia) { $instancia } else { '' })
 DB_DATABASE=BookingRD
 DB_USER=bookingrd_app
 DB_PASSWORD=$clave
