@@ -37,7 +37,7 @@ function Escribir([string]$Texto, [string]$Color = 'Gray') {
 
 function Paso([int]$Numero, [string]$Texto) {
     Escribir ''
-    Escribir "  [$Numero/7] $Texto" Cyan
+    Escribir "  [$Numero/8] $Texto" Cyan
 }
 
 function Fallar([string]$Texto) {
@@ -88,6 +88,58 @@ Escribir "  Destino: $Destino"
 # ---------------------------------------------------------------------------
 # 1. Node.js
 # ---------------------------------------------------------------------------
+Paso 0 'Borrando versiones anteriores de BookingRD en esta PC'
+# Se detiene la aplicación si está abierta.
+Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue |
+    ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+# La carpeta del instalador (y su zip) no se tocan.
+$protegidas = @((Resolve-Path $Origen).Path.TrimEnd('\'))
+$padreOrigen = Split-Path -Parent $protegidas[0]
+if ((Split-Path -Leaf $padreOrigen) -like 'BookingRD-Instalador*') { $protegidas += $padreOrigen.TrimEnd('\') }
+function Esta-Protegida([string]$Ruta) {
+    foreach ($p in $protegidas) {
+        $r = $Ruta.TrimEnd('\')
+        # La carpeta protegida, una que la contiene o algo dentro de ella.
+        if ($r -ieq $p -or $p.StartsWith($r + '\', [StringComparison]::OrdinalIgnoreCase) -or $r.StartsWith($p + '\', [StringComparison]::OrdinalIgnoreCase)) { return $true }
+    }
+    return (Split-Path -Leaf $Ruta) -like 'BookingRD-Instalador*'
+}
+$perfil = $env:USERPROFILE
+$lugares = @(
+    [Environment]::GetFolderPath('Desktop'),
+    (Join-Path $perfil 'Desktop'),
+    (Join-Path $perfil 'OneDrive\Desktop'),
+    (Join-Path $perfil 'OneDrive\Escritorio'),
+    (Join-Path $perfil 'Downloads'),
+    (Join-Path $perfil 'Documents'),
+    (Join-Path $perfil 'OneDrive\Documents'),
+    (Join-Path $perfil 'OneDrive\Documentos')
+) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
+$patrones = @('BookingRD*', 'rd-turismo*', 'rd_turismo*', 'ABRIR BookingRD*', 'INSTALAR BookingRD*', 'INSTALAR-BookingRD*', 'REPARAR BookingRD*', 'Iniciar BookingRD*', 'Instalar BookingRD*')
+$borrados = 0
+foreach ($lugar in $lugares) {
+    $candidatos = Get-ChildItem -LiteralPath $lugar -Force -Depth 1 -ErrorAction SilentlyContinue |
+        Where-Object { $nombre = $_.Name; ($patrones | Where-Object { $nombre -like $_ }).Count -gt 0 }
+    foreach ($item in $candidatos) {
+        if (Esta-Protegida $item.FullName) { continue }
+        if (-not (Test-Path -LiteralPath $item.FullName)) { continue }
+        try {
+            Remove-Item -LiteralPath $item.FullName -Recurse -Force -ErrorAction Stop
+            Escribir "  Borrado: $($item.FullName)" DarkGray
+            $borrados++
+        } catch {
+            Escribir "  No se pudo borrar $($item.FullName): $($_.Exception.Message)" Yellow
+        }
+    }
+}
+$carpetaProyecto = Join-Path $perfil 'Downloads\proyecto'
+if ((Test-Path $carpetaProyecto) -and -not (Get-ChildItem -LiteralPath $carpetaProyecto -Force)) { Remove-Item -LiteralPath $carpetaProyecto -Force }
+# Accesos directos y menú Inicio de instalaciones anteriores.
+foreach ($acceso in @((Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'BookingRD'), (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'BookingRD.lnk'))) {
+    if (Test-Path -LiteralPath $acceso) { Remove-Item -LiteralPath $acceso -Recurse -Force -ErrorAction SilentlyContinue; $borrados++ }
+}
+Escribir "  $borrados elementos anteriores borrados. Las bases de datos viejas se borran en el paso 5." Green
+
 Paso 1 'Node.js'
 Refrescar-Path
 $node = Get-Command node -ErrorAction SilentlyContinue
