@@ -116,6 +116,84 @@ function ofertaDestino(ciudad) {
    Mapa de destinos (SVG con el contorno de la isla)
    ------------------------------------------------------------------------- */
 
+/* Capas de detalle del mapa del inicio: costa, cordilleras, lago, autopistas, ciudades y aeropuertos. */
+function capasDetalleMapa() {
+    const P = (la, lo) => ISLA.proyectar(la, lo);
+    const linea = (pts) => pts.map(([la, lo], i) => { const { x, y } = P(la, lo); return (i ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1); }).join('');
+    const suave = (pts) => {
+        const q = pts.map(([la, lo]) => P(la, lo));
+        let d = `M${q[0].x.toFixed(1)},${q[0].y.toFixed(1)}`;
+        for (let i = 1; i < q.length; i++) {
+            const a = q[i - 1], b = q[i];
+            d += ` Q${a.x.toFixed(1)},${a.y.toFixed(1)} ${((a.x + b.x) / 2).toFixed(1)},${((a.y + b.y) / 2).toFixed(1)}`;
+        }
+        const z = q[q.length - 1];
+        return d + ` L${z.x.toFixed(1)},${z.y.toFixed(1)}`;
+    };
+    const cordilleras = [
+        [[19.25, -71.65], [19.08, -71.15], [18.98, -70.85], [18.80, -70.55], [18.58, -70.25]],
+        [[19.78, -71.20], [19.62, -70.85], [19.50, -70.45], [19.38, -70.05]],
+        [[18.92, -69.50], [18.88, -69.15], [18.80, -68.90]],
+        [[18.22, -71.72], [18.17, -71.40], [18.12, -71.20]],
+        [[18.70, -71.72], [18.68, -71.40], [18.62, -71.10]]
+    ];
+    const rutas = [
+        [[18.47, -69.93], [18.94, -70.41], [19.22, -70.53], [19.45, -70.70], [19.56, -70.87], [19.85, -71.65]],
+        [[19.45, -70.70], [19.79, -70.69]],
+        [[19.79, -70.69], [19.76, -70.52], [19.75, -70.41], [19.64, -70.08], [19.38, -69.85], [19.27, -69.74], [19.21, -69.34]],
+        [[18.47, -69.93], [18.80, -69.80], [19.27, -69.74]],
+        [[18.47, -69.93], [18.45, -69.61], [18.43, -69.43], [18.46, -69.30], [18.43, -68.97], [18.61, -68.71], [18.58, -68.37]],
+        [[18.47, -69.93], [18.28, -70.33], [18.45, -70.73], [18.21, -71.10], [18.04, -71.74]],
+        [[19.22, -70.53], [19.12, -70.64]], [[18.94, -70.41], [18.91, -70.75]],
+        [[18.61, -68.71], [18.76, -69.04], [18.98, -69.05]]
+    ];
+    const aeropuertos = [[18.43, -69.67], [18.50, -68.40], [19.74, -70.56], [19.38, -70.56], [19.27, -69.74], [18.49, -68.92]];
+    const ciudades = [['Santiago', 19.45, -70.70], ['La Vega', 19.22, -70.53], ['Azua', 18.45, -70.73], ['Nagua', 19.38, -69.85]];
+
+    const debajo = `
+        <defs>
+            <pattern id="relieve" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+                <line x1="0" y1="0" x2="0" y2="7" stroke="rgba(255,255,255,.13)" stroke-width="3"></line>
+            </pattern>
+        </defs>
+        <g class="capas-detalle" aria-hidden="true">
+            <path d="${ISLA.republicaDominicana}" fill="none" stroke="rgba(0,180,216,.22)" stroke-width="16" stroke-linejoin="round"></path>
+            <path d="${ISLA.republicaDominicana}" fill="none" stroke="rgba(0,180,216,.35)" stroke-width="6" stroke-linejoin="round"></path>
+        </g>`;
+
+    let encima = '<g class="capas-detalle" aria-hidden="true">';
+    for (const pts of cordilleras) {
+        encima += `<path d="${suave(pts)}" fill="none" stroke="url(#relieve)" stroke-width="30" stroke-linecap="round" opacity=".9"></path>`;
+        encima += `<path d="${suave(pts)}" fill="none" stroke="rgba(10,40,30,.25)" stroke-width="30" stroke-linecap="round"></path>`;
+    }
+    const lago = P(18.50, -71.58), lagoB = P(18.55, -71.40);
+    encima += `<ellipse cx="${((lago.x + lagoB.x) / 2).toFixed(1)}" cy="${((lago.y + lagoB.y) / 2).toFixed(1)}" rx="${(Math.abs(lagoB.x - lago.x) / 1.6).toFixed(1)}" ry="9" fill="#0B4A7A" stroke="rgba(0,180,216,.6)"></ellipse>`;
+    for (const r of rutas) encima += `<path class="capa-ruta" d="${linea(r)}"></path>`;
+    const pd = P(19.02, -70.99);
+    encima += `<path d="M${pd.x.toFixed(1)},${(pd.y - 9).toFixed(1)} l7,12 h-14z" fill="#F6F1E4"></path>
+        <text class="capa-rotulo" x="${(pd.x + 10).toFixed(1)}" y="${(pd.y + 4).toFixed(1)}">Pico Duarte · 3 098 m</text>`;
+    const lr = P(18.555, -71.58);
+    encima += `<text class="capa-rotulo agua" x="${lr.x.toFixed(1)}" y="${(lr.y + 22).toFixed(1)}" text-anchor="middle">Lago Enriquillo</text>`;
+    const rotuloCordillera = (texto, la, lo, giro) => {
+        const { x, y } = P(la, lo);
+        return `<text class="capa-rotulo cord" x="${x.toFixed(1)}" y="${y.toFixed(1)}"${giro ? ` transform="rotate(${giro} ${x.toFixed(1)} ${y.toFixed(1)})"` : ''}>${texto}</text>`;
+    };
+    encima += rotuloCordillera('CORDILLERA CENTRAL', 18.98, -71.28, -22);
+    encima += rotuloCordillera('CORD. SEPTENTRIONAL', 19.50, -70.36, -14);
+    encima += rotuloCordillera('CORD. ORIENTAL', 18.80, -69.62, 0);
+    for (const [nombre, la, lo] of ciudades) {
+        const { x, y } = P(la, lo);
+        encima += `<rect x="${(x - 3).toFixed(1)}" y="${(y - 3).toFixed(1)}" width="6" height="6" fill="rgba(255,255,255,.55)"></rect>
+            <text class="capa-rotulo ciudad" x="${(x + 8).toFixed(1)}" y="${(y + 4).toFixed(1)}">${nombre}</text>`;
+    }
+    for (const [la, lo] of aeropuertos) {
+        const { x, y } = P(la, lo);
+        encima += `<g class="capa-aeropuerto" transform="translate(${x.toFixed(1)},${y.toFixed(1)})"><circle r="8.5"></circle><path transform="rotate(45) scale(0.52) translate(-12,-12.5)" d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"></path></g>`;
+    }
+    encima += '</g>';
+    return { debajo, encima };
+}
+
 function dibujarMapa() {
     const lienzo = document.getElementById('mapa-lienzo');
     const { ancho, alto } = ISLA;
@@ -139,15 +217,21 @@ function dibujarMapa() {
             </g>`;
     }).join('');
 
+    const capas = capasDetalleMapa();
     lienzo.innerHTML = `
         <svg viewBox="0 0 ${ancho} ${alto}" role="group" aria-label="Destinos en el mapa de República Dominicana">
             ${paralelos}
             <text class="mapa-mar-texto" x="${ancho * 0.5}" y="${ISLA.proyectar(19.92, 0).y}" text-anchor="middle">Océano Atlántico</text>
             <text class="mapa-mar-texto" x="${ancho * 0.52}" y="${ISLA.proyectar(17.72, 0).y}" text-anchor="middle">Mar Caribe</text>
             <path class="mapa-vecino" d="${ISLA.haiti}"></path>
+            ${capas.debajo}
             <path class="mapa-tierra" d="${ISLA.republicaDominicana}"></path>
+            ${capas.encima}
             ${puntos}
-        </svg>`;
+        </svg>
+        <div class="mapa-leyenda" aria-hidden="true">
+            <span><i class="l-ruta"></i>Autopistas</span><span><i class="l-sierra"></i>Montañas</span><span><i class="l-aero">✈</i>Aeropuertos</span><span><i class="l-punto"></i>Destinos BookingRD</span>
+        </div>`;
 
     const elegir = (punto) => {
         estado.destinoElegido = punto.dataset.ciudad;
@@ -414,3 +498,49 @@ function validarContacto(datos) {
     if (datos.mensaje.length < 10) return { campo: 'contacto-mensaje', mensaje: 'El mensaje debe tener al menos 10 caracteres.' };
     return null;
 }
+
+
+/* ----------------------------------------------------------------------------
+   Tasa de hoy: pesos por dólar y por euro (GET /api/monedas) y conversor
+   ------------------------------------------------------------------------- */
+
+async function iniciarTasaDia() {
+    const usd = document.getElementById('tasa-usd');
+    if (!usd) return;
+    const eur = document.getElementById('tasa-eur');
+    const fuente = document.getElementById('tasa-fuente');
+    const monto = document.getElementById('conversor-monto');
+    const moneda = document.getElementById('conversor-moneda');
+    const resultado = document.getElementById('conversor-resultado');
+    const pesos = (valor) => `RD$ ${Number(valor).toLocaleString('es-DO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    let tasas = null;
+
+    const convertir = () => {
+        if (!tasas) return;
+        const cantidad = Math.max(0, Number(monto.value) || 0);
+        resultado.textContent = pesos(cantidad * tasas[moneda.value]);
+    };
+    monto.addEventListener('input', convertir);
+    moneda.addEventListener('change', convertir);
+    document.getElementById('form-conversor').addEventListener('submit', (evento) => evento.preventDefault());
+
+    try {
+        const datos = await apiFetch('/monedas');
+        tasas = datos.tasas;
+        usd.textContent = pesos(tasas.USD);
+        eur.textContent = pesos(tasas.EUR);
+        if (datos.actualizado) {
+            const fecha = datos.fecha ? new Date(datos.fecha) : null;
+            fuente.textContent = fecha && !Number.isNaN(fecha.getTime())
+                ? `Fuente: ${datos.fuente}, actualizada el ${fecha.toLocaleDateString('es-DO', { day: 'numeric', month: 'long' })}.`
+                : `Fuente: ${datos.fuente}.`;
+        } else {
+            fuente.textContent = 'Tasa de referencia sin conexión al servicio.';
+        }
+        convertir();
+    } catch (error) {
+        fuente.textContent = 'No se pudo consultar la tasa ahora.';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', iniciarTasaDia);

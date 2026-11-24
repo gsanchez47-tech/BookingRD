@@ -234,6 +234,7 @@ const SOLO_CIFRAS = /^[\s\-+~]*((RD|US)\$|€)?[\d.,\s]*[KM%+]?$/;
 function traduccionCompuesta(texto) {
     if (typeof REEMPLAZOS_EN === 'undefined') return null;
     const separador = /(, |: |\. )/;
+    let base = texto;
     if (separador.test(texto)) {
         const partes = texto.split(separador);
         let cambio = false;
@@ -243,9 +244,10 @@ function traduccionCompuesta(texto) {
             if (t !== null) { cambio = true; return t; }
             return parte;
         });
-        if (cambio) return traducidas.join('');
+        if (cambio) base = traducidas.join('');
     }
-    let resultado = texto;
+    // Los segmentos que no tenían traducción exacta pasan por las sustituciones parciales.
+    let resultado = base;
     for (const [patron, reemplazo] of REEMPLAZOS_EN) resultado = resultado.replace(patron, reemplazo);
     return resultado !== texto ? resultado : null;
 }

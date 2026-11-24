@@ -1036,3 +1036,197 @@
         gap: var(--e-8);
     }
 }
+
+/* Capas de detalle del mapa: relieve, autopistas, ciudades y aeropuertos. */
+.capa-ruta {
+    fill: none;
+    stroke: rgba(255, 214, 140, 0.6);
+    stroke-width: 2.4;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.capa-aeropuerto circle { fill: #fff; stroke: rgba(5, 19, 43, 0.5); stroke-width: 1; }
+.capa-aeropuerto path { fill: var(--azul); }
+
+.capa-rotulo {
+    font: 700 calc(var(--texto-mapa, 19px) * 0.72) var(--f-texto);
+    fill: rgba(225, 240, 255, 0.8);
+    paint-order: stroke;
+    stroke: rgba(5, 19, 43, 0.55);
+    stroke-width: 3px;
+    pointer-events: none;
+}
+
+.capa-rotulo.cord {
+    font-weight: 800;
+    font-size: calc(var(--texto-mapa, 19px) * 0.6);
+    letter-spacing: 0.22em;
+    fill: rgba(220, 240, 225, 0.5);
+    stroke: none;
+}
+
+.capa-rotulo.agua {
+    font: italic 600 calc(var(--texto-mapa, 19px) * 0.66) var(--f-display);
+    fill: #7FD3EA;
+}
+
+.capa-rotulo.ciudad {
+    font-size: calc(var(--texto-mapa, 19px) * 0.66);
+    fill: rgba(255, 255, 255, 0.65);
+}
+
+.mapa-leyenda {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(6, 20, 52, 0.72);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #D6E6F7;
+    font: 800 12px var(--f-texto);
+}
+
+.mapa-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.mapa-leyenda i { display: inline-block; font-style: normal; }
+.l-ruta { width: 18px; height: 3px; border-radius: 2px; background: rgba(255, 214, 140, 0.85); }
+.l-sierra { width: 16px; height: 10px; border-radius: 5px; background: repeating-linear-gradient(55deg, rgba(255, 255, 255, 0.35) 0 2px, rgba(10, 40, 30, 0.45) 2px 5px); }
+.l-aero { width: 16px; height: 16px; border-radius: 50%; background: #fff; color: var(--azul); font-size: 10px; line-height: 16px; text-align: center; }
+.l-punto { width: 10px; height: 10px; border-radius: 50%; background: var(--rojo); box-shadow: 0 0 0 2px #fff; }
+
+.mapa-lienzo.compacto .capa-rotulo.cord,
+.mapa-lienzo.compacto .capa-rotulo.ciudad { display: none; }
+
+@media (max-width: 620px) {
+    .mapa-leyenda { position: static; margin-top: 10px; }
+}
+
+/* Tasa de hoy: franja clara bajo la portada, con el conversor a la derecha. */
+.tasa-dia {
+    background: linear-gradient(90deg, #E9F7FA 0%, #F5FBFD 60%, #FFFFFF 100%);
+    border-bottom: 1px solid var(--linea);
+}
+
+.tasa-fila {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: var(--e-4, 24px) 40px;
+    padding-block: 18px;
+}
+
+.tasa-titulo h2 {
+    margin: 0;
+    font-family: var(--f-display);
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--azul);
+    letter-spacing: -0.01em;
+}
+
+.tasa-titulo p {
+    margin: 2px 0 0;
+    color: var(--tinta-3);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.tasa-valores {
+    display: flex;
+    gap: 28px;
+    margin: 0;
+}
+
+.tasa-valores div {
+    padding-left: 14px;
+    border-left: 3px solid var(--caribe);
+}
+
+.tasa-valores div + div { border-left-color: var(--rojo); }
+
+.tasa-valores dt {
+    color: var(--tinta-2);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.tasa-valores abbr { text-decoration: none; color: var(--tinta-3); }
+
+.tasa-valores dd {
+    margin: 0;
+    color: var(--tinta);
+    font-family: var(--f-display);
+    font-size: 1.4rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.tasa-conversor {
+    justify-self: end;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--linea);
+    border-radius: 14px;
+    background: #fff;
+}
+
+.tasa-campo { display: grid; gap: 2px; }
+
+.tasa-campo span {
+    color: var(--tinta-3);
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.tasa-campo input,
+.tasa-campo select {
+    height: 40px;
+    padding: 0 10px;
+    border: 1.5px solid var(--linea);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--tinta);
+    font: 700 0.95rem var(--f-texto);
+}
+
+.tasa-campo input { width: 110px; }
+.tasa-campo input:focus,
+.tasa-campo select:focus { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 48, 135, 0.12); }
+
+.tasa-conversor output {
+    min-width: 150px;
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 12px;
+    border-radius: 10px;
+    background: var(--azul);
+    color: #fff;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+    .tasa-fila { grid-template-columns: 1fr auto; }
+    .tasa-conversor { grid-column: 1 / -1; justify-self: stretch; }
+    .tasa-conversor output { flex: 1; }
+}
+
+@media (max-width: 560px) {
+    .tasa-fila { grid-template-columns: 1fr; }
+    .tasa-valores { gap: 18px; }
+    .tasa-conversor { flex-wrap: wrap; }
+    .tasa-campo input { width: 100%; }
+    .tasa-campo { flex: 1; }
+    .tasa-conversor output { flex-basis: 100%; justify-content: center; }
+}

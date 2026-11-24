@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
     leerUrl();
     sincronizarControles();
     iniciarControles();
+    iniciarMinimapa();
     pintarCategorias();
     actualizarBanner();
     cargarRangoPrecio();
@@ -594,6 +595,8 @@ async function cargar(reiniciar) {
 
     const enMapa = estado.vista === 'mapa';
     document.getElementById('mapa-resultados').hidden = !enMapa;
+    document.getElementById('mapa-nota').hidden = !enMapa;
+    grid.hidden = enMapa;
     const parametros = new URLSearchParams({ tipo: estado.tipo, orden: estado.orden, pagina: enMapa ? 1 : estado.pagina, porPagina: enMapa ? POR_PAGINA_MAPA : POR_PAGINA });
     if (estado.categoria) parametros.set('categoria', estado.categoria);
     if (estado.ciudad) parametros.set('ciudad', estado.ciudad);
@@ -609,7 +612,8 @@ async function cargar(reiniciar) {
         if (numero !== estado.solicitud) return;
         estado.total = respuesta.total;
         const tarjetas = respuesta.publicaciones.map(crearTarjetaPublicacion).join('');
-        if (enMapa) pintarMapa(respuesta.publicaciones);
+        if (enMapa) pintarMapa(respuesta.publicaciones, respuesta.total);
+        pintarMinimapa(respuesta.publicaciones);
 
         if (reiniciar) {
             grid.innerHTML = tarjetas || crearEstado({
@@ -650,16 +654,101 @@ async function cargar(reiniciar) {
    VISTA DE MAPA
    ---------------------------------------------------------------------------- */
 
-const mapaExplorar = { mapa: null, capa: null };
+const mapaExplorar = { mapa: null, capa: null, abrirCompleto: false };
 
-function pintarMapa(publicaciones) {
+/** Elemento de la lista del mapa: foto, nombre, nota y precio. */
+function itemListaMapa(publicacion) {
+    const clave = `${publicacion.tipo}-${publicacion.id}`;
+    const imagen = publicacion.imagen ? `<img src="${escaparHtml(urlMiniatura(publicacion.imagen))}" alt="" loading="lazy">` : '<span class="mapa-item-sin-foto"></span>';
+    const nota = publicacion.totalResenas
+        ? `<span class="mapa-item-nota"><b>${formatoPuntuacion(publicacion.puntuacion)}</b> ${etiquetaPuntuacion(publicacion.puntuacion)}</span>`
+        : '<span class="mapa-item-nota nuevo">Nuevo</span>';
+    return `
+        <article class="mapa-item" data-clave="${clave}" tabindex="0">
+            ${imagen}
+            <div class="mapa-item-cuerpo">
+                <span class="mapa-item-ciudad">${escaparHtml(publicacion.ciudad)}</span>
+                <strong translate="no">${escaparHtml(publicacion.nombre)}</strong>
+                ${nota}
+                <span class="mapa-item-precio">${formatearPrecio(publicacion.precio)} <small>${unidadPrecio(publicacion.tipo, publicacion.categoria)}</small></span>
+            </div>
+            <a class="mapa-item-ver" href="${enlaceDetalle(publicacion)}" aria-label="Ver ${escaparHtml(publicacion.nombre)}">Ver</a>
+        </article>`;
+}
+
+function pintarMapa(publicaciones, total) {
     const contenedor = document.getElementById('mapa-explorar');
+    const zona = document.getElementById('mapa-resultados');
     if (!mapaExplorar.mapa) {
-        mapaExplorar.mapa = crearMapaRD(contenedor);
+        mapaExplorar.mapa = crearMapaRD(contenedor, { pantallaCompleta: zona });
         if (!mapaExplorar.mapa) return;
+        const lista = document.getElementById('mapa-lista-items');
+        lista.addEventListener('mouseover', (evento) => {
+            const item = evento.target.closest('.mapa-item');
+            if (item) resaltarMarcador(mapaExplorar.mapa, item.dataset.clave, true);
+        });
+        lista.addEventListener('mouseout', (evento) => {
+            const item = evento.target.closest('.mapa-item');
+            if (item && !item.contains(evento.relatedTarget)) resaltarMarcador(mapaExplorar.mapa, item.dataset.clave, false);
+        });
+        lista.addEventListener('click', (evento) => {
+            const item = evento.target.closest('.mapa-item');
+            if (!item || evento.target.closest('a')) return;
+            lista.querySelectorAll('.mapa-item.activo').forEach((x) => x.classList.remove('activo'));
+            item.classList.add('activo');
+            enfocarMarcador(mapaExplorar.mapa, item.dataset.clave);
+        });
+        lista.addEventListener('keydown', (evento) => {
+            const item = evento.target.closest('.mapa-item');
+            if (item && evento.key === 'Enter') item.click();
+        });
+        document.getElementById('boton-salir-mapa').addEventListener('click', () => {
+            alternarPantallaCompleta(mapaExplorar.mapa, zona, false);
+            estado.vista = 'lista';
+            aplicarCambio(false);
+        });
     }
+    document.getElementById('mapa-lista-total').textContent = total
+        ? `${total} ${total === 1 ? 'resultado' : 'resultados'}${total > publicaciones.length ? ` (se muestran ${publicaciones.length})` : ''}`
+        : 'Sin resultados';
+    document.getElementById('mapa-lista-items').innerHTML = publicaciones.map(itemListaMapa).join('')
+        || '<p class="mapa-lista-vacia">No hay resultados con estos filtros.</p>';
     // El contenedor acaba de mostrarse: Leaflet recalcula su tamaño.
     mapaExplorar.mapa.invalidateSize();
     if (mapaExplorar.capa) mapaExplorar.capa.remove();
     mapaExplorar.capa = agregarMarcadores(mapaExplorar.mapa, publicaciones);
+    if (mapaExplorar.abrirCompleto) {
+        mapaExplorar.abrirCompleto = false;
+        alternarPantallaCompleta(mapaExplorar.mapa, zona, true);
+        setTimeout(() => mapaExplorar.capa.getBounds && mapaExplorar.mapa.fitBounds(mapaExplorar.capa.getBounds(), { padding: [60, 60], maxZoom: 12 }), 120);
+    }
+}
+
+/* Mapa pequeño del panel de filtros: puntos de los resultados. */
+const minimapa = { mapa: null, capa: null };
+
+function pintarMinimapa(publicaciones) {
+    const elemento = document.getElementById('minimapa');
+    if (!elemento || !mapasDisponibles()) return;
+    if (!minimapa.mapa) {
+        minimapa.mapa = crearMapaRD(elemento, { interactivo: false, zoom: 6, centro: [18.8, -70.15] });
+        if (!minimapa.mapa) return;
+    }
+    if (minimapa.capa) minimapa.capa.remove();
+    minimapa.capa = L.layerGroup(publicaciones.map(coordenadasPublicacion).filter(Boolean)
+        .map((punto) => L.circleMarker(punto, { radius: 4, weight: 2, color: '#fff', fillColor: '#003087', fillOpacity: 1, interactive: false })))
+        .addTo(minimapa.mapa);
+    minimapa.mapa.invalidateSize();
+}
+
+function iniciarMinimapa() {
+    document.getElementById('filtros-minimapa').addEventListener('click', () => {
+        if (estado.vista === 'mapa' && mapaExplorar.mapa) {
+            alternarPantallaCompleta(mapaExplorar.mapa, document.getElementById('mapa-resultados'), true);
+            return;
+        }
+        mapaExplorar.abrirCompleto = true;
+        estado.vista = 'mapa';
+        aplicarCambio(false);
+    });
 }

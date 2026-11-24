@@ -646,7 +646,10 @@ function pintarUbicacion() {
     document.getElementById('enlace-como-llegar').href = `https://www.google.com/maps/search/?api=1&query=${consulta}`;
 
     const posicion = coordenadasPublicacion(publicacion);
-    const mapa = crearMapaRD(document.getElementById('mapa-detalle'), { centro: posicion || undefined, zoom: 10 });
+    const waze = document.getElementById('enlace-waze');
+    if (posicion) waze.href = `https://waze.com/ul?ll=${posicion[0].toFixed(5)},${posicion[1].toFixed(5)}&navigate=yes`;
+    else waze.hidden = true;
+    const mapa = crearMapaRD(document.getElementById('mapa-detalle'), { centro: posicion || undefined, zoom: 12, pantallaCompleta: true });
     if (!mapa || !posicion) return;
     L.circle(posicion, { radius: 1200, color: '#CE1126', weight: 2, fillColor: '#CE1126', fillOpacity: 0.12 }).addTo(mapa);
     L.marker(posicion, { icon: marcadorPrecio(publicacion), title: publicacion.nombre }).addTo(mapa);

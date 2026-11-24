@@ -200,7 +200,13 @@ function iniciarAutocompletado() {
             .filter((d) => !texto || normalizar(d).includes(texto))
             .sort((a, b) => (publicacionesPorDestino[b] || 0) - (publicacionesPorDestino[a] || 0))
             .slice(0, 7)
-            .map((d) => ({ valor: d, titulo: d, detalle: estadisticasCargadas ? textoPublicaciones(publicacionesPorDestino[d] || 0) : 'República Dominicana' }));
+            .map((d) => ({
+                valor: d,
+                titulo: d,
+                detalle: (CATALOGOS.provincias && CATALOGOS.provincias[d]) || 'República Dominicana',
+                foto: `img/destinos/${normalizar(d).replace(/\s+/g, '-')}.jpg`,
+                cantidad: estadisticasCargadas ? publicacionesPorDestino[d] || 0 : null
+            }));
         opciones = destinos;
         if (texto && !CATALOGOS.destinos.some((d) => normalizar(d) === texto)) {
             opciones.push({ valor: campo.value.trim(), titulo: `Buscar "${campo.value.trim()}"`, detalle: 'En nombres y descripciones', libre: true });
@@ -208,8 +214,11 @@ function iniciarAutocompletado() {
         if (!opciones.length) return cerrar();
         lista.innerHTML = opciones.map((o, i) => `
             <li id="sugerencia-${i}" role="option" aria-selected="false" class="${o.libre ? 'es-libre' : ''}" data-indice="${i}">
-                <span class="sugerencia-icono" aria-hidden="true"></span>
-                <span><strong>${escaparHtml(o.titulo)}</strong><small>${escaparHtml(o.detalle)}</small></span>
+                ${o.foto
+                    ? `<img class="sugerencia-foto" src="${o.foto}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'sugerencia-icono'}))">`
+                    : '<span class="sugerencia-icono" aria-hidden="true"></span>'}
+                <span class="sugerencia-texto"><strong>${escaparHtml(o.titulo)}</strong><small>${escaparHtml(o.detalle)}</small></span>
+                ${o.cantidad !== null && o.cantidad !== undefined ? `<span class="sugerencia-cantidad" title="${escaparHtml(textoPublicaciones(o.cantidad))}">${o.cantidad}</span>` : ''}
             </li>`).join('');
         lista.hidden = false;
         campo.setAttribute('aria-expanded', 'true');

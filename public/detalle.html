@@ -161,7 +161,10 @@
                         <div class="mapa-detalle" id="mapa-detalle" role="region" aria-label="Mapa de la ubicación"></div>
                         <div class="clima-detalle" id="clima-detalle" hidden></div>
                     </div>
-                    <a class="enlace-como-llegar" id="enlace-como-llegar" target="_blank" rel="noopener noreferrer">Cómo llegar en Google Maps</a>
+                    <div class="enlaces-ruta">
+                        <a class="enlace-como-llegar" id="enlace-como-llegar" target="_blank" rel="noopener noreferrer">Cómo llegar en Google Maps</a>
+                        <a class="enlace-como-llegar es-waze" id="enlace-waze" target="_blank" rel="noopener noreferrer">Abrir en Waze</a>
+                    </div>
                 </section>
 
                 <!-- Reseñas: GET /api/publicaciones/:tipo/:id/resenas -->
@@ -472,6 +475,7 @@
     </footer>
 
     <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="vendor/markercluster/leaflet.markercluster.js"></script>
     <script src="js/comun.js"></script>
     <script src="js/preferencias.js"></script>
     <script src="js/clima.js"></script>

@@ -1,4 +1,4 @@
-<!-- @pagina titulo="BookingRD | Hoteles, actividades y autos en República Dominicana" descripcion="Reserva hoteles, villas, excursiones y autos de alquiler en 15 destinos de República Dominicana, con disponibilidad real y confirmación inmediata." css="index" nav="inicio" -->
+<!-- @pagina titulo="BookingRD | Hoteles, actividades y autos en República Dominicana" descripcion="Reserva hoteles, villas, excursiones y autos de alquiler en 19 destinos de República Dominicana, con disponibilidad real y confirmación inmediata." css="index" nav="inicio" -->
 <!-- @encabezado -->
 
     <main id="contenido">
@@ -9,7 +9,7 @@
                 <div class="portada-texto">
                     <p class="etiqueta-caribe roja"><span class="bandera-mini" aria-hidden="true"><i></i><b></b></span>República Dominicana</p>
                     <h1 id="titulo-portada">Tu paraíso caribeño <em>te espera</em></h1>
-                    <p class="portada-entrada">Hoteles, excursiones y autos de empresas dominicanas en quince destinos, con disponibilidad real y confirmación al instante.</p>
+                    <p class="portada-entrada">Hoteles, excursiones y autos de empresas dominicanas en diecinueve destinos, con disponibilidad real y confirmación al instante.</p>
                 </div>
 
                 <div class="portada-buscador vidrio">
@@ -70,6 +70,34 @@
                 </dl>
             </div>
             <div class="franja-tricolor portada-franja" aria-hidden="true"></div>
+        </section>
+
+        <!-- Tasa del día: dólar y euro en pesos dominicanos, con conversor -->
+        <section class="tasa-dia" aria-labelledby="titulo-tasa">
+            <div class="contenedor tasa-fila">
+                <div class="tasa-titulo">
+                    <h2 id="titulo-tasa">Tasa de hoy</h2>
+                    <p id="tasa-fuente">Consultando la tasa…</p>
+                </div>
+                <dl class="tasa-valores">
+                    <div><dt>Dólar <abbr title="Dólar estadounidense">USD</abbr></dt><dd id="tasa-usd">RD$ –</dd></div>
+                    <div><dt>Euro <abbr title="Euro">EUR</abbr></dt><dd id="tasa-eur">RD$ –</dd></div>
+                </dl>
+                <form class="tasa-conversor" id="form-conversor" aria-label="Conversor de moneda">
+                    <label class="tasa-campo">
+                        <span>Monto</span>
+                        <input id="conversor-monto" type="number" min="0" step="any" value="100" inputmode="decimal">
+                    </label>
+                    <label class="tasa-campo">
+                        <span>Moneda</span>
+                        <select id="conversor-moneda">
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                        </select>
+                    </label>
+                    <output id="conversor-resultado" for="conversor-monto conversor-moneda" aria-live="polite">RD$ –</output>
+                </form>
+            </div>
         </section>
 
         <!-- 2. Qué quieres reservar: las tres secciones del sitio -->

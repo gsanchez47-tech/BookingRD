@@ -4,9 +4,16 @@
  *   Lo usan el inicio (mapa de la isla), explorar (vista de mapa) y el
  *   detalle (ubicación de la publicación). Requiere js/comun.js.
  *
- *   - Fondo: mosaicos de CARTO con datos de OpenStreetMap. Debajo se dibuja
- *     el contorno del país, que mantiene el mapa legible mientras los
+ *   - Vistas, como en Google Maps, en un panel abajo a la izquierda:
+ *       Normal   Esri World Street Map (relieve suave y carreteras)
+ *       Calles   OpenStreetMap (calles, comercios y lugares con nombre)
+ *       Satélite Esri World Imagery con nombres de lugares encima
+ *     Todas gratuitas y sin clave. La vista elegida se recuerda. Debajo se
+ *     dibuja el contorno del país, que mantiene el mapa legible mientras los
  *     mosaicos cargan o si no hay conexión.
+ *   - Pantalla completa: botón arriba a la derecha (opcional en cada mapa);
+ *     se cierra con el mismo botón o con Esc.
+ *   - Precios agrupados al alejar (Leaflet.markercluster, licencia MIT).
  *   - Ubicación: las publicaciones guardan el destino (ciudad), no
  *     coordenadas exactas. Cada una se ubica en el centro de su destino con
  *     un desplazamiento pequeño y estable para que no se superpongan; el
@@ -33,7 +40,11 @@ const COORDENADAS_DESTINOS = {
     'Juan Dolio': [18.4270, -69.4300],
     'Boca Chica': [18.4500, -69.6060],
     'Río San Juan': [19.6420, -70.0760],
-    'Pedernales': [18.0380, -71.7440]
+    'Pedernales': [18.0380, -71.7440],
+    'Miches': [18.9820, -69.0450],
+    'Barahona': [18.2085, -71.1008],
+    'Montecristi': [19.8480, -71.6460],
+    'Baní': [18.2800, -70.3310]
 };
 
 /** Desplazamiento estable (entre 0,004° y 0,012°) a partir del tipo y el id. */
@@ -57,10 +68,188 @@ function mapasDisponibles() {
     return typeof window.L !== 'undefined';
 }
 
+/* ---------------------------------------------------------------------------
+ * Vistas del mapa
+ * ------------------------------------------------------------------------- */
+
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services';
+const ATRIBUCION_OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+const VISTAS_MAPA = {
+    normal: {
+        nombre: 'Normal',
+        url: `${ESRI}/World_Street_Map/MapServer/tile/{z}/{y}/{x}`,
+        atribucion: `Mapa &copy; <a href="https://www.esri.com">Esri</a>, HERE, Garmin, ${ATRIBUCION_OSM}`,
+        respaldo: 'calles'
+    },
+    calles: {
+        nombre: 'Calles',
+        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        atribucion: ATRIBUCION_OSM,
+        respaldo: 'normal'
+    },
+    satelite: {
+        nombre: 'Satélite',
+        url: `${ESRI}/World_Imagery/MapServer/tile/{z}/{y}/{x}`,
+        etiquetas: `${ESRI}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`,
+        atribucion: 'Imágenes &copy; <a href="https://www.esri.com">Esri</a>, Maxar, Earthstar Geographics'
+    }
+};
+const CLAVE_VISTA = 'bookingrd-vista-mapa';
+
+function vistaGuardada() {
+    try { return VISTAS_MAPA[localStorage.getItem(CLAVE_VISTA)] ? localStorage.getItem(CLAVE_VISTA) : 'normal'; } catch { return 'normal'; }
+}
+
+/** Mosaico (z, x, y) que contiene una coordenada; para las miniaturas del panel de vistas. */
+function mosaicoEn(lat, lng, z) {
+    const n = 2 ** z;
+    const x = Math.floor(((lng + 180) / 360) * n);
+    const r = (lat * Math.PI) / 180;
+    const y = Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * n);
+    return { z, x, y };
+}
+
+function urlMosaico(plantilla, { z, x, y }) {
+    return plantilla.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+}
+
+/**
+ * Capa de una vista. Si sus mosaicos fallan varias veces sin cargar ninguno
+ * (servicio caído o bloqueado en la red), se cambia a la vista de respaldo.
+ */
+function capaVista(mapa, clave) {
+    const vista = VISTAS_MAPA[clave];
+    const opciones = { maxZoom: 19, className: `mosaicos-mapa vista-${clave}`, referrerPolicy: 'strict-origin-when-cross-origin', attribution: vista.atribucion };
+    const base = L.tileLayer(vista.url, opciones);
+    let fallos = 0;
+    let cargados = 0;
+    base.on('tileload', () => { cargados += 1; });
+    base.on('tileerror', () => {
+        fallos += 1;
+        if (fallos !== 4 || cargados > 0 || !mapa._vista || mapa._vista.clave !== clave) return;
+        // Cada vista se intenta una sola vez: sin conexión el mapa se queda
+        // con el contorno de la isla en lugar de alternar entre servicios.
+        mapa._vistasFallidas = mapa._vistasFallidas || new Set();
+        mapa._vistasFallidas.add(clave);
+        if (vista.respaldo && !mapa._vistasFallidas.has(vista.respaldo)) {
+            cambiarVista(mapa, vista.respaldo, { guardar: false });
+        } else {
+            mapa.getContainer().classList.add('sin-mosaicos');
+        }
+    });
+    if (!vista.etiquetas) return base;
+    return L.layerGroup([base, L.tileLayer(vista.etiquetas, { maxZoom: 19, className: 'mosaicos-etiquetas', referrerPolicy: 'strict-origin-when-cross-origin' })]);
+}
+
+/** Cambia la vista del mapa (Normal, Calles o Satélite). */
+function cambiarVista(mapa, clave, { guardar = true } = {}) {
+    if (!VISTAS_MAPA[clave]) return;
+    if (mapa._vista) mapa.removeLayer(mapa._vista.capa);
+    const capa = capaVista(mapa, clave).addTo(mapa);
+    mapa._vista = { clave, capa };
+    mapa.getContainer().dataset.vista = clave;
+    if (guardar) { try { localStorage.setItem(CLAVE_VISTA, clave); } catch { /* sin almacenamiento */ } }
+    if (mapa._panelVistas) mapa._panelVistas.pintar();
+}
+
+/** Panel de vistas abajo a la izquierda, con una miniatura real de cada una. */
+function agregarPanelVistas(mapa) {
+    const Panel = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd() {
+            const caja = L.DomUtil.create('div', 'mapa-vistas');
+            caja.setAttribute('role', 'radiogroup');
+            caja.setAttribute('aria-label', 'Tipo de mapa');
+            L.DomEvent.disableClickPropagation(caja);
+            L.DomEvent.disableScrollPropagation(caja);
+            caja.addEventListener('click', (evento) => {
+                const boton = evento.target.closest('[data-vista]');
+                if (boton) cambiarVista(mapa, boton.dataset.vista);
+            });
+            return caja;
+        }
+    });
+    const control = new Panel().addTo(mapa);
+    const caja = control.getContainer();
+    let ultimo = '';
+    const pintar = () => {
+        const centro = mapa.getCenter();
+        const mosaico = mosaicoEn(centro.lat, centro.lng, Math.max(6, Math.min(mapa.getZoom() - 1, 15)));
+        const firma = `${mosaico.z}/${mosaico.x}/${mosaico.y}/${mapa._vista ? mapa._vista.clave : ''}`;
+        if (firma === ultimo) return;
+        ultimo = firma;
+        caja.innerHTML = Object.entries(VISTAS_MAPA).map(([clave, vista]) => `
+            <button type="button" class="mapa-vista${mapa._vista && mapa._vista.clave === clave ? ' activa' : ''}" data-vista="${clave}"
+                role="radio" aria-checked="${mapa._vista && mapa._vista.clave === clave}" title="Ver el mapa en vista ${vista.nombre.toLowerCase()}">
+                <span class="mapa-vista-imagen" style="background-image:url('${urlMosaico(vista.url, mosaico)}')"></span>
+                <span class="mapa-vista-nombre">${vista.nombre}</span>
+            </button>`).join('');
+    };
+    mapa._panelVistas = { pintar };
+    mapa.on('moveend', pintar);
+    pintar();
+}
+
+/* ---------------------------------------------------------------------------
+ * Pantalla completa
+ * ------------------------------------------------------------------------- */
+
+const ICONO_AMPLIAR = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+const ICONO_REDUCIR = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+/**
+ * Pone en pantalla completa el elemento indicado (el mapa o el contenedor de
+ * lista y mapa). Se usa una capa fija sobre la página, que funciona igual en
+ * cualquier navegador y no saca a la persona de la página.
+ */
+function alternarPantallaCompleta(mapa, elemento, activar) {
+    const destino = elemento || mapa.getContainer();
+    const encender = activar === undefined ? !destino.classList.contains('en-pantalla-completa') : activar;
+    destino.classList.toggle('en-pantalla-completa', encender);
+    document.documentElement.classList.toggle('con-mapa-completo', encender);
+    if (encender) mapa.scrollWheelZoom.enable(); else mapa.scrollWheelZoom.disable();
+    if (mapa._botonCompleta) {
+        mapa._botonCompleta.innerHTML = `${encender ? ICONO_REDUCIR : ICONO_AMPLIAR}<span>${encender ? 'Salir de pantalla completa' : 'Pantalla completa'}</span>`;
+        mapa._botonCompleta.setAttribute('aria-pressed', String(encender));
+    }
+    // Se conserva el centro y el acercamiento al cambiar de tamaño.
+    const centro = mapa.getCenter();
+    const zoom = mapa.getZoom();
+    setTimeout(() => { mapa.invalidateSize({ pan: false }); mapa.setView(centro, zoom, { animate: false }); }, 60);
+    if (typeof mapa._alCambiarCompleta === 'function') mapa._alCambiarCompleta(encender);
+}
+
+function agregarBotonPantallaCompleta(mapa, elemento) {
+    const Boton = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd() {
+            const boton = L.DomUtil.create('button', 'mapa-boton-completa');
+            boton.type = 'button';
+            boton.setAttribute('aria-pressed', 'false');
+            boton.innerHTML = `${ICONO_AMPLIAR}<span>Pantalla completa</span>`;
+            L.DomEvent.disableClickPropagation(boton);
+            boton.addEventListener('click', () => alternarPantallaCompleta(mapa, elemento));
+            return boton;
+        }
+    });
+    mapa._botonCompleta = new Boton().addTo(mapa).getContainer();
+    document.addEventListener('keydown', (evento) => {
+        const destino = elemento || mapa.getContainer();
+        if (evento.key === 'Escape' && destino.classList.contains('en-pantalla-completa')) alternarPantallaCompleta(mapa, elemento, false);
+    });
+}
+
+/* ---------------------------------------------------------------------------
+ * Creación del mapa
+ * ------------------------------------------------------------------------- */
+
 /**
  * Crea un mapa centrado en la isla.
  * @param {HTMLElement} elemento contenedor con altura definida en CSS
- * @param {object} [opciones] { zoom, centro, interactivo }
+ * @param {object} [opciones]
+ *   zoom, centro, interactivo (false: mapa fijo, sin controles),
+ *   vistas (panel de vistas, por defecto true si es interactivo),
+ *   pantallaCompleta (true o el elemento que pasa a pantalla completa)
  * @returns {L.Map|null} null si Leaflet no está disponible (el contenedor muestra un aviso).
  */
 function crearMapaRD(elemento, opciones = {}) {
@@ -74,14 +263,19 @@ function crearMapaRD(elemento, opciones = {}) {
         center: opciones.centro || [18.85, -70.2],
         zoom: opciones.zoom || 8,
         minZoom: 6,
-        maxZoom: 16,
+        maxZoom: 18,
         maxBounds: [[16.8, -73.2], [20.7, -67.3]],
         scrollWheelZoom: false,
         dragging: interactivo,
-        zoomControl: interactivo,
+        zoomControl: false,
         doubleClickZoom: interactivo,
-        touchZoom: interactivo
+        touchZoom: interactivo,
+        boxZoom: interactivo,
+        keyboard: interactivo,
+        attributionControl: interactivo
     });
+    if (interactivo) L.control.zoom({ position: 'bottomright', zoomInTitle: 'Acercar', zoomOutTitle: 'Alejar' }).addTo(mapa);
+    if (mapa.attributionControl) mapa.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
 
     // Contorno propio debajo de los mosaicos.
     mapa.createPane('contorno');
@@ -97,49 +291,22 @@ function crearMapaRD(elemento, opciones = {}) {
         style: { color: '#003087', weight: 1.5, fillColor: '#FDEBD0', fillOpacity: 1 }
     }).addTo(mapa);
 
-    agregarMosaicos(mapa);
+    cambiarVista(mapa, opciones.vista || vistaGuardada(), { guardar: false });
+    if (interactivo && opciones.vistas !== false) agregarPanelVistas(mapa);
+    if (interactivo && opciones.pantallaCompleta) {
+        agregarBotonPantallaCompleta(mapa, opciones.pantallaCompleta === true ? null : opciones.pantallaCompleta);
+    }
 
     // La rueda del ratón solo hace zoom después de hacer clic en el mapa,
     // para no interrumpir el desplazamiento de la página.
     if (interactivo) {
         mapa.on('click', () => mapa.scrollWheelZoom.enable());
-        mapa.on('mouseout', () => mapa.scrollWheelZoom.disable());
+        mapa.on('mouseout', () => {
+            const enCompleta = elemento.closest('.en-pantalla-completa');
+            if (!enCompleta) mapa.scrollWheelZoom.disable();
+        });
     }
     return mapa;
-}
-
-/**
- * Mosaicos del mapa, sin clave de acceso. Primero OpenStreetMap; si sus
- * mosaicos fallan varias veces (servicio caído o bloqueado en la red), se
- * cambia a Esri World Street Map. Si ninguno carga, queda visible el contorno
- * propio de la isla dibujado debajo, de modo que el mapa nunca sale vacío.
- */
-const PROVEEDORES_MAPA = [
-    {
-        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        opciones: { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
-    },
-    {
-        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-        opciones: { maxZoom: 19, attribution: 'Mapa &copy; <a href="https://www.esri.com">Esri</a>, HERE, Garmin, &copy; OpenStreetMap' }
-    }
-];
-
-function agregarMosaicos(mapa, indice = 0) {
-    const proveedor = PROVEEDORES_MAPA[indice];
-    if (!proveedor) return;
-    const capa = L.tileLayer(proveedor.url, Object.assign({ className: 'mosaicos-mapa', referrerPolicy: 'strict-origin-when-cross-origin' }, proveedor.opciones));
-    let fallos = 0;
-    let cargados = 0;
-    capa.on('tileload', () => { cargados += 1; });
-    capa.on('tileerror', () => {
-        fallos += 1;
-        if (fallos === 4 && cargados === 0) {
-            mapa.removeLayer(capa);
-            agregarMosaicos(mapa, indice + 1);
-        }
-    });
-    capa.addTo(mapa);
 }
 
 /** Marcador con el precio de la publicación, en forma de etiqueta. */
@@ -170,24 +337,71 @@ function ventanaPublicacion(publicacion) {
         </a>`;
 }
 
+/** Icono de un grupo de publicaciones cercanas: cantidad y precio más bajo. */
+function iconoGrupo(grupo) {
+    const marcadores = grupo.getAllChildMarkers();
+    const minimo = Math.min(...marcadores.map((m) => m.options.precio || Infinity));
+    const tamano = marcadores.length < 10 ? 44 : 52;
+    return L.divIcon({
+        className: 'marcador-grupo-contenedor',
+        html: `<span class="marcador-grupo"><b>${marcadores.length}</b><small>desde RD$${escaparHtml(formatoCompacto(minimo))}</small></span>`,
+        iconSize: [tamano + 40, tamano]
+    });
+}
+
 /**
  * Agrega marcadores de precio para las publicaciones y ajusta la vista.
+ * Al alejar, los precios cercanos se agrupan (si está Leaflet.markercluster).
+ * Cada marcador queda en mapa._marcadores bajo la clave "tipo-id", para
+ * resaltarlo desde la lista (resaltarMarcador).
  * @returns {L.LayerGroup}
  */
-function agregarMarcadores(mapa, publicaciones, { ajustar = true } = {}) {
-    const grupo = L.layerGroup().addTo(mapa);
+function agregarMarcadores(mapa, publicaciones, { ajustar = true, agrupar = true } = {}) {
+    const grupo = agrupar && typeof L.markerClusterGroup === 'function'
+        ? L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 46, spiderfyDistanceMultiplier: 1.6, iconCreateFunction: iconoGrupo })
+        : L.layerGroup();
+    grupo.addTo(mapa);
+    mapa._marcadores = new Map();
     const puntos = [];
     publicaciones.forEach((publicacion) => {
         const posicion = coordenadasPublicacion(publicacion);
         if (!posicion) return;
         puntos.push(posicion);
-        L.marker(posicion, { icon: marcadorPrecio(publicacion), riseOnHover: true, title: publicacion.nombre })
-            .bindPopup(ventanaPublicacion(publicacion), { className: 'mapa-popup', maxWidth: 260, minWidth: 230 })
-            .addTo(grupo);
+        const marcador = L.marker(posicion, { icon: marcadorPrecio(publicacion), riseOnHover: true, title: publicacion.nombre, precio: publicacion.precio })
+            .bindPopup(ventanaPublicacion(publicacion), { className: 'mapa-popup', maxWidth: 270, minWidth: 240 });
+        grupo.addLayer(marcador);
+        mapa._marcadores.set(`${publicacion.tipo}-${publicacion.id}`, marcador);
     });
+    mapa._grupoMarcadores = grupo;
     if (ajustar && puntos.length) {
-        if (puntos.length === 1) mapa.setView(puntos[0], 11);
-        else mapa.fitBounds(puntos, { padding: [48, 48], maxZoom: 11 });
+        if (puntos.length === 1) mapa.setView(puntos[0], 13);
+        else mapa.fitBounds(puntos, { padding: [48, 48], maxZoom: 12 });
     }
     return grupo;
+}
+
+/** Resalta (o deja de resaltar) el precio de una publicación en el mapa. */
+function resaltarMarcador(mapa, clave, activo) {
+    if (!mapa || !mapa._marcadores) return;
+    const marcador = mapa._marcadores.get(clave);
+    if (!marcador) return;
+    const elemento = marcador.getElement && marcador.getElement();
+    if (elemento) {
+        elemento.classList.toggle('resaltado', activo);
+        marcador.setZIndexOffset(activo ? 1000 : 0);
+    }
+    // Si el marcador está dentro de un grupo, se resalta el grupo.
+    if (mapa._grupoMarcadores && mapa._grupoMarcadores.getVisibleParent) {
+        const visible = mapa._grupoMarcadores.getVisibleParent(marcador);
+        if (visible && visible !== marcador && visible.getElement && visible.getElement()) visible.getElement().classList.toggle('resaltado', activo);
+    }
+}
+
+/** Centra el mapa en una publicación y abre su ventana. */
+function enfocarMarcador(mapa, clave) {
+    if (!mapa || !mapa._marcadores) return;
+    const marcador = mapa._marcadores.get(clave);
+    if (!marcador) return;
+    if (mapa._grupoMarcadores && mapa._grupoMarcadores.zoomToShowLayer) mapa._grupoMarcadores.zoomToShowLayer(marcador, () => marcador.openPopup());
+    else { mapa.setView(marcador.getLatLng(), Math.max(mapa.getZoom(), 13)); marcador.openPopup(); }
 }

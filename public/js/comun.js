@@ -876,7 +876,7 @@ const NOMBRES_MES = LOCALE === 'en-US'
 function formatoCompacto(valor) {
     if (valor >= 1000000) return `${(valor / 1000000).toFixed(valor >= 10000000 ? 0 : 1).replace('.0', '')}M`;
     if (valor >= 1000) return `${Math.round(valor / 1000)}K`;
-    return String(Math.round(valor));
+    return Number.isInteger(valor) ? String(valor) : String(Math.round(valor * 10) / 10);
 }
 
 /** Máximo "redondo" del eje para que las líneas guía caigan en valores limpios. */
@@ -902,7 +902,8 @@ function tablaGrafico(titulo, datos, formato) {
 function crearGraficoColumnas(titulo, datos, formato = String) {
     const maximo = maximoEje(Math.max(...datos.map((d) => d.valor), 0));
     const mayor = Math.max(...datos.map((d) => d.valor));
-    const guias = [1, 0.5, 0].map((f) => `<span class="grafico-guia" style="bottom:${f * 100}%"><small>${formatoCompacto(maximo * f)}</small></span>`).join('');
+    // Sin datos todavía: solo la línea del cero, sin cifras inventadas en el eje.
+    const guias = (mayor > 0 ? [1, 0.5, 0] : [0]).map((f) => `<span class="grafico-guia" style="bottom:${f * 100}%"><small>${formatoCompacto(maximo * f)}</small></span>`).join('');
     const columnas = datos.map((d, i) => {
         const alto = (d.valor / maximo) * 100;
         // Etiqueta visible solo en el valor máximo y en el periodo resaltado.
@@ -918,7 +919,7 @@ function crearGraficoColumnas(titulo, datos, formato = String) {
             </div>`;
     }).join('');
     return `<figure class="grafico grafico-columnas" role="group" aria-label="${escaparHtml(titulo)}">
-            <div class="grafico-area">${guias}<div class="grafico-columnas-fila">${columnas}</div></div>
+            <div class="grafico-area">${guias}<div class="grafico-columnas-fila">${columnas}</div>${mayor > 0 ? '' : '<p class="grafico-sin-datos">Aún no hay datos en estos meses.</p>'}</div>
             ${tablaGrafico(titulo, datos, formato)}
         </figure>`;
 }

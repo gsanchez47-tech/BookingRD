@@ -1798,6 +1798,18 @@ dialog.modal.cerrando {
     padding-left: 40px;
 }
 
+.grafico-sin-datos {
+    position: absolute;
+    inset: 0 0 28px;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    color: var(--tinta-3);
+    font-size: var(--t-s, 0.92rem);
+    font-weight: 700;
+    pointer-events: none;
+}
+
 .grafico-guia {
     position: absolute;
     left: 40px;
@@ -2626,25 +2638,31 @@ body:has(.banda-empresas) .pie {
 .sugerencias {
     position: absolute;
     left: 0;
-    right: 0;
     top: 100%;
-    z-index: 30;
+    z-index: 60;
+    width: max(100%, 380px);
+    max-width: calc(100vw - 32px);
     margin: 6px 0 0;
     padding: 6px;
     border: 1px solid var(--linea);
     border-radius: var(--r-m);
-    background: var(--superficie);
-    box-shadow: var(--sombra-flotante);
+    background: #fff;
+    color: var(--tinta);
+    text-align: left;
+    box-shadow: 0 18px 40px -18px rgba(11, 29, 69, 0.45);
     list-style: none;
+    max-height: 420px;
+    overflow-y: auto;
 }
 
 .sugerencias li {
     display: flex;
     align-items: center;
-    gap: var(--e-3);
-    padding: 10px;
+    gap: 12px;
+    padding: 8px 10px;
     border-radius: var(--r-s);
     cursor: pointer;
+    color: var(--tinta);
 }
 
 .sugerencias li.activa,
@@ -2652,26 +2670,61 @@ body:has(.banda-empresas) .pie {
     background: var(--azul-tenue);
 }
 
-.sugerencias li span:last-child {
+.sugerencia-foto {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    object-fit: cover;
+    background: var(--azul-tenue);
+}
+
+.sugerencia-texto {
     display: grid;
+    flex: 1;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.sugerencias strong {
+    color: var(--tinta);
+    font-weight: 800;
+    font-size: 0.98rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .sugerencias small {
     color: var(--tinta-3);
     font-size: var(--t-xs);
+    font-weight: 600;
+}
+
+.sugerencia-cantidad {
+    flex-shrink: 0;
+    min-width: 30px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--azul-tenue);
+    color: var(--azul);
+    font-weight: 800;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.sugerencias li.activa .sugerencia-cantidad,
+.sugerencias li:hover .sugerencia-cantidad {
+    background: var(--azul);
+    color: #fff;
 }
 
 .sugerencia-icono {
-    width: 10px;
-    height: 10px;
+    width: 44px;
+    height: 44px;
     flex-shrink: 0;
-    border: 2px solid var(--rojo);
-    border-radius: 50%;
-}
-
-.sugerencias .es-libre .sugerencia-icono {
-    border-color: var(--azul);
-    border-radius: 2px;
+    border-radius: 10px;
+    background: var(--azul-tenue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23003087' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='m20 20-4.2-4.2'/%3E%3C/svg%3E") center / 20px no-repeat;
 }
 
 .portada-autos {

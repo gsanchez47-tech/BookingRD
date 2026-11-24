@@ -366,8 +366,12 @@
     gap: var(--e-4);
 }
 
+.ubicacion-rejilla:has(> .clima-detalle[hidden]) {
+    grid-template-columns: 1fr;
+}
+
 .mapa-detalle {
-    height: 320px;
+    height: 380px;
     border-radius: var(--r-m);
     overflow: hidden;
     background: #CFEAF1;
@@ -390,11 +394,30 @@
     }
 }
 
-.enlace-como-llegar {
-    display: inline-block;
+.enlaces-ruta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-3);
     margin-top: var(--e-4);
-    font-weight: 800;
 }
+
+.enlace-como-llegar {
+    display: inline-flex;
+    align-items: center;
+    height: 42px;
+    padding: 0 16px;
+    border: 1.5px solid var(--azul);
+    border-radius: 10px;
+    font-size: var(--t-s);
+    font-weight: 800;
+    color: var(--azul);
+    text-decoration: none;
+}
+
+.enlace-como-llegar:hover { background: var(--azul); color: #fff; }
+.enlace-como-llegar.es-waze { border-color: #33CCFF; color: #0A7FA6; }
+.enlace-como-llegar.es-waze:hover { background: #33CCFF; color: #05132B; }
+.enlace-como-llegar[hidden] { display: none; }
 
 /* Reseñas */
 .resenas-encabezado {

@@ -1798,6 +1798,18 @@ dialog.modal.cerrando {
     padding-left: 40px;
 }
 
+.grafico-sin-datos {
+    position: absolute;
+    inset: 0 0 28px;
+    display: grid;
+    place-items: center;
+    margin: 0;
+    color: var(--tinta-3);
+    font-size: var(--t-s, 0.92rem);
+    font-weight: 700;
+    pointer-events: none;
+}
+
 .grafico-guia {
     position: absolute;
     left: 40px;

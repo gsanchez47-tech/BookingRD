@@ -101,8 +101,13 @@
                  En pantallas angostas el panel se abre con el botón "Filtros". -->
             <div class="explorar-layout">
                 <aside class="panel-filtros" id="panel-filtros" aria-labelledby="panel-filtros-titulo">
+                    <!-- Mapa pequeño con los resultados; abre la vista de mapa en pantalla completa. -->
+                    <button type="button" class="filtros-minimapa" id="filtros-minimapa" aria-label="Ver los resultados en el mapa">
+                        <span class="filtros-minimapa-mapa" id="minimapa" aria-hidden="true"></span>
+                        <span class="filtros-minimapa-boton">Ver en el mapa</span>
+                    </button>
                     <div class="panel-filtros-cabecera">
-                        <h2 id="panel-filtros-titulo">Filtros</h2>
+                        <h2 id="panel-filtros-titulo">Filtrar por</h2>
                         <button type="button" class="boton-enlace" id="boton-limpiar" hidden>Limpiar todo</button>
                         <button type="button" class="panel-filtros-cerrar" id="boton-cerrar-filtros" aria-label="Cerrar filtros">&times;</button>
                     </div>
@@ -217,10 +222,19 @@
                     <div class="filtros-activos" id="filtros-activos" aria-label="Filtros aplicados"></div>
                     <div class="clima-destino" id="clima-destino" hidden></div>
 
+                    <!-- Vista de mapa: lista compacta a la izquierda y mapa a la derecha.
+                         El botón del mapa pone las dos en pantalla completa. -->
                     <div class="mapa-resultados" id="mapa-resultados" hidden>
+                        <div class="mapa-lista" id="mapa-lista" aria-label="Resultados del mapa">
+                            <div class="mapa-lista-cabecera">
+                                <strong id="mapa-lista-total"></strong>
+                                <button type="button" class="boton-enlace" id="boton-salir-mapa">Volver a la lista</button>
+                            </div>
+                            <div class="mapa-lista-items" id="mapa-lista-items"></div>
+                        </div>
                         <div class="mapa-contenedor-explorar" id="mapa-explorar" role="region" aria-label="Mapa de resultados"></div>
-                        <p class="mapa-nota">Ubicación aproximada por destino. Toca un precio para ver la publicación.</p>
                     </div>
+                    <p class="mapa-nota" id="mapa-nota" hidden>Ubicación aproximada por destino. Pasa el ratón por un alojamiento de la lista para verlo en el mapa.</p>
 
                     <div class="rejilla-tarjetas" id="grid-resultados"></div>
                     <div class="resultados-mas">
@@ -277,6 +291,7 @@
     </footer>
 
     <script src="vendor/leaflet/leaflet.js"></script>
+    <script src="vendor/markercluster/leaflet.markercluster.js"></script>
     <script src="js/comun.js"></script>
     <script src="js/preferencias.js"></script>
     <script src="js/clima.js"></script>
