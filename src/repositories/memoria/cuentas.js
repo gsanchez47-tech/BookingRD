@@ -122,7 +122,60 @@ async function obtenerContacto(idUsuario) {
     return u ? { nombre: u.nombre, correo: u.correo } : null;
 }
 
+/* Verificación del correo y restablecimiento de contraseña. */
+
+const vigente = (v) => new Date(v.expira).getTime() > Date.now();
+
+async function crearVerificacion({ correo, proposito, codigoHash, datos = null, minutos }) {
+    for (const v of A.bd.verificaciones) if (v.correo === correo && v.proposito === proposito) v.usado = 1;
+    // Las verificaciones usadas o vencidas no hace falta guardarlas.
+    A.bd.verificaciones = A.bd.verificaciones.filter((v) => !v.usado && vigente(v));
+    A.insertar('verificaciones', 'id_verificacion', {
+        correo, proposito, codigo_hash: codigoHash, datos, intentos: 0, usado: 0,
+        expira: new Date(Date.now() + minutos * 60000), fecha_creacion: A.ahora()
+    });
+    A.guardar();
+}
+
+async function verificacionPendiente(correo, proposito) {
+    const v = A.bd.verificaciones.filter((x) => x.correo === correo && x.proposito === proposito && !x.usado).pop();
+    if (!v) return null;
+    return Object.assign({}, v, { vigente: vigente(v) ? 1 : 0, segundos: Math.floor((Date.now() - new Date(v.fecha_creacion).getTime()) / 1000) });
+}
+
+async function verificacionPorHash(proposito, codigoHash) {
+    return A.bd.verificaciones.find((v) => v.proposito === proposito && v.codigo_hash === codigoHash && !v.usado && vigente(v)) || null;
+}
+
+async function sumarIntento(idVerificacion) {
+    const v = A.bd.verificaciones.find((x) => x.id_verificacion === idVerificacion);
+    if (v && v.intentos < 10) v.intentos += 1;
+    A.guardar();
+}
+
+async function usarVerificacion(transaccion, idVerificacion) {
+    const v = A.bd.verificaciones.find((x) => x.id_verificacion === idVerificacion);
+    if (!v || v.usado) return false;
+    v.usado = 1;
+    A.guardar();
+    return true;
+}
+
+async function cambiarPassword(transaccion, correo, passwordHash) {
+    const u = A.bd.usuarios.find((x) => x.correo.toLowerCase() === correo.toLowerCase());
+    if (!u) return false;
+    u.password_hash = passwordHash;
+    A.guardar();
+    return true;
+}
+
 module.exports = {
+    crearVerificacion,
+    verificacionPendiente,
+    verificacionPorHash,
+    sumarIntento,
+    usarVerificacion,
+    cambiarPassword,
     obtenerContacto,
     existeCorreo,
     existeRnc,

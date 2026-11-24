@@ -46,11 +46,10 @@ function iniciarFormulario() {
         evento.currentTarget.textContent = mostrar ? 'Ocultar' : 'Mostrar';
     });
 
-    // Instrucciones de recuperación de contraseña.
-    document.getElementById('boton-olvido').addEventListener('click', (evento) => {
-        const panel = document.getElementById('panel-olvido');
-        panel.hidden = !panel.hidden;
-        evento.currentTarget.setAttribute('aria-expanded', String(!panel.hidden));
+    // "¿Olvidaste tu contraseña?" lleva el correo escrito a la página de recuperación.
+    document.getElementById('enlace-olvido').addEventListener('click', (evento) => {
+        const correo = document.getElementById('correo').value.trim();
+        if (correo) evento.currentTarget.href = `restablecer.html?correo=${encodeURIComponent(correo)}`;
     });
 
     // Cuentas de demostración: completan el formulario.

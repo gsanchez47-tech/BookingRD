@@ -259,6 +259,39 @@
                         <p class="pie-formulario">¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
                     </div>
 
+                    <!-- Paso final del registro: código de 6 dígitos enviado al correo.
+                         POST /api/auth/registro/verificar y /registro/reenviar. -->
+                    <div class="verificacion-correo" id="verificacion-correo" hidden>
+                        <h1>Revisa tu correo</h1>
+                        <ol class="verificacion-pasos" aria-label="Pasos del registro">
+                            <li class="hecho">Tus datos</li>
+                            <li class="actual" aria-current="step">Verificar el correo</li>
+                            <li>Cuenta lista</li>
+                        </ol>
+                        <p class="auth-subtitulo">Te enviamos un código de 6 dígitos a <strong id="verificacion-destino"></strong>. Vence en <span id="verificacion-minutos">15</span> minutos.</p>
+                        <p class="aviso-demostracion" id="aviso-demostracion" hidden>
+                            Modo de demostración: este equipo no tiene un servidor de correo configurado, así que el correo se guardó aquí.
+                            <a id="enlace-correo-prueba" href="#" target="_blank" rel="noopener">Abrir el correo</a>
+                        </p>
+                        <div id="mensaje-verificacion" class="mensaje-error" role="alert"></div>
+                        <form id="form-verificacion" novalidate>
+                            <div class="codigo-casillas" id="codigo-casillas" role="group" aria-label="Código de verificación">
+                                <input inputmode="numeric" autocomplete="one-time-code" aria-label="Dígito 1">
+                                <input inputmode="numeric" aria-label="Dígito 2">
+                                <input inputmode="numeric" aria-label="Dígito 3">
+                                <input inputmode="numeric" aria-label="Dígito 4">
+                                <input inputmode="numeric" aria-label="Dígito 5">
+                                <input inputmode="numeric" aria-label="Dígito 6">
+                            </div>
+                            <div class="verificacion-ayuda">
+                                <span>¿No llegó? Mira en spam o en promociones.</span>
+                                <button type="button" class="boton-enlace" id="boton-reenviar" disabled>Reenviar código</button>
+                            </div>
+                            <button type="submit" id="boton-verificar" class="btn-rojo btn-bloque">Verificar y crear mi cuenta</button>
+                        </form>
+                        <p class="verificacion-pie">¿Escribiste mal el correo? <button type="button" class="boton-enlace" id="boton-cambiar-correo">Corregir los datos</button></p>
+                    </div>
+
                     <!-- Aviso con sesión activa: el registro requiere cerrar la sesión actual. -->
                     <div class="sesion-existente" data-sesion="usuario" hidden>
                         <h1>Ya iniciaste sesión</h1>

@@ -38,7 +38,7 @@ before(async () => {
     const puerto = await puertoLibre();
     base = `http://localhost:${puerto}/api`;
     servidor = spawn(process.execPath, [path.join(__dirname, '..', 'src', 'server.js')], {
-        env: Object.assign({}, process.env, { DB_MODO: 'demo', PORT: String(puerto), JWT_SECRET: 'pruebas-bookingrd-0123456789abcdef', LIMITE_INTENTOS_AUTH: '500' }),
+        env: Object.assign({}, process.env, { DB_MODO: 'demo', PORT: String(puerto), JWT_SECRET: 'pruebas-bookingrd-0123456789abcdef', LIMITE_INTENTOS_AUTH: '500', SMTP_HOST: '', CORREO_CARPETA: path.join(require('node:os').tmpdir(), `bookingrd-correos-${process.pid}`) }),
         stdio: ['ignore', 'pipe', 'pipe']
     });
     await new Promise((resolver, rechazar) => {
@@ -185,29 +185,77 @@ test('inicio de sesión correcto e incorrecto', async () => {
     assert.equal(sesion.datos.usuario.rol, 'cliente');
 });
 
-test('registro de viajero y de empresa', async () => {
-    const viajero = await api('/auth/registro', {
-        metodo: 'POST',
-        cuerpo: { tipoCuenta: 'cliente', nombre: 'Viajera de Prueba', correo: 'viajera.prueba@correo.com', password: 'Prueba123', confirmarPassword: 'Prueba123' }
-    });
-    assert.equal(viajero.status, 201);
+/** Lee el código de 6 dígitos del correo de prueba (sin SMTP, el correo queda en archivo). */
+async function codigoDelCorreo(vistaPrevia) {
+    assert.ok(vistaPrevia, 'la respuesta debe traer la vista previa del correo');
+    const html = await (await fetch(base + vistaPrevia.replace(/^\/api/, ''))).text();
+    const codigo = (html.match(/Tu código de BookingRD: (\d{6})/) || [])[1];
+    assert.ok(codigo, 'el correo debe traer el código');
+    return codigo;
+}
+
+/** Registro completo: solicitud, código del correo y verificación. */
+async function registrarYVerificar(cuerpo) {
+    const solicitud = await api('/auth/registro', { metodo: 'POST', cuerpo });
+    assert.equal(solicitud.status, 202, JSON.stringify(solicitud.datos));
+    const codigo = await codigoDelCorreo(solicitud.datos.vistaPrevia);
+    return api('/auth/registro/verificar', { metodo: 'POST', cuerpo: { correo: cuerpo.correo, codigo } });
+}
+
+test('registro de viajero y de empresa con código por correo', async () => {
+    const datosViajera = { tipoCuenta: 'cliente', nombre: 'Viajera de Prueba', correo: 'viajera.prueba@correo.com', password: 'Prueba123', confirmarPassword: 'Prueba123' };
+    // Sin verificar el correo la cuenta no existe todavía.
+    const solicitud = await api('/auth/registro', { metodo: 'POST', cuerpo: datosViajera });
+    assert.equal(solicitud.status, 202);
+    assert.equal((await api('/auth/login', { metodo: 'POST', cuerpo: { correo: datosViajera.correo, password: 'Prueba123' } })).status, 401);
+    const malo = await api('/auth/registro/verificar', { metodo: 'POST', cuerpo: { correo: datosViajera.correo, codigo: '000000' } });
+    assert.equal(malo.status, 400);
+    assert.equal(malo.datos.campo, 'codigo');
+    // Reenviar antes de un minuto se rechaza.
+    assert.equal((await api('/auth/registro/reenviar', { metodo: 'POST', cuerpo: { correo: datosViajera.correo } })).status, 429);
+    const codigo = await codigoDelCorreo(solicitud.datos.vistaPrevia);
+    const viajero = await api('/auth/registro/verificar', { metodo: 'POST', cuerpo: { correo: datosViajera.correo, codigo } });
+    assert.equal(viajero.status, 201, JSON.stringify(viajero.datos));
     tokens.nueva = viajero.datos.token;
+    // El mismo código no sirve dos veces.
+    assert.equal((await api('/auth/registro/verificar', { metodo: 'POST', cuerpo: { correo: datosViajera.correo, codigo } })).status, 410);
     const repetido = await api('/auth/registro', {
         metodo: 'POST',
         cuerpo: { tipoCuenta: 'cliente', nombre: 'Otra', correo: 'viajera.prueba@correo.com', password: 'Prueba123', confirmarPassword: 'Prueba123' }
     });
     assert.equal(repetido.status, 409);
-    const empresa = await api('/auth/registro', {
-        metodo: 'POST',
-        cuerpo: {
-            tipoCuenta: 'empresa', nombre: 'Rosa Almánzar', cargo: 'Propietaria', correo: 'hostal.prueba@correo.com', telefono: '809-555-0000',
-            password: 'Prueba123', confirmarPassword: 'Prueba123', nombreEmpresa: 'Hostal Valle Nuevo', razonSocial: 'Hostal Valle Nuevo SRL',
-            rnc: '131000123', telefonoEmpresa: '809-555-0001', provincia: 'La Vega', ciudadEmpresa: 'Constanza', direccion: 'Calle Principal 1',
-            tipoServicio: 'alojamiento', tipoAlojamiento: 'hostal', numeroHabitaciones: 8, confirmaDatos: true
-        }
+    const empresa = await registrarYVerificar({
+        tipoCuenta: 'empresa', nombre: 'Rosa Almánzar', cargo: 'Propietaria', correo: 'hostal.prueba@correo.com', telefono: '809-555-0000',
+        password: 'Prueba123', confirmarPassword: 'Prueba123', nombreEmpresa: 'Hostal Valle Nuevo', razonSocial: 'Hostal Valle Nuevo SRL',
+        rnc: '131000123', telefonoEmpresa: '809-555-0001', provincia: 'La Vega', ciudadEmpresa: 'Constanza', direccion: 'Calle Principal 1',
+        tipoServicio: 'alojamiento', tipoAlojamiento: 'hostal', numeroHabitaciones: 8, confirmaDatos: true
     });
     assert.equal(empresa.status, 201, JSON.stringify(empresa.datos));
+    assert.equal(empresa.datos.usuario.rol, 'empresa');
     tokens.hostal = empresa.datos.token;
+});
+
+test('recuperar la contraseña con el enlace del correo', async () => {
+    // Un correo sin cuenta recibe la misma respuesta (no revela qué correos existen).
+    const inexistente = await api('/auth/recuperar', { metodo: 'POST', cuerpo: { correo: 'nadie@correo.com' } });
+    assert.equal(inexistente.status, 200);
+    assert.equal(inexistente.datos.vistaPrevia, undefined);
+    const pedido = await api('/auth/recuperar', { metodo: 'POST', cuerpo: { correo: 'viajera.prueba@correo.com' } });
+    assert.equal(pedido.status, 200);
+    const html = await (await fetch(base + pedido.datos.vistaPrevia.replace(/^\/api/, ''))).text();
+    const clave = decodeURIComponent((html.match(/restablecer\.html\?clave=([\w%-]+)/) || [])[1] || '');
+    assert.ok(clave, 'el correo debe traer el enlace');
+    assert.equal((await api(`/auth/restablecer?clave=${encodeURIComponent(clave)}`)).status, 200);
+    const corta = await api('/auth/restablecer', { metodo: 'POST', cuerpo: { clave, password: 'corta', confirmarPassword: 'corta' } });
+    assert.equal(corta.status, 400);
+    const nueva = await api('/auth/restablecer', { metodo: 'POST', cuerpo: { clave, password: 'Nueva2026x', confirmarPassword: 'Nueva2026x' } });
+    assert.equal(nueva.status, 200);
+    assert.ok(nueva.datos.token);
+    assert.equal((await api('/auth/restablecer', { metodo: 'POST', cuerpo: { clave, password: 'Otra2026xx', confirmarPassword: 'Otra2026xx' } })).status, 410);
+    assert.equal((await api('/auth/login', { metodo: 'POST', cuerpo: { correo: 'viajera.prueba@correo.com', password: 'Prueba123' } })).status, 401);
+    const login = await api('/auth/login', { metodo: 'POST', cuerpo: { correo: 'viajera.prueba@correo.com', password: 'Nueva2026x' } });
+    assert.equal(login.status, 200);
+    tokens.nueva = login.datos.token;
 });
 
 test('rutas protegidas exigen sesión y rol', async () => {

@@ -258,3 +258,102 @@
 .pagina-registro .pie {
     margin-top: 0;
 }
+
+/* Verificación del correo (registro) y restablecimiento de contraseña. */
+.verificacion-correo[hidden],
+.bloque-restablecer[hidden] { display: none; }
+
+.verificacion-pasos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin: var(--e-3) 0 var(--e-5);
+    padding: 0;
+    list-style: none;
+    font-size: var(--t-xs);
+    font-weight: 800;
+    color: var(--tinta-3);
+}
+
+.verificacion-pasos li::before {
+    content: '';
+    display: block;
+    height: 4px;
+    margin-bottom: 6px;
+    border-radius: 2px;
+    background: var(--linea);
+}
+
+.verificacion-pasos .hecho::before { background: #3DD68C; }
+.verificacion-pasos .actual { color: #fff; }
+.verificacion-pasos .actual::before { background: var(--caribe); }
+
+.codigo-casillas {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    margin: var(--e-4) 0 var(--e-3);
+}
+
+.auth-formulario-contenido .codigo-casillas input {
+    height: 60px;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    font-family: var(--f-display);
+    font-size: 1.85rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--azul);
+}
+
+.auth-formulario-contenido .codigo-casillas input:focus {
+    border-color: var(--caribe);
+    box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.3);
+    outline: none;
+}
+
+.codigo-casillas.invalido input { border-color: #FF6B7D; }
+
+.verificacion-ayuda {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--e-2);
+    margin-bottom: var(--e-5);
+    font-size: var(--t-s);
+    color: var(--tinta-3);
+}
+
+.verificacion-ayuda .boton-enlace[disabled] {
+    color: var(--tinta-3);
+    cursor: default;
+}
+
+.aviso-demostracion {
+    margin: 0 0 var(--e-4);
+    padding: var(--e-3) var(--e-4);
+    border: 1px dashed rgba(94, 214, 238, 0.55);
+    border-radius: 12px;
+    background: rgba(0, 180, 216, 0.1);
+    font-size: var(--t-s);
+    line-height: 1.5;
+    color: var(--tinta-2);
+}
+
+.aviso-demostracion a { font-weight: 800; }
+
+.verificacion-pie {
+    margin-top: var(--e-4);
+    font-size: var(--t-s);
+    color: var(--tinta-3);
+}
+
+.auth-formulario-contenido .ayuda-campo {
+    display: block;
+    margin-top: 6px;
+    font-size: var(--t-xs);
+    color: var(--tinta-3);
+}
+
+.mensaje-formulario[hidden] { display: none; }

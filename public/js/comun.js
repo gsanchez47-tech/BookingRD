@@ -132,6 +132,7 @@ async function apiFetch(ruta, opciones = {}) {
         const error = new Error(datos && datos.error ? datos.error : 'Ocurrió un error al comunicarse con el servidor.');
         error.status = respuesta.status;
         error.campo = datos && datos.campo ? datos.campo : null;   // campo del formulario que originó el error
+        error.datos = datos;
         throw error;
     }
     return datos;

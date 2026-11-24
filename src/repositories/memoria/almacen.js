@@ -39,6 +39,7 @@ const bd = {
     resenas: [],
     favoritos: [],
     mensajes_contacto: [],
+    verificaciones: [],
     productos: [],
     pedidos: [],
     pedido_detalle: []

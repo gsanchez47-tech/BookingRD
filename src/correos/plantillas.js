@@ -154,4 +154,32 @@ function confirmacionReserva({ nombre, codigo, publicacion, fechas, detalle = []
     return { asunto: `Reserva confirmada ${codigo}: ${publicacion}`, html: marco({ preencabezado: `Código ${codigo}. Guárdalo para cualquier consulta con la empresa.`, titulo, cuerpo, urlSitio }), texto };
 }
 
-module.exports = { bienvenidaViajero, bienvenidaEmpresa, confirmacionReserva };
+/** Código de 6 dígitos destacado, separado en dos grupos para leerlo mejor. */
+function codigoGrande(codigo) {
+    const visible = `${String(codigo).slice(0, 3)}&nbsp;${String(codigo).slice(3)}`;
+    return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0 20px;" width="100%"><tr><td align="center" style="padding:16px 8px;background:#E9F7FA;border:1px dashed #8FC9DD;border-radius:12px;font-family:${TITULOS};font-size:38px;line-height:44px;letter-spacing:6px;color:${COLOR.azul};font-weight:700;">${visible}</td></tr></table>`;
+}
+
+/** Código para confirmar el correo al crear la cuenta. */
+function codigoVerificacion({ nombre, codigo, minutos, urlSitio }) {
+    const titulo = `Confirma tu correo, ${nombrePila(nombre)}`;
+    const cuerpo = parrafo('Para terminar de crear tu cuenta en BookingRD, escribe este código en la página de registro:')
+        + codigoGrande(codigo)
+        + parrafo(`El código vence en ${minutos} minutos y solo funciona una vez.`)
+        + `<p style="margin:18px 0 0;font-family:${TEXTO};font-size:13px;line-height:20px;color:${COLOR.gris};">Si no intentaste registrarte, ignora este correo: sin el código nadie puede crear una cuenta con tu dirección.</p>`;
+    const texto = `${titulo}\n\nTu código de verificación de BookingRD es: ${codigo}\nVence en ${minutos} minutos.\n\nSi no intentaste registrarte, ignora este correo.`;
+    return { asunto: `Tu código de BookingRD: ${codigo}`, html: marco({ preencabezado: `Tu código es ${codigo}. Vence en ${minutos} minutos.`, titulo, cuerpo, urlSitio }), texto };
+}
+
+/** Enlace para crear una contraseña nueva. */
+function restablecerPassword({ nombre, enlace, minutos, urlSitio }) {
+    const titulo = `Crea una contraseña nueva, ${nombrePila(nombre)}`;
+    const cuerpo = parrafo('Recibimos una solicitud para cambiar la contraseña de tu cuenta de BookingRD. Pulsa el botón para elegir una nueva:')
+        + boton('Crear contraseña nueva', enlace, COLOR.azul)
+        + parrafo(`El enlace vence en ${minutos} minutos y solo se puede usar una vez.`)
+        + `<p style="margin:18px 0 0;font-family:${TEXTO};font-size:13px;line-height:20px;color:${COLOR.gris};">Si no lo pediste, ignora este correo: tu contraseña actual sigue funcionando.<br>Si el botón no abre, copia esta dirección en el navegador: ${e(enlace)}</p>`;
+    const texto = `${titulo}\n\nAbre este enlace para crear una contraseña nueva (vence en ${minutos} minutos):\n${enlace}\n\nSi no lo pediste, ignora este correo.`;
+    return { asunto: 'Restablece tu contraseña de BookingRD', html: marco({ preencabezado: 'Enlace para crear una contraseña nueva.', titulo, cuerpo, urlSitio }), texto };
+}
+
+module.exports = { bienvenidaViajero, bienvenidaEmpresa, confirmacionReserva, codigoVerificacion, restablecerPassword };

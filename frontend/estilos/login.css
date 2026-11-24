@@ -11,7 +11,7 @@
     font-size: var(--t-s);
 }
 
-.panel-olvido {
+.panel-olvido-sin-uso {
     padding: var(--e-3) var(--e-4);
     border-left: 3px solid var(--caribe-deep);
     background: var(--superficie);

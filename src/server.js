@@ -103,6 +103,8 @@ const limiteAutenticacion = rateLimit({
     limit: Number(process.env.LIMITE_INTENTOS_AUTH || 40),
     standardHeaders: 'draft-7',
     legacyHeaders: false,
+    // Las consultas (sesión vigente, enlace, vista del correo) no cuentan como intentos.
+    skip: (req) => req.method === 'GET',
     message: { error: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.' }
 });
 

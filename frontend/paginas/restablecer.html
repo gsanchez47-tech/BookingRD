@@ -1,0 +1,86 @@
+<!-- @pagina titulo="Restablecer la contraseña | BookingRD" descripcion="Recibe en tu correo un enlace para crear una contraseña nueva de tu cuenta de BookingRD." css="login" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <section class="auth-split">
+            <aside class="auth-foto">
+                <img class="auth-foto-imagen" src="img/paginas/viajeros-bandera.jpg" alt="">
+                <div class="auth-foto-texto">
+                    <p class="etiqueta-caribe roja"><span class="bandera-mini" aria-hidden="true"><i></i><b></b></span>Tu cuenta, segura</p>
+                    <h2>Vuelve a <em>entrar</em></h2>
+                    <p>Te enviamos un enlace a tu correo para elegir una contraseña nueva. Vence en 30 minutos y solo se puede usar una vez.</p>
+                </div>
+            </aside>
+
+            <div class="auth-formulario">
+                <div class="auth-formulario-contenido">
+
+                    <!-- 1. Pedir el enlace. POST /api/auth/recuperar -->
+                    <div class="bloque-restablecer" id="bloque-pedir">
+                        <h1>¿Olvidaste tu contraseña?</h1>
+                        <p class="auth-subtitulo">Escribe el correo de tu cuenta y te enviaremos un enlace para crear una nueva.</p>
+                        <p id="mensaje-error" class="mensaje-formulario error" role="alert" hidden></p>
+                        <form id="form-pedir" class="formulario-auth" novalidate>
+                            <div class="campo">
+                                <label for="correo">Correo electrónico</label>
+                                <input type="email" id="correo" maxlength="200" autocomplete="email" placeholder="tucorreo@ejemplo.com">
+                            </div>
+                            <button type="submit" id="boton-pedir" class="btn-rojo btn-bloque">Enviar el enlace</button>
+                        </form>
+                        <p class="pie-formulario"><a href="login.html">Volver a iniciar sesión</a></p>
+                    </div>
+
+                    <!-- 2. Enlace enviado. -->
+                    <div class="bloque-restablecer" id="bloque-enviado" hidden>
+                        <h1>Revisa tu correo</h1>
+                        <p class="auth-subtitulo">Si <strong id="enviado-a"></strong> tiene una cuenta en BookingRD, te llegará un enlace para crear una contraseña nueva. Vence en 30 minutos.</p>
+                        <p class="aviso-demostracion" id="aviso-demostracion" hidden>
+                            Modo de demostración: este equipo no tiene un servidor de correo configurado, así que el correo se guardó aquí.
+                            <a id="enlace-correo-prueba" href="#" target="_blank" rel="noopener">Abrir el correo</a>
+                        </p>
+                        <p class="verificacion-pie">¿No llegó? Mira en spam o en promociones, o <button type="button" class="boton-enlace" id="boton-otra-vez">pide otro enlace</button>.</p>
+                        <p class="pie-formulario"><a href="login.html">Volver a iniciar sesión</a></p>
+                    </div>
+
+                    <!-- 3. Contraseña nueva (desde el enlace del correo). POST /api/auth/restablecer -->
+                    <div class="bloque-restablecer" id="bloque-nueva" hidden>
+                        <h1>Crea una contraseña nueva</h1>
+                        <p class="auth-subtitulo">Para la cuenta <strong id="nueva-para"></strong>.</p>
+                        <p id="mensaje-error-nueva" class="mensaje-formulario error" role="alert" hidden></p>
+                        <form id="form-nueva" class="formulario-auth" novalidate>
+                            <div class="campo">
+                                <label for="password">Contraseña nueva</label>
+                                <div class="campo-password">
+                                    <input type="password" id="password" autocomplete="new-password" minlength="8">
+                                    <button type="button" class="boton-mostrar" data-mostrar="password">Mostrar</button>
+                                </div>
+                                <small class="ayuda-campo">Al menos 8 caracteres. Mejor si combinas mayúsculas, números y símbolos.</small>
+                            </div>
+                            <div class="campo">
+                                <label for="confirmarPassword">Repite la contraseña</label>
+                                <div class="campo-password">
+                                    <input type="password" id="confirmarPassword" autocomplete="new-password">
+                                    <button type="button" class="boton-mostrar" data-mostrar="confirmarPassword">Mostrar</button>
+                                </div>
+                            </div>
+                            <button type="submit" id="boton-nueva" class="btn-rojo btn-bloque">Guardar y entrar</button>
+                        </form>
+                    </div>
+
+                    <!-- Enlace vencido o ya usado. -->
+                    <div class="bloque-restablecer" id="bloque-vencido" hidden>
+                        <h1>El enlace ya no sirve</h1>
+                        <p class="auth-subtitulo">Venció o ya se usó. Pide uno nuevo: llega en unos segundos.</p>
+                        <a class="btn-rojo btn-bloque" href="restablecer.html">Pedir un enlace nuevo</a>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </main>
+
+<!-- @pie -->
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/restablecer.js"></script>

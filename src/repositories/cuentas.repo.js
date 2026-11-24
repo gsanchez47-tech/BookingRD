@@ -174,7 +174,91 @@ async function obtenerContacto(idUsuario) {
     return resultado.recordset[0] || null;
 }
 
+/* ---------------------------------------------------------------------------
+ * Verificación del correo y restablecimiento de contraseña (dbo.verificaciones)
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Crea una verificación y anula las anteriores del mismo correo y propósito.
+ * @param {{correo: string, proposito: 'registro'|'recuperar', codigoHash: string, datos?: string|null, minutos: number}} v
+ */
+async function crearVerificacion({ correo, proposito, codigoHash, datos = null, minutos }) {
+    const consulta = await peticion();
+    await consulta
+        .input('correo', sql.NVarChar(200), correo)
+        .input('proposito', sql.VarChar(20), proposito)
+        .input('codigoHash', sql.Char(64), codigoHash)
+        .input('datos', sql.NVarChar(sql.MAX), datos)
+        .input('minutos', sql.Int, minutos)
+        .query(`
+            UPDATE dbo.verificaciones SET usado = 1 WHERE correo = @correo AND proposito = @proposito AND usado = 0;
+            INSERT INTO dbo.verificaciones (correo, proposito, codigo_hash, datos, expira)
+            VALUES (@correo, @proposito, @codigoHash, @datos, DATEADD(MINUTE, @minutos, SYSUTCDATETIME()));
+        `);
+}
+
+/** Última verificación sin usar de un correo (vencida o no). */
+async function verificacionPendiente(correo, proposito) {
+    const consulta = await peticion();
+    const resultado = await consulta
+        .input('correo', sql.NVarChar(200), correo)
+        .input('proposito', sql.VarChar(20), proposito)
+        .query(`
+            SELECT TOP 1 id_verificacion, correo, codigo_hash, datos, intentos,
+                   CASE WHEN expira > SYSUTCDATETIME() THEN 1 ELSE 0 END AS vigente,
+                   DATEDIFF(SECOND, fecha_creacion, SYSUTCDATETIME()) AS segundos
+            FROM dbo.verificaciones
+            WHERE correo = @correo AND proposito = @proposito AND usado = 0
+            ORDER BY id_verificacion DESC
+        `);
+    return resultado.recordset[0] || null;
+}
+
+/** Verificación vigente y sin usar con ese hash (enlace de restablecimiento). */
+async function verificacionPorHash(proposito, codigoHash) {
+    const consulta = await peticion();
+    const resultado = await consulta
+        .input('proposito', sql.VarChar(20), proposito)
+        .input('codigoHash', sql.Char(64), codigoHash)
+        .query(`
+            SELECT TOP 1 id_verificacion, correo, intentos
+            FROM dbo.verificaciones
+            WHERE proposito = @proposito AND codigo_hash = @codigoHash AND usado = 0 AND expira > SYSUTCDATETIME()
+        `);
+    return resultado.recordset[0] || null;
+}
+
+async function sumarIntento(idVerificacion) {
+    const consulta = await peticion();
+    await consulta.input('id', sql.Int, idVerificacion)
+        .query('UPDATE dbo.verificaciones SET intentos = intentos + 1 WHERE id_verificacion = @id AND intentos < 10');
+}
+
+/** Marca la verificación como usada. @returns {Promise<boolean>} false si ya estaba usada */
+async function usarVerificacion(transaccion, idVerificacion) {
+    const consulta = await peticion(transaccion);
+    const resultado = await consulta.input('id', sql.Int, idVerificacion)
+        .query('UPDATE dbo.verificaciones SET usado = 1 WHERE id_verificacion = @id AND usado = 0');
+    return resultado.rowsAffected[0] === 1;
+}
+
+/** Cambia la contraseña de la cuenta con ese correo. */
+async function cambiarPassword(transaccion, correo, passwordHash) {
+    const consulta = await peticion(transaccion);
+    const resultado = await consulta
+        .input('correo', sql.NVarChar(200), correo)
+        .input('passwordHash', sql.NVarChar(200), passwordHash)
+        .query('UPDATE dbo.usuarios SET password_hash = @passwordHash WHERE correo = @correo');
+    return resultado.rowsAffected[0] === 1;
+}
+
 module.exports = {
+    crearVerificacion,
+    verificacionPendiente,
+    verificacionPorHash,
+    sumarIntento,
+    usarVerificacion,
+    cambiarPassword,
     obtenerContacto,
     existeCorreo,
     existeRnc,

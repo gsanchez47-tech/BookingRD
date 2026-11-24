@@ -570,6 +570,28 @@ GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_hoteles_ciudad')
     CREATE INDEX IX_hoteles_ciudad ON dbo.hoteles (ciudad) INCLUDE (activo, precio_noche);
 GO
+-- verificaciones: códigos de verificación del correo al registrarse y enlaces
+-- para restablecer la contraseña. Solo se guarda el hash SHA-256 del código o
+-- del enlace. "datos" guarda la solicitud de registro (JSON, con la contraseña
+-- ya cifrada con bcrypt) hasta que se confirma el código.
+IF OBJECT_ID(N'dbo.verificaciones', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.verificaciones (
+        id_verificacion INT IDENTITY(1,1) PRIMARY KEY,
+        correo          NVARCHAR(200)   NOT NULL,
+        proposito       VARCHAR(20)     NOT NULL,
+        codigo_hash     CHAR(64)        NOT NULL,
+        datos           NVARCHAR(MAX)   NULL,
+        intentos        INT             NOT NULL CONSTRAINT DF_verificaciones_intentos DEFAULT 0,
+        usado           BIT             NOT NULL CONSTRAINT DF_verificaciones_usado DEFAULT 0,
+        expira          DATETIME2(0)    NOT NULL,
+        fecha_creacion  DATETIME2(0)    NOT NULL CONSTRAINT DF_verificaciones_fecha DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT CK_verificaciones_proposito CHECK (proposito IN ('registro', 'recuperar')),
+        CONSTRAINT CK_verificaciones_intentos CHECK (intentos BETWEEN 0 AND 10)
+    );
+END
+GO
+
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_hoteles_empresa')
     CREATE INDEX IX_hoteles_empresa ON dbo.hoteles (id_empresa);
 GO
@@ -614,4 +636,10 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_reservas_combo')
 GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_pedidos_usuario')
     CREATE INDEX IX_pedidos_usuario ON dbo.pedidos (id_usuario, fecha_creacion);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_verificaciones_correo')
+    CREATE INDEX IX_verificaciones_correo ON dbo.verificaciones (correo, proposito, usado);
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_verificaciones_codigo')
+    CREATE INDEX IX_verificaciones_codigo ON dbo.verificaciones (codigo_hash);
 GO

@@ -295,11 +295,8 @@ async function enviarRegistro() {
     botonCargando(boton, 'Creando cuenta...');
     try {
         const respuesta = await apiFetch('/auth/registro', { method: 'POST', body: datos });
-        guardarSesion(respuesta.token, respuesta.usuario);
-        programarAviso(respuesta.usuario.rol === 'empresa'
-            ? `Empresa ${respuesta.usuario.nombreEmpresa} registrada. Ya puedes publicar tus servicios desde este panel.`
-            : `Cuenta creada. Bienvenido a BookingRD, ${respuesta.usuario.nombre.split(' ')[0]}.`);
-        window.location.href = respuesta.usuario.rol === 'empresa' ? 'panel-empresa.html' : 'index.html';
+        botonNormal(boton, textoBoton);
+        mostrarVerificacion(respuesta);
     } catch (errorServidor) {
         botonNormal(boton, textoBoton);
         // El backend indica el campo con error: se vuelve al paso que lo contiene.
@@ -360,3 +357,152 @@ function actualizarMedidorPassword() {
     barra.style.width = `${(valor ? Math.max(nivel, 1) : 0) * 25}%`;
     barra.dataset.nivel = String(nivel);
 }
+
+/* ---------------------------------------------------------------------------
+ * Verificación del correo: código de 6 dígitos
+ * ------------------------------------------------------------------------- */
+
+const SEGUNDOS_REENVIO = 60;
+let correoPendiente = null;
+let temporizadorReenvio = null;
+
+/** Muestra el paso del código tras enviar el formulario. */
+function mostrarVerificacion(respuesta) {
+    correoPendiente = respuesta.correo;
+    // display en línea: comun.js vuelve a mostrar [data-sesion] según la sesión.
+    document.querySelector('.auth-formulario [data-sesion="invitado"]').style.display = 'none';
+    const bloque = document.getElementById('verificacion-correo');
+    bloque.hidden = false;
+    document.getElementById('verificacion-destino').textContent = respuesta.correo;
+    document.getElementById('verificacion-minutos').textContent = respuesta.minutos || 15;
+    mostrarVistaPrevia(respuesta.vistaPrevia);
+    limpiarCodigo();
+    iniciarCuentaAtras(SEGUNDOS_REENVIO);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.querySelector('#codigo-casillas input').focus({ preventScroll: true });
+}
+
+/** Sin servidor de correo, enlace para abrir el correo guardado en el equipo. */
+function mostrarVistaPrevia(vistaPrevia) {
+    const aviso = document.getElementById('aviso-demostracion');
+    aviso.hidden = !vistaPrevia;
+    if (vistaPrevia) document.getElementById('enlace-correo-prueba').href = urlRecurso(vistaPrevia);
+}
+
+function casillasCodigo() {
+    return [...document.querySelectorAll('#codigo-casillas input')];
+}
+
+function limpiarCodigo() {
+    casillasCodigo().forEach((casilla) => { casilla.value = ''; });
+    document.getElementById('codigo-casillas').classList.remove('invalido');
+    document.getElementById('mensaje-verificacion').classList.remove('visible');
+}
+
+function iniciarCuentaAtras(segundos) {
+    const boton = document.getElementById('boton-reenviar');
+    clearInterval(temporizadorReenvio);
+    let restante = segundos;
+    const pintar = () => {
+        boton.disabled = restante > 0;
+        boton.textContent = restante > 0 ? `Reenviar en 0:${String(restante).padStart(2, '0')}` : 'Reenviar código';
+    };
+    pintar();
+    temporizadorReenvio = setInterval(() => {
+        restante -= 1;
+        pintar();
+        if (restante <= 0) clearInterval(temporizadorReenvio);
+    }, 1000);
+}
+
+function errorVerificacion(texto) {
+    const mensaje = document.getElementById('mensaje-verificacion');
+    mensaje.textContent = texto;
+    mensaje.classList.remove('visible');
+    void mensaje.offsetWidth;
+    mensaje.classList.add('visible');
+    document.getElementById('codigo-casillas').classList.add('invalido');
+}
+
+async function verificarCodigo() {
+    const codigo = casillasCodigo().map((casilla) => casilla.value).join('');
+    if (!/^\d{6}$/.test(codigo)) {
+        errorVerificacion('Escribe los 6 dígitos del código.');
+        casillasCodigo().find((casilla) => !casilla.value)?.focus();
+        return;
+    }
+    const boton = document.getElementById('boton-verificar');
+    const texto = boton.textContent;
+    botonCargando(boton, 'Verificando...');
+    try {
+        const respuesta = await apiFetch('/auth/registro/verificar', { method: 'POST', body: { correo: correoPendiente, codigo } });
+        clearInterval(temporizadorReenvio);
+        guardarSesion(respuesta.token, respuesta.usuario);
+        programarAviso(respuesta.usuario.rol === 'empresa'
+            ? `Correo verificado. Empresa ${respuesta.usuario.nombreEmpresa} registrada: ya puedes publicar tus servicios desde este panel.`
+            : `Correo verificado. Bienvenido a BookingRD, ${respuesta.usuario.nombre.split(' ')[0]}.`);
+        window.location.href = respuesta.usuario.rol === 'empresa' ? 'panel-empresa.html' : 'index.html';
+    } catch (error) {
+        botonNormal(boton, texto);
+        errorVerificacion(error.message);
+        if (error.status === 400) {
+            casillasCodigo().forEach((casilla) => { casilla.value = ''; });
+            casillasCodigo()[0].focus();
+        }
+    }
+}
+
+async function reenviarCodigo() {
+    const boton = document.getElementById('boton-reenviar');
+    boton.disabled = true;
+    boton.textContent = 'Enviando...';
+    try {
+        const respuesta = await apiFetch('/auth/registro/reenviar', { method: 'POST', body: { correo: correoPendiente } });
+        limpiarCodigo();
+        mostrarVistaPrevia(respuesta.vistaPrevia);
+        mostrarAviso('Te enviamos un código nuevo. El anterior ya no sirve.');
+        iniciarCuentaAtras(SEGUNDOS_REENVIO);
+        casillasCodigo()[0].focus();
+    } catch (error) {
+        errorVerificacion(error.message);
+        iniciarCuentaAtras(error.datos && error.datos.espera ? error.datos.espera : 5);
+    }
+}
+
+function iniciarVerificacion() {
+    const casillas = casillasCodigo();
+    casillas.forEach((casilla, indice) => {
+        casilla.addEventListener('input', () => {
+            const digitos = casilla.value.replace(/\D/g, '');
+            if (digitos.length > 1) {
+                // Pegado o autocompletado: reparte los dígitos en las casillas.
+                digitos.slice(0, 6 - indice).split('').forEach((d, i) => { casillas[indice + i].value = d; });
+                casillas[Math.min(indice + digitos.length, 5)].focus();
+            } else {
+                casilla.value = digitos;
+                if (digitos && indice < 5) casillas[indice + 1].focus();
+            }
+            document.getElementById('codigo-casillas').classList.remove('invalido');
+            if (casillas.every((c) => c.value)) verificarCodigo();
+        });
+        casilla.addEventListener('keydown', (evento) => {
+            if (evento.key === 'Backspace' && !casilla.value && indice > 0) casillas[indice - 1].focus();
+            if (evento.key === 'ArrowLeft' && indice > 0) casillas[indice - 1].focus();
+            if (evento.key === 'ArrowRight' && indice < 5) casillas[indice + 1].focus();
+        });
+        casilla.addEventListener('focus', () => casilla.select());
+    });
+    document.getElementById('form-verificacion').addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        verificarCodigo();
+    });
+    document.getElementById('boton-reenviar').addEventListener('click', reenviarCodigo);
+    document.getElementById('boton-cambiar-correo').addEventListener('click', () => {
+        clearInterval(temporizadorReenvio);
+        document.getElementById('verificacion-correo').hidden = true;
+        document.querySelector('.auth-formulario [data-sesion="invitado"]').style.display = '';
+        document.getElementById('correo').focus();
+    });
+}
+
+iniciarVerificacion();

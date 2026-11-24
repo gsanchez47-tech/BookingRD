@@ -12,15 +12,30 @@
  * Los errores de validación responden 400 { error, campo }, donde "campo" es
  * el nombre del campo del formulario que originó el error.
  *
+ * Verificación del correo: el registro no crea la cuenta de inmediato. Guarda
+ * la solicitud (con la contraseña ya cifrada) y envía un código de 6 dígitos;
+ * la cuenta se crea al confirmar el código (POST /api/auth/registro/verificar).
+ * Restablecer la contraseña: POST /api/auth/recuperar envía un enlace de un
+ * solo uso y POST /api/auth/restablecer guarda la contraseña nueva.
+ *
+ * Sin servidor SMTP configurado los correos se guardan como HTML en
+ * correos-enviados/ y la respuesta incluye "vistaPrevia", la dirección para
+ * abrir ese correo desde la página (solo en ese modo).
+ *
  * El cierre de sesión se resuelve en el cliente (eliminación del token en
  * public/js/comun.js); no requiere endpoint.
  */
 
+const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const { conTransaccion, cuentasRepo } = require('../repositories');
 const correoService = require('../services/correo.service');
+const correoConfig = require('../config/correo');
+const plantillas = require('../correos/plantillas');
 const { esCorreoValido, esTextoNoVacio, aEnteroPositivo, textoLimpio } = require('../utils/validacion');
 const { TIPOS_SERVICIO, TIPOS_ALOJAMIENTO, CATEGORIAS_ACTIVIDAD, PROVINCIAS } = require('../utils/catalogos');
 
@@ -28,6 +43,34 @@ const RONDAS_BCRYPT = 10;
 const LONGITUD_MINIMA_PASSWORD = 8;
 const MAXIMO_HABITACIONES = 5000;
 const ERRORES_SQL_DUPLICADO = [2627, 2601];   // violación de UNIQUE / índice único
+const MINUTOS_CODIGO = 15;          // vigencia del código de verificación
+const MINUTOS_ENLACE = 30;          // vigencia del enlace para restablecer la contraseña
+const MAXIMO_INTENTOS = 5;          // intentos con un mismo código
+const SEGUNDOS_REENVIO = 60;        // espera mínima entre dos correos al mismo destinatario
+
+/** SHA-256 en hexadecimal (64 caracteres). */
+const sha256 = (texto) => crypto.createHash('sha256').update(texto).digest('hex');
+const hashCodigo = (correo, codigo) => sha256(`${correo}:${codigo}`);
+/** Código numérico de 6 dígitos, generado con el generador criptográfico. */
+const nuevoCodigo = () => String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+
+/** Compara dos hash sin filtrar información por el tiempo de respuesta. */
+function mismoHash(a, b) {
+    const x = Buffer.from(String(a)); const y = Buffer.from(String(b));
+    return x.length === y.length && crypto.timingSafeEqual(x, y);
+}
+
+/**
+ * Envía un correo esperando el resultado. Si se guardó en archivo (sin SMTP),
+ * devuelve la dirección para verlo desde la página.
+ * @returns {Promise<string|null>} vistaPrevia
+ */
+async function enviarAhora(para, mensaje) {
+    const resultado = await correoConfig.enviar({ para, ...mensaje });
+    return resultado.modo === 'archivo' ? `/api/auth/correo-prueba/${encodeURIComponent(path.basename(resultado.archivo))}` : null;
+}
+
+const errorEnvio = { error: 'No pudimos enviar el correo en este momento. Revisa la dirección e inténtalo de nuevo en unos minutos.' };
 
 /** Error de validación asociado a un campo del formulario. */
 const errorCampo = (campo, error) => ({ campo, error });
@@ -156,7 +199,8 @@ function validarDatosEmpresa(body) {
  *                    tipoServicio, tipoAlojamiento?, numeroHabitaciones?,
  *                    categoriasActividad?: string[], descripcionEmpresa?, confirmaDatos }
  *
- * Respuestas: 201 { token, usuario } | 400 { error, campo } | 409 { error, campo }.
+ * Respuestas: 202 { verificacion, correo, minutos, vistaPrevia? } (código enviado al correo)
+ *             | 400 { error, campo } | 409 { error, campo } | 502 no se pudo enviar el correo.
  */
 async function registrar(req, res) {
     const body = req.body || {};
@@ -185,33 +229,199 @@ async function registrar(req, res) {
     }
 
     const passwordHash = await bcrypt.hash(body.password, RONDAS_BCRYPT);
-
+    const solicitud = {
+        tipoCuenta,
+        nombre: textoLimpio(body.nombre),
+        correo,
+        telefono: esEmpresa ? textoLimpio(body.telefono) : null,
+        cargo: esEmpresa ? textoLimpio(body.cargo) : null,
+        passwordHash,
+        empresa
+    };
+    const codigo = nuevoCodigo();
+    await cuentasRepo.crearVerificacion({
+        correo, proposito: 'registro', codigoHash: hashCodigo(correo, codigo),
+        datos: JSON.stringify(solicitud), minutos: MINUTOS_CODIGO
+    });
+    let vistaPrevia;
     try {
-        // Usuario y empresa se insertan en una única transacción (atomicidad).
-        const usuario = await conTransaccion(async (transaccion) => {
-            const nuevo = await cuentasRepo.crearUsuario(transaccion, {
-                nombre: textoLimpio(body.nombre),
-                correo,
-                telefono: esEmpresa ? textoLimpio(body.telefono) : null,
-                passwordHash,
-                rol: tipoCuenta
-            });
-            if (empresa) {
-                nuevo.id_empresa = await cuentasRepo.crearEmpresa(transaccion, nuevo.id_usuario,
-                    Object.assign({ cargo: textoLimpio(body.cargo) }, empresa));
-                nuevo.nombre_comercial = empresa.nombreComercial;
-                nuevo.tipo_servicio = empresa.tipoServicio;
-            }
-            return nuevo;
+        vistaPrevia = await enviarAhora(correo, plantillas.codigoVerificacion({ nombre: solicitud.nombre, codigo, minutos: MINUTOS_CODIGO, urlSitio: correoConfig.urlSitio() }));
+    } catch (error) {
+        console.error(`No se pudo enviar el código de verificación a ${correo}: ${error.message}`);
+        return res.status(502).json(errorEnvio);
+    }
+    res.status(202).json({ verificacion: true, correo, minutos: MINUTOS_CODIGO, vistaPrevia });
+}
+
+/** Crea la cuenta de una solicitud de registro ya verificada. */
+async function crearCuenta(solicitud) {
+    return conTransaccion(async (transaccion) => {
+        const nuevo = await cuentasRepo.crearUsuario(transaccion, {
+            nombre: solicitud.nombre,
+            correo: solicitud.correo,
+            telefono: solicitud.telefono,
+            passwordHash: solicitud.passwordHash,
+            rol: solicitud.tipoCuenta
         });
+        if (solicitud.empresa) {
+            nuevo.id_empresa = await cuentasRepo.crearEmpresa(transaccion, nuevo.id_usuario,
+                Object.assign({ cargo: solicitud.cargo }, solicitud.empresa));
+            nuevo.nombre_comercial = solicitud.empresa.nombreComercial;
+            nuevo.tipo_servicio = solicitud.empresa.tipoServicio;
+        }
+        return nuevo;
+    });
+}
+
+/**
+ * POST /api/auth/registro/verificar
+ * Body: { correo, codigo }
+ * Respuestas: 201 { token, usuario } | 400 { error, campo, intentosRestantes? } | 409 duplicado | 410 vencido.
+ */
+async function verificarRegistro(req, res) {
+    const correo = String((req.body || {}).correo || '').trim().toLowerCase();
+    const codigo = String((req.body || {}).codigo || '').replace(/\D/g, '');
+    if (!esCorreoValido(correo)) return res.status(400).json(errorCampo('correo', 'El correo no tiene un formato válido.'));
+    if (codigo.length !== 6) return res.status(400).json(errorCampo('codigo', 'Escribe los 6 dígitos del código.'));
+
+    const pendiente = await cuentasRepo.verificacionPendiente(correo, 'registro');
+    if (!pendiente) return res.status(410).json(errorCampo('codigo', 'No hay un registro pendiente para ese correo. Vuelve a llenar el formulario.'));
+    if (!pendiente.vigente) return res.status(410).json(errorCampo('codigo', 'El código venció. Pide uno nuevo.'));
+    if (pendiente.intentos >= MAXIMO_INTENTOS) return res.status(429).json(errorCampo('codigo', 'Demasiados intentos con este código. Pide uno nuevo.'));
+    if (!mismoHash(pendiente.codigo_hash, hashCodigo(correo, codigo))) {
+        await cuentasRepo.sumarIntento(pendiente.id_verificacion);
+        const restantes = MAXIMO_INTENTOS - pendiente.intentos - 1;
+        return res.status(400).json(Object.assign(errorCampo('codigo', restantes > 0
+            ? `El código no es correcto. Te quedan ${restantes} ${restantes === 1 ? 'intento' : 'intentos'}.`
+            : 'El código no es correcto. Pide uno nuevo.'), { intentosRestantes: Math.max(restantes, 0) }));
+    }
+    if (!(await cuentasRepo.usarVerificacion(null, pendiente.id_verificacion))) {
+        return res.status(410).json(errorCampo('codigo', 'Este código ya se usó. Inicia sesión.'));
+    }
+
+    const solicitud = JSON.parse(pendiente.datos);
+    try {
+        const usuario = await crearCuenta(solicitud);
         res.status(201).json({ token: generarToken(usuario), usuario: usuarioPublico(usuario) });
         // Correo de bienvenida en segundo plano: no retrasa ni afecta el registro.
-        correoService.bienvenida({ nombre: usuario.nombre, correo, rol: tipoCuenta }, empresa);
+        correoService.bienvenida({ nombre: usuario.nombre, correo, rol: solicitud.tipoCuenta }, solicitud.empresa);
     } catch (error) {
         if (ERRORES_SQL_DUPLICADO.includes(error.number)) {
             return res.status(409).json({ error: 'Ese correo o ese RNC ya están registrados.' });
         }
         throw error;
+    }
+}
+
+/**
+ * POST /api/auth/registro/reenviar
+ * Body: { correo }. Envía un código nuevo para la misma solicitud de registro.
+ * Respuestas: 200 { correo, minutos, vistaPrevia? } | 410 sin registro pendiente | 429 { espera }.
+ */
+async function reenviarCodigo(req, res) {
+    const correo = String((req.body || {}).correo || '').trim().toLowerCase();
+    const pendiente = esCorreoValido(correo) ? await cuentasRepo.verificacionPendiente(correo, 'registro') : null;
+    if (!pendiente) return res.status(410).json({ error: 'No hay un registro pendiente para ese correo. Vuelve a llenar el formulario.' });
+    if (pendiente.segundos < SEGUNDOS_REENVIO) {
+        const espera = SEGUNDOS_REENVIO - pendiente.segundos;
+        return res.status(429).json({ error: `Espera ${espera} segundos para pedir otro código.`, espera });
+    }
+    const solicitud = JSON.parse(pendiente.datos);
+    const codigo = nuevoCodigo();
+    await cuentasRepo.crearVerificacion({ correo, proposito: 'registro', codigoHash: hashCodigo(correo, codigo), datos: pendiente.datos, minutos: MINUTOS_CODIGO });
+    try {
+        const vistaPrevia = await enviarAhora(correo, plantillas.codigoVerificacion({ nombre: solicitud.nombre, codigo, minutos: MINUTOS_CODIGO, urlSitio: correoConfig.urlSitio() }));
+        res.json({ correo, minutos: MINUTOS_CODIGO, vistaPrevia });
+    } catch (error) {
+        console.error(`No se pudo reenviar el código a ${correo}: ${error.message}`);
+        res.status(502).json(errorEnvio);
+    }
+}
+
+/**
+ * POST /api/auth/recuperar
+ * Body: { correo }. Si existe una cuenta activa con ese correo, envía un enlace
+ * para crear una contraseña nueva. Responde lo mismo exista o no la cuenta,
+ * para no revelar qué correos están registrados.
+ */
+async function solicitarRecuperacion(req, res) {
+    const correo = String((req.body || {}).correo || '').trim().toLowerCase();
+    if (!esCorreoValido(correo)) return res.status(400).json(errorCampo('correo', 'Escribe el correo de tu cuenta.'));
+    const respuesta = { enviado: true, correo, minutos: MINUTOS_ENLACE };
+
+    const usuario = await cuentasRepo.obtenerCredenciales(correo);
+    if (!usuario || !usuario.activo) return res.json(respuesta);
+    const anterior = await cuentasRepo.verificacionPendiente(correo, 'recuperar');
+    if (anterior && anterior.vigente && anterior.segundos < SEGUNDOS_REENVIO) {
+        return res.status(429).json({ error: `Ya te enviamos un enlace. Espera ${SEGUNDOS_REENVIO - anterior.segundos} segundos para pedir otro.`, espera: SEGUNDOS_REENVIO - anterior.segundos });
+    }
+
+    const clave = crypto.randomBytes(32).toString('base64url');
+    await cuentasRepo.crearVerificacion({ correo, proposito: 'recuperar', codigoHash: sha256(clave), minutos: MINUTOS_ENLACE });
+    const enlace = `${correoConfig.urlSitio()}/restablecer.html?clave=${encodeURIComponent(clave)}`;
+    try {
+        respuesta.vistaPrevia = await enviarAhora(correo, plantillas.restablecerPassword({ nombre: usuario.nombre, enlace, minutos: MINUTOS_ENLACE, urlSitio: correoConfig.urlSitio() }));
+    } catch (error) {
+        console.error(`No se pudo enviar el enlace de recuperación a ${correo}: ${error.message}`);
+        return res.status(502).json(errorEnvio);
+    }
+    res.json(respuesta);
+}
+
+/**
+ * GET /api/auth/restablecer?clave=...  Comprueba que el enlace sigue vigente.
+ * Respuestas: 200 { correo } (parcialmente oculto) | 410 enlace vencido o usado.
+ */
+async function comprobarEnlace(req, res) {
+    const clave = String(req.query.clave || '');
+    const v = clave ? await cuentasRepo.verificacionPorHash('recuperar', sha256(clave)) : null;
+    if (!v) return res.status(410).json({ error: 'El enlace venció o ya se usó. Pide uno nuevo.' });
+    const [usuario, dominio] = v.correo.split('@');
+    res.json({ correo: `${usuario.slice(0, 2)}${'•'.repeat(Math.max(usuario.length - 2, 1))}@${dominio}` });
+}
+
+/**
+ * POST /api/auth/restablecer
+ * Body: { clave, password, confirmarPassword }
+ * Respuestas: 200 { token, usuario } | 400 { error, campo } | 410 enlace vencido o usado.
+ */
+async function restablecerPassword(req, res) {
+    const body = req.body || {};
+    if (typeof body.password !== 'string' || body.password.length < LONGITUD_MINIMA_PASSWORD) {
+        return res.status(400).json(errorCampo('password', `La contraseña debe tener al menos ${LONGITUD_MINIMA_PASSWORD} caracteres.`));
+    }
+    if (body.password !== body.confirmarPassword) return res.status(400).json(errorCampo('confirmarPassword', 'Las contraseñas no coinciden.'));
+    const v = body.clave ? await cuentasRepo.verificacionPorHash('recuperar', sha256(String(body.clave))) : null;
+    if (!v) return res.status(410).json({ error: 'El enlace venció o ya se usó. Pide uno nuevo.' });
+
+    const passwordHash = await bcrypt.hash(body.password, RONDAS_BCRYPT);
+    const cambiada = await conTransaccion(async (transaccion) => {
+        if (!(await cuentasRepo.usarVerificacion(transaccion, v.id_verificacion))) return false;
+        return cuentasRepo.cambiarPassword(transaccion, v.correo, passwordHash);
+    });
+    if (!cambiada) return res.status(410).json({ error: 'El enlace venció o ya se usó. Pide uno nuevo.' });
+
+    const usuario = await cuentasRepo.obtenerCredenciales(v.correo);
+    if (!usuario || !usuario.activo) return res.json({ cambiada: true });
+    res.json({ cambiada: true, token: generarToken(usuario), usuario: usuarioPublico(usuario) });
+}
+
+/**
+ * GET /api/auth/correo-prueba/:archivo
+ * Muestra un correo guardado en correos-enviados/. Solo existe mientras no hay
+ * servidor SMTP configurado (modo de demostración local).
+ */
+async function verCorreoPrueba(req, res) {
+    if (correoConfig.smtpConfigurado()) return res.status(404).json({ error: 'No disponible.' });
+    const nombre = path.basename(String(req.params.archivo || ''));
+    if (!/^[\w.-]+\.html$/.test(nombre)) return res.status(404).json({ error: 'Correo no encontrado.' });
+    const archivo = path.join(correoConfig.carpetaCorreos(), nombre);
+    try {
+        const html = await fs.promises.readFile(archivo, 'utf8');
+        res.set('Cache-Control', 'no-store');
+        res.type('html').send(html);
+    } catch {
+        res.status(404).json({ error: 'Correo no encontrado.' });
     }
 }
 
@@ -254,4 +464,7 @@ function obtenerSesion(req, res) {
     res.json({ usuario });
 }
 
-module.exports = { registrar, iniciarSesion, obtenerSesion };
+module.exports = {
+    registrar, verificarRegistro, reenviarCodigo, solicitarRecuperacion, comprobarEnlace,
+    restablecerPassword, verCorreoPrueba, iniciarSesion, obtenerSesion
+};
