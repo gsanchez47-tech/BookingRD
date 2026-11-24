@@ -1,6 +1,6 @@
 # Guía de demostración en clase
 
-Recorrido de unos 14 minutos por BookingRD, con los tres roles (viajero, empresa y administración), los combos, la tienda, la Ruta del Parador y el pago simulado. Todo lo que se hace queda guardado en la base de datos; lo único simulado son los pagos. Cada paso indica qué hacer y qué conviene decir.
+Recorrido de unos 16 minutos por BookingRD, con los tres roles (viajero, empresa y administración), los combos, la tienda, la Ruta del Parador y el pago simulado. Todo lo que se hace queda guardado en la base de datos; lo único simulado son los pagos. Cada paso indica qué hacer y qué conviene decir.
 
 ## Antes de empezar
 
@@ -21,9 +21,11 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 
 ## 1. El inicio (1 minuto)
 
-- Muestra la portada: foto de playa, buscador sobre vidrio y las cifras de la plataforma.
+- Muestra la portada: foto de playa, buscador sobre vidrio y las cifras de la plataforma. Escribe "sam" en *Destino*: cada sugerencia trae la foto, la provincia y cuántas publicaciones tiene.
+- Justo debajo, **Tasa de hoy**: escribe 100 y elige USD.
+  - *Qué decir:* la tasa del dólar y del euro viene de ExchangeRate-API (se guarda 6 horas); sin internet se usa una tasa de referencia y la página lo indica.
 - Baja a **¿Qué quieres reservar?**: las tres puertas de entrada (alojamiento, actividades, autos), y a los **combos** destacados.
-- Baja al **mapa de la isla** y toca **Miches**, luego **Barahona**.
+- Baja al **mapa de la isla** (relieve, autopistas, aeropuertos y Lago Enriquillo, con su leyenda) y toca **Miches**, luego **Barahona**.
   - *Qué decir:* son 19 destinos. La ficha muestra la foto, cuenta en tiempo real cuántos alojamientos, actividades y autos hay, muestra un resumen del destino tomado de Wikipedia, lista los lugares imperdibles y el clima del momento (Open-Meteo). En el detalle de cualquier publicación, la sección *Ubicación y clima* añade amanecer y atardecer, índice UV, el estado del mar en los destinos de costa y los próximos feriados del país.
 - Baja a los **recomendados** y cambia entre Alojamiento, Actividades y Autos.
 
@@ -31,8 +33,9 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 
 - Pulsa **Alojamiento** en el menú.
 - En el **panel de filtros de la izquierda**: destino *Punta Cana*, valoración *8+*, mueve el rango de precio.
-- Cambia a **Mapa** y vuelve a **Lista**.
-  - *Qué decir:* la búsqueda queda en la dirección de la página, así que se puede compartir; los conteos de cada categoría salen de la base de datos.
+- Pulsa **Ver en el mapa** (el mini mapa sobre los filtros): lista a la izquierda y mapa a la derecha. Pasa el ratón por un hotel de la lista y se resalta su precio en el mapa; los números agrupan varias publicaciones.
+- En el **panel de abajo** cambia entre **Normal**, **Calles** y **Satélite**, y pulsa **Pantalla completa** (Esc para salir). Vuelve con **Volver a la lista**.
+  - *Qué decir:* los mapas usan Leaflet con mosaicos de Esri y OpenStreetMap, sin claves; la búsqueda queda en la dirección de la página, así que se puede compartir; los conteos de cada categoría salen de la base de datos.
 
 ## 3. Reservar y pagar (3 minutos)
 
@@ -75,8 +78,13 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 - Las tres partes del combo llevan la etiqueta **Combo**. Pestaña **Pedidos**: el pedido de la tienda con su recibo.
 - Pestaña **Reseñas**: escribe una reseña de la reserva terminada pendiente.
 
-## 8. Panel de empresa (1,5 minutos)
+## 8. Cuenta de empresa nueva y panel (3 minutos)
 
+- **Salir** > **Crear cuenta** > **Empresa**. Llena los tres pasos (representante, empresa con un RNC nuevo, servicios: *Actividades*) y pulsa **Crear cuenta**.
+- Aparece *Revisa tu correo* con seis casillas. Pulsa **Abrir el correo**, copia el código y escríbelo: la cuenta se crea y entra al panel.
+  - *Qué decir:* el código vence en 15 minutos, admite 5 intentos y en la base solo se guarda su hash. Sin servidor de correo configurado el correo se guarda y la página lo muestra; con Gmail configurado en `.env` llega a la bandeja de entrada.
+- **Publicaciones > Nueva publicación**: nombre, destino, precio, duración y descripción, con foto si quieres. **Guardar**, y abre **Actividades** en otra pestaña: ya aparece en el catálogo.
+- Para recuperar una contraseña: **Iniciar sesión > ¿Olvidaste tu contraseña?** envía un enlace de un solo uso (30 minutos) para crear una nueva.
 - **Salir** > **Iniciar sesión** > *Cuentas de demostración* > **Empresa** (Bahía Caribe Tours, `empresa@bookingrd.com`).
 - **Resumen:** indicadores y gráfico de ingresos.
 - **Reservas recibidas:** columna *Pago*. En la reserva *Senderismo al Salto El Limón* (*Por cobrar en destino*), pulsa **Marcar cobrado**.

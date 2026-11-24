@@ -1,6 +1,6 @@
 # BookingRD: resumen del proyecto
 
-**Estado:** versión completa para presentación. Se instala en Windows con doble clic en `INICIAR-BookingRD.bat`, que configura SQL Server local y crea la base BookingRD; si no hay SQL Server, funciona con una base local en archivo que también guarda los datos. Lista para Azure SQL Database. Lo único simulado son los pagos.
+**Estado:** versión final para presentación. Se instala en Windows con doble clic en *INSTALAR BookingRD* (borra versiones anteriores, instala Node.js y SQL Server Express si faltan, crea la base BookingRD y deja en el escritorio el acceso *BookingRD* para abrirla cuando se quiera). Lista para Azure SQL Database. Lo único simulado son los pagos.
 
 ## Qué es
 
@@ -10,7 +10,7 @@ Plataforma web para buscar y reservar alojamiento y tours en República Dominica
 
 ## Arrancar
 
-Windows: doble clic en `INICIAR-BookingRD.bat` (instala Node.js y las dependencias si faltan, configura SQL Server con permiso de administrador y abre <http://localhost:3000>).
+Windows: doble clic en *INSTALAR BookingRD* una vez; después, *INICIAR BookingRD* o el acceso *BookingRD* del escritorio abren <http://localhost:3000>.
 
 Cualquier sistema:
 
@@ -25,9 +25,9 @@ Con Azure: `npm run configurar`. Demostración que no guarda nada: `npm run demo
 
 | Parte | Detalle |
 |---|---|
-| Inicio | Portada con buscador y cifras, qué reservar, combos destacados, garantías, mapa de 19 destinos con ficha (foto, oferta, imperdibles y clima), experiencias por categoría, *Más para tu viaje*, recomendados, cómo funciona, opiniones, y empresas con contacto. Sin carruseles ni movimiento automático. |
+| Inicio | Portada con buscador (sugerencias con foto) y cifras, tasa de hoy del dólar y el euro con conversor, qué reservar, combos destacados, garantías, mapa de 19 destinos con relieve, autopistas y aeropuertos, y ficha (foto, oferta, imperdibles y clima), experiencias por categoría, *Más para tu viaje*, recomendados, cómo funciona, opiniones, y empresas con contacto. Sin carruseles ni movimiento automático. |
 | Combos | Hotel + una o dos actividades del destino con 10 a 15 % de descuento, itinerario por días, cotización con disponibilidad real y reserva de todas las partes con un solo pago. |
-| Explorar | Todos los filtros en un panel a la izquierda; lista o mapa; siete órdenes; clima del destino; búsqueda en la URL. Incluye alquiler de equipo de aventura y fotógrafos con dron, que se reservan por unidades. |
+| Explorar | Todos los filtros en un panel a la izquierda con mini mapa; lista o mapa (lista y mapa lado a lado, marcadores agrupados, vistas Normal, Calles y Satélite, pantalla completa); siete órdenes; clima del destino; búsqueda en la URL. Incluye alquiler de equipo de aventura y fotógrafos con dron, que se reservan por unidades. |
 | Detalle y reserva | Fotografía, características, ubicación y pronóstico, reseñas, políticas, disponibilidad y total en tiempo real, control de cupo en transacción. |
 | Alquiler de autos | Recogida y devolución con hora, ciudad de devolución, edad del conductor, extras, precio por bloques de 24 horas con desglose, disponibilidad por flota. |
 | En ruta | Paradas para comer por carretera (Duarte, del Este, Sánchez y costa norte) con filtros, y asistencia vial: 911, *462, grúas por provincia (red de ejemplo) y enlace con la ubicación. |
@@ -37,7 +37,8 @@ Con Azure: `npm run configurar`. Demostración que no guarda nada: `npm run demo
 | Panel de empresa | Resumen con gráficos, publicaciones con fotografía, reservas con estado del pago y *Marcar cobrado*, CSV, respuesta a reseñas, perfil. |
 | Administración | Indicadores, suspensión de cuentas, moderación de publicaciones y reseñas, reservas con su pago, pedidos de la tienda, mensajes. |
 | Idioma y moneda | Español e inglés con traducción propia, y cualquier otro idioma con traducción automática; precios en RD$, US$ o € con la tasa del día; el pago en pesos o en dólares, con la tasa guardada en el recibo. |
-| Correos | Bienvenida y confirmación de reserva por SMTP, o guardados en `correos-enviados/`. |
+| Cuentas | Registro de viajero y de empresa con código de verificación por correo (6 dígitos, 15 minutos, 5 intentos); recuperación de contraseña con enlace de un solo uso (30 minutos). Una cuenta de empresa publica alojamientos, actividades o autos al instante. |
+| Correos | Código de verificación, enlace de recuperación, bienvenida y confirmación de reserva por SMTP; sin SMTP se guardan en `correos-enviados/` y la página enlaza el correo para verlo. |
 | Base de datos | 15 tablas (incluye `combos`, `pagos`, `productos`, `pedidos` y `pedido_detalle`); datos de ejemplo en un solo archivo (`database/datos-demo.js`) que alimenta la base local y los scripts SQL: 21 cuentas, 8 empresas, 16 alojamientos, 50 actividades, 11 autos, 7 combos, 93 reservas con su pago, 74 reseñas, 11 productos y 2 pedidos. |
 
 ## Cuentas de demostración

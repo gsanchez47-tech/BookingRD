@@ -105,7 +105,13 @@ Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`camp
 
 | Método y ruta | Descripción |
 |---|---|
-| `POST /api/auth/registro` | Viajero `{ tipoCuenta: "cliente", nombre, correo, password, confirmarPassword }`; empresa con representante, datos legales y servicios (ver 3.5). 201 `{ token, usuario }` |
+| `POST /api/auth/registro` | Viajero `{ tipoCuenta: "cliente", nombre, correo, password, confirmarPassword }`; empresa con representante, datos legales y servicios (ver 3.6). Valida todo, guarda la solicitud y envía un código de 6 dígitos al correo. 202 `{ verificacion: true, correo, minutos: 15, vistaPrevia? }`. La cuenta todavía no existe |
+| `POST /api/auth/registro/verificar` | `{ correo, codigo }`. Crea la cuenta y responde 201 `{ token, usuario }`. 400 código incorrecto (máximo 5 intentos); 410 código vencido |
+| `POST /api/auth/registro/reenviar` | `{ correo }`. Código nuevo; 429 si no han pasado 60 segundos desde el anterior |
+| `POST /api/auth/recuperar` | `{ correo }`. Envía un enlace de un solo uso válido 30 minutos. Responde lo mismo exista o no la cuenta, para no revelar qué correos están registrados |
+| `GET /api/auth/restablecer?clave=` | Comprueba el enlace: `{ correo }` enmascarado o 410 si venció o ya se usó |
+| `POST /api/auth/restablecer` | `{ clave, password, confirmarPassword }`. Cambia la contraseña, invalida el enlace e inicia sesión: `{ token, usuario }` |
+| `GET /api/auth/correo-prueba/:archivo` | Solo sin SMTP: muestra el correo guardado (es el `vistaPrevia` de las respuestas anteriores) |
 | `POST /api/auth/login` | `{ correo, password }`. 200 `{ token, usuario }`; 401 con mensaje genérico |
 | `GET /api/auth/sesion` | Usuario del token vigente |
 
@@ -242,6 +248,7 @@ Scripts generados por `npm run bd:generar` a partir de `database/esquema.sql` (t
 | Tabla | Propósito | Restricciones principales |
 |---|---|---|
 | `usuarios` | Cuentas | `correo` único; `rol` ∈ {cliente, empresa, admin} |
+| `verificaciones` | Códigos de registro y enlaces para restablecer la contraseña | Solo guarda el hash SHA-256 del código o enlace; `proposito` ∈ {registro, recuperar}; vencimiento, intentos y uso único. El registro pendiente (con la contraseña ya cifrada con bcrypt) va en `datos` hasta que se verifica el correo |
 | `empresas` | Datos de empresa (1:1 con `usuarios`) | `rnc` único; `tipo_servicio`; campos obligatorios según el servicio |
 | `imagenes` | Fotografías subidas | `VARBINARY(MAX)`; tipo jpeg, png o webp; máximo 3 MB |
 | `hoteles` | Alojamientos | FK a `empresas` e `imagenes`; `tipo_alojamiento` y `ciudad` de catálogo; precio, capacidad (1-30) y habitaciones (1-5000) |
@@ -300,7 +307,17 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 ### 6.3 Mapas
 
 - Inicio: `isla.js` contiene el contorno de República Dominicana y Haití (Natural Earth, dominio público) como trazados SVG y `ISLA.proyectar(lat, lon)`. Los 19 destinos se ubican con `COORDENADAS_DESTINOS` (`src/utils/catalogos.js`, también en `/api/catalogos`). Cada punto es un botón accesible por teclado.
-- Explorar y detalle: Leaflet 1.9.4 incluido en `public/vendor/leaflet/`, con mosaicos de OpenStreetMap (sin clave). Si sus mosaicos fallan cuatro veces sin cargar ninguno, `mapa.js` cambia solo a Esri World Street Map; y si tampoco cargan, queda visible el contorno del país dibujado debajo. (Los mosaicos de CARTO se retiraron porque ahora exigen clave y mostraban «API KEY REQUIRED».) Las publicaciones se ubican en su destino con un desplazamiento estable; el detalle enlaza a *Cómo llegar* en Google Maps.
+- Inicio, capas de detalle (`capasDetalleMapa` en `index.js`): aguas poco profundas alrededor de la costa, cordilleras Central, Septentrional y Oriental y sierras de Bahoruco y Neiba, Lago Enriquillo, Pico Duarte, autopistas principales, ciudades de referencia, seis aeropuertos internacionales y una leyenda.
+- Explorar y detalle: Leaflet 1.9.4 (`public/vendor/leaflet/`) y Leaflet.markercluster 1.5.3 (`public/vendor/markercluster/`, licencia MIT). **Panel de vistas abajo a la izquierda**, como en Google Maps, con una miniatura real de cada una: *Normal* (Esri World Street Map), *Calles* (OpenStreetMap) y *Satélite* (Esri World Imagery con nombres de lugares). Ninguna necesita clave. La vista elegida se recuerda en el navegador. Si una vista no carga ningún mosaico, se cambia una sola vez a la otra; si tampoco carga (sin internet), queda el contorno del país dibujado debajo, sin repetir intentos. (CARTO se retiró: ahora exige clave.)
+- Botón *Pantalla completa* (arriba a la derecha; Esc para salir) que conserva el centro y el zoom.
+- Explorar: mini mapa con *Ver en el mapa* sobre los filtros; la vista de mapa muestra la lista a la izquierda y el mapa a la derecha. Los marcadores llevan el precio y se agrupan con el número de publicaciones y el precio *desde*; al pasar el ratón por la lista se resalta el marcador y al pulsar un marcador se resalta su tarjeta.
+- Detalle: sección *Ubicación y clima* con el mapa a todo el ancho cuando no hay clima, *Cómo llegar en Google Maps* y *Abrir en Waze*.
+- Las publicaciones se ubican en su destino con un desplazamiento estable (ubicación aproximada).
+
+### 6.3.1 Tasa del día y buscador
+
+- Inicio, *Tasa de hoy*: pesos por dólar y por euro de `GET /api/monedas` con la fecha y la fuente, y un conversor (monto y moneda a RD$). Sin conexión muestra la tasa de referencia y lo dice.
+- Buscador: las sugerencias del destino muestran la foto, la provincia y el número de publicaciones de cada destino, con texto oscuro sobre fondo blanco.
 
 ### 6.4 Reseñas, favoritos y vistos recientemente
 
