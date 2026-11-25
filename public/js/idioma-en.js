@@ -14,6 +14,10 @@
  */
 
 const CATALOGO_EN = {
+    'Buscar al mover el mapa': 'Search as I move the map',
+    'Ver todo el país': 'Show the whole country',
+    'Nada en esta zona': 'Nothing in this area',
+    'Aleja el mapa o muévelo hacia otro destino para ver más opciones.': 'Zoom out or move the map to another destination to see more options.',
     /* Calendario de precios */
     'Ver el calendario de precios': 'See the price calendar',
     'Ocultar el calendario': 'Hide the calendar',
@@ -1489,6 +1493,7 @@ const plural = (n, uno, varios) => `${n} ${Number(n) === 1 ? uno : varios}`;
 const fragmento = (texto) => (Object.hasOwn(CATALOGO_EN, texto) ? CATALOGO_EN[texto] : texto);
 
 const PATRONES_EN = [
+    [/^(\d+) resultados? en esta zona$/, (_, n) => `${n} ${n === '1' ? 'result' : 'results'} in this area`],
     [/^(\d+) adultos?(?: · (\d+) niños?)?(?: · (\d+) habitaci(?:ón|ones))?$/, (_, a, n, h) => [`${a} ${a === '1' ? 'adult' : 'adults'}`, n ? `${n} ${n === '1' ? 'child' : 'children'}` : '', h ? `${h} ${h === '1' ? 'room' : 'rooms'}` : ''].filter(Boolean).join(' · ')],
     [/^(\d+) personas?(?: · (\d+) niños?)?$/, (_, a, n) => `${a} ${a === '1' ? 'person' : 'people'}${n ? ` · ${n} ${n === '1' ? 'child' : 'children'}` : ''}`],
     [/^¡Hola(?:, (.+))?! Soy Caribe, el asistente de BookingRD\. Puedo hacer trámites por ti o llevarte a donde necesitas\. Elige una opción o escríbeme tu pregunta\.$/, (_, n) => `Hi${n ? `, ${n}` : ''}! I'm Caribe, the BookingRD assistant. I can handle requests for you or take you where you need to go. Pick an option or type your question.`],

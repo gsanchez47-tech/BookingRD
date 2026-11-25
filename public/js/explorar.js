@@ -612,6 +612,16 @@ async function cargar(reiniciar) {
     try {
         const respuesta = await apiFetch(`/publicaciones?${parametros}`);
         if (numero !== estado.solicitud) return;
+        // En el mapa se muestran todos los resultados (la API entrega 48 por página).
+        if (enMapa && respuesta.total > respuesta.publicaciones.length) {
+            for (let pagina = 2; respuesta.publicaciones.length < respuesta.total && pagina <= 5; pagina++) {
+                parametros.set('pagina', pagina);
+                const siguiente = await apiFetch(`/publicaciones?${parametros}`);
+                if (numero !== estado.solicitud) return;
+                respuesta.publicaciones = respuesta.publicaciones.concat(siguiente.publicaciones);
+                if (!siguiente.publicaciones.length) break;
+            }
+        }
         estado.total = respuesta.total;
         const tarjetas = respuesta.publicaciones.map(crearTarjetaPublicacion).join('');
         if (enMapa) pintarMapa(respuesta.publicaciones, respuesta.total);
@@ -634,7 +644,7 @@ async function cargar(reiniciar) {
             ? `Ver ${respuesta.total} ${respuesta.total === 1 ? 'resultado' : 'resultados'}`
             : 'Sin resultados';
         document.getElementById('resultados-total').textContent = respuesta.total
-            ? `${respuesta.total} ${respuesta.total === 1 ? 'resultado' : 'resultados'}${enMapa && respuesta.total > POR_PAGINA_MAPA ? ` (el mapa muestra ${POR_PAGINA_MAPA})` : ''}`
+            ? `${respuesta.total} ${respuesta.total === 1 ? 'resultado' : 'resultados'}`
             : 'Sin resultados';
         botonMas.hidden = enMapa || mostradas >= respuesta.total;
     } catch (error) {
@@ -684,6 +694,7 @@ function pintarMapa(publicaciones, total) {
     if (!mapaExplorar.mapa) {
         mapaExplorar.mapa = crearMapaRD(contenedor, { pantallaCompleta: zona });
         if (!mapaExplorar.mapa) return;
+        mapaExplorar.mapa.on('moveend', conRetardo(filtrarPorZona, 200));
         const lista = document.getElementById('mapa-lista-items');
         lista.addEventListener('mouseover', (evento) => {
             const item = evento.target.closest('.mapa-item');
@@ -710,21 +721,78 @@ function pintarMapa(publicaciones, total) {
             aplicarCambio(false);
         });
     }
-    document.getElementById('mapa-lista-total').textContent = total
-        ? `${total} ${total === 1 ? 'resultado' : 'resultados'}${total > publicaciones.length ? ` (se muestran ${publicaciones.length})` : ''}`
-        : 'Sin resultados';
-    document.getElementById('mapa-lista-items').innerHTML = publicaciones.map(itemListaMapa).join('')
-        || '<p class="mapa-lista-vacia">No hay resultados con estos filtros.</p>';
+    mapaExplorar.publicaciones = publicaciones;
+    mapaExplorar.total = total;
+    pintarListaMapa(publicaciones, total, false);
     // El contenedor acaba de mostrarse: Leaflet recalcula su tamaño.
     mapaExplorar.mapa.invalidateSize();
     if (mapaExplorar.capa) mapaExplorar.capa.remove();
+    // Los ajustes de vista hechos por el programa no cuentan como "mover el mapa".
+    mapaExplorar.ajustando = true;
     mapaExplorar.capa = agregarMarcadores(mapaExplorar.mapa, publicaciones);
+    setTimeout(() => { mapaExplorar.ajustando = false; }, 700);
     if (mapaExplorar.abrirCompleto) {
         mapaExplorar.abrirCompleto = false;
         alternarPantallaCompleta(mapaExplorar.mapa, zona, true);
         setTimeout(() => mapaExplorar.capa.getBounds && mapaExplorar.mapa.fitBounds(mapaExplorar.capa.getBounds(), { padding: [60, 60], maxZoom: 12 }), 120);
     }
 }
+
+/** Lista de la vista de mapa: todos los resultados o solo los de la zona visible. */
+function pintarListaMapa(publicaciones, total, soloZona) {
+    const encabezado = document.getElementById('mapa-lista-total');
+    if (soloZona) {
+        encabezado.textContent = publicaciones.length
+            ? `${publicaciones.length} ${publicaciones.length === 1 ? 'resultado' : 'resultados'} en esta zona`
+            : 'Nada en esta zona';
+    } else {
+        encabezado.textContent = total
+            ? `${total} ${total === 1 ? 'resultado' : 'resultados'}${total > publicaciones.length ? ` (se muestran ${publicaciones.length})` : ''}`
+            : 'Sin resultados';
+    }
+    document.getElementById('boton-ver-todo').hidden = !soloZona;
+    const lista = document.getElementById('mapa-lista-items');
+    lista.innerHTML = publicaciones.map(itemListaMapa).join('')
+        || (soloZona
+            ? '<p class="mapa-lista-vacia">Aleja el mapa o muévelo hacia otro destino para ver más opciones.</p>'
+            : '<p class="mapa-lista-vacia">No hay resultados con estos filtros.</p>');
+    lista.classList.remove('actualizada');
+    void lista.offsetWidth;
+    lista.classList.add('actualizada');
+}
+
+/** Al mover o acercar el mapa, la lista muestra solo lo que está a la vista. */
+function filtrarPorZona() {
+    const mapa = mapaExplorar.mapa;
+    if (!mapa || mapaExplorar.ajustando || !mapaExplorar.publicaciones) return;
+    if (!document.getElementById('buscar-al-mover').checked) return;
+    const zona = mapa.getBounds();
+    const visibles = mapaExplorar.publicaciones.filter((p) => {
+        const punto = coordenadasPublicacion(p);
+        return punto && zona.contains(punto);
+    });
+    const todas = visibles.length === mapaExplorar.publicaciones.filter((p) => coordenadasPublicacion(p)).length;
+    pintarListaMapa(todas ? mapaExplorar.publicaciones : visibles, mapaExplorar.total, !todas);
+}
+
+function iniciarMapaEnVivo() {
+    const casilla = document.getElementById('buscar-al-mover');
+    if (!casilla) return;
+    casilla.addEventListener('change', () => {
+        if (casilla.checked) filtrarPorZona();
+        else if (mapaExplorar.publicaciones) pintarListaMapa(mapaExplorar.publicaciones, mapaExplorar.total, false);
+    });
+    document.getElementById('boton-ver-todo').addEventListener('click', () => {
+        const mapa = mapaExplorar.mapa;
+        if (!mapa || !mapaExplorar.capa) return;
+        mapaExplorar.ajustando = true;
+        if (mapaExplorar.capa.getBounds) mapa.fitBounds(mapaExplorar.capa.getBounds(), { padding: [48, 48], maxZoom: 12 });
+        pintarListaMapa(mapaExplorar.publicaciones, mapaExplorar.total, false);
+        setTimeout(() => { mapaExplorar.ajustando = false; }, 700);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', iniciarMapaEnVivo);
 
 /* Mapa pequeño del panel de filtros: puntos de los resultados. */
 const minimapa = { mapa: null, capa: null };

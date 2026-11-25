@@ -148,8 +148,16 @@
                     <div class="mapa-resultados" id="mapa-resultados" hidden>
                         <div class="mapa-lista" id="mapa-lista" aria-label="Resultados del mapa">
                             <div class="mapa-lista-cabecera">
-                                <strong id="mapa-lista-total"></strong>
+                                <strong id="mapa-lista-total" aria-live="polite"></strong>
                                 <button type="button" class="boton-enlace" id="boton-salir-mapa">Volver a la lista</button>
+                            </div>
+                            <div class="mapa-mover">
+                                <label class="interruptor">
+                                    <input type="checkbox" id="buscar-al-mover" checked>
+                                    <span class="interruptor-pista" aria-hidden="true"></span>
+                                    <span>Buscar al mover el mapa</span>
+                                </label>
+                                <button type="button" class="boton-enlace" id="boton-ver-todo" hidden>Ver todo el país</button>
                             </div>
                             <div class="mapa-lista-items" id="mapa-lista-items"></div>
                         </div>
