@@ -35,12 +35,14 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 - En el **panel de filtros de la izquierda**: destino *Punta Cana*, valoración *8+*, mueve el rango de precio.
 - Pulsa **Ver en el mapa** (el mini mapa sobre los filtros): lista a la izquierda y mapa a la derecha. Pasa el ratón por un hotel de la lista y se resalta su precio en el mapa; los números agrupan varias publicaciones.
 - En el **panel de abajo** cambia entre **Normal**, **Calles** y **Satélite**, y pulsa **Pantalla completa** (Esc para salir). Vuelve con **Volver a la lista**.
+- Con el mapa abierto, arrastra hacia otra zona o acerca el zoom: la lista cambia a lo que está a la vista ("N resultados en esta zona"). Pulsa **Ver todo** para volver.
   - *Qué decir:* los mapas usan Leaflet con mosaicos de Esri y OpenStreetMap, sin claves; la búsqueda queda en la dirección de la página, así que se puede compartir; los conteos de cada categoría salen de la base de datos.
 
 ## 3. Reservar y pagar (3 minutos)
 
 - **Iniciar sesión** > *Cuentas de demostración* > **Viajero** (María Rodríguez).
-- Abre un hotel, elige fechas y pulsa **Reservar ahora**.
+- Abre un hotel y pulsa **Ver calendario de precios**: cada noche tiene su precio por color (Navidad, Semana Santa, alta, baja), con la más barata marcada. Pulsa un día para elegir la entrada, elige la salida y pulsa **Reservar ahora**.
+  - *Qué decir:* el precio cambia por temporada y los viernes y sábados, como en los hoteles dominicanos; el total muestra el desglose por temporada.
 - En la ventana de pago:
   1. Abre *Tarjetas de prueba* y elige **4000 0000 0000 9995**. Pulsa **Pagar**.
      - *Qué decir:* la pasarela responde "fondos insuficientes" y la reserva **no** se crea: el cobro ocurre dentro de la misma transacción que la reserva y se deshace si el banco rechaza.
@@ -102,8 +104,9 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 
 - Pulsa **¿Te ayudo?** (abajo a la derecha) y escribe: *hotel en Samaná para 2 este fin de semana*. Caribe responde con los mejor valorados y el enlace con las fechas ya puestas.
 - Pulsa **Ver todas las opciones > Recuperar mi contraseña** y escribe un correo: el enlace llega al correo.
-  - *Qué decir:* el asistente no usa servicios externos; entiende opciones y palabras clave y llama a la misma API del sitio.
-- Si configuraste Gmail (*menú Inicio > BookingRD > Configurar el correo de BookingRD*), registra una cuenta con tu correo real: el código llega a tu bandeja. Haz una reserva y muestra el correo de confirmación con la foto y la campana del encabezado.
+  - *Qué decir:* sin clave de IA el asistente no usa servicios externos; entiende opciones y palabras clave y llama a la misma API del sitio.
+- Si configuraste la IA (*Configurar BookingRD > 2*; el subtítulo dice *Asistente de BookingRD con IA*), escribe una pregunta libre: *¿qué hotel me recomiendas para una pareja en Samaná con buena playa?* Responde con datos del catálogo y abre la búsqueda.
+- Si configuraste Gmail (*menú Inicio > BookingRD > Configurar BookingRD > 1*), registra una cuenta con tu correo real: el código llega a tu bandeja. Haz una reserva y muestra el correo de confirmación con la foto y la campana del encabezado.
 
 ## 10. Cierre (30 segundos)
 

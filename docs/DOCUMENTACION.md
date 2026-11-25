@@ -19,7 +19,7 @@
 | Administración | Rol `admin` (equipo de desarrollo): indicadores y gráficos globales, suspensión y reactivación de cuentas, moderación de publicaciones (visibilidad y destacado) y de reseñas, consulta de reservas, pedidos de la tienda (enviar y entregar) y atención de mensajes de contacto. |
 | Cuentas | Registro de viajero (sencillo) y de empresa (tres pasos) con código de verificación por correo; inicio de sesión con contraseña o con un código por correo, *Recordarme*; recuperación con enlace; *Mi cuenta y seguridad* (`cuenta.html`) para cambiar la contraseña y el correo; menú desplegable de la cuenta en el encabezado. |
 | Notificaciones | Campana en el encabezado con los avisos de la cuenta (`dbo.notificaciones`): reserva confirmada, reserva recibida (empresa), recordatorio un día antes, solicitud de reseña y cambios de seguridad. Cada aviso también llega por correo. |
-| Asistente | *Caribe* (`public/js/asistente.js`): botón flotante en todas las páginas con un chat guiado para recuperar la contraseña, reenviar el código, ver y cancelar reservas, buscar alojamiento por mensaje, ayuda para empresas, hablar con una persona (mensaje de contacto), emergencias en carretera y preguntas frecuentes. Funciona sin servicios externos (opciones y palabras clave) y usa la misma API. |
+| Asistente | *Caribe* (`public/js/asistente.js`): botón flotante en todas las páginas con un chat guiado para recuperar la contraseña, reenviar el código, ver y cancelar reservas, buscar alojamiento por mensaje, ayuda para empresas, hablar con una persona (mensaje de contacto), emergencias en carretera y preguntas frecuentes. Funciona sin servicios externos (opciones y palabras clave) y usa la misma API. Con `ANTHROPIC_API_KEY` en `.env` las preguntas libres van a `POST /api/asistente` (sección 3.1), que responde con IA usando el catálogo real; si la IA no responde, el chat vuelve a las opciones. |
 | Contacto | Mensajes guardados en `dbo.mensajes_contacto`. |
 | Correos | Bienvenida al registrarse (viajero o empresa) y confirmación de cada reserva, por SMTP con nodemailer (sección 7.1). |
 | Pagos (simulados) | Al reservar: tarjeta (Visa, Mastercard, American Express) o pago en el destino. Validación de Luhn, vencimiento y CVV; tarjetas de prueba aprobadas y rechazadas; recibo imprimible; reembolso automático al cancelar; la empresa registra los cobros en destino (sección 4.2). |
@@ -94,6 +94,9 @@ Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`camp
 | `GET /api/resenas/destacadas` | Seis reseñas visibles con puntuación de 9 o más (página de inicio) |
 | `GET /api/publicaciones/:tipo/:id` | Detalle con `empresa { nombre, telefono, sitioWeb, ciudad, descripcion, licenciaMitur }` |
 | `GET /api/publicaciones/:tipo/:id/disponibilidad` | Hotel: `entrada`, `salida`, `habitaciones`, `personas`. Actividad: `fecha`, `personas`. Respuesta `{ disponible, libres, noches, total, mensaje }`. Auto: `recogida`, `horaRecogida`, `devolucion`, `horaDevolucion` (HH:MM), `edadConductor`, `ciudadDevolucion`?, `extras` (códigos separados por coma). Respuesta `{ disponible, libres, dias, total, desglose[{ concepto, importe }], deposito, mensaje }` |
+| `GET /api/publicaciones/hotel/:id/calendario?mes=AAAA-MM` | Calendario de precios: `{ mes, base, dias[{ fecha, precio, temporada, libres, pasado }], temporadas[] }`. Solo alojamientos (404 en otros tipos) |
+| `GET /api/asistente/estado` | `{ ia }`: si hay una clave de IA configurada |
+| `POST /api/asistente` | `{ mensaje, historial?, idioma? }` → `{ respuesta, accion, destino, personas }`. El servidor envía la pregunta a la API de Anthropic (`ASISTENTE_MODELO`, por defecto `claude-haiku-4-5-20251001`) con un resumen del catálogo (destinos, alojamientos, actividades y autos con precio y valoración) y las reglas del sitio; la respuesta se valida (la acción y el destino deben existir). 40 preguntas cada 10 minutos por IP; 503 sin clave o si la IA falla. La clave nunca llega al navegador |
 | `GET /api/imagenes/:id` | Fotografía subida por una empresa (caché inmutable) |
 | `POST /api/contacto` | `{ nombre, correo, asunto, mensaje }` |
 | `GET /api/clima?ciudad=` | Clima actual y pronóstico de 4 días del destino (Open-Meteo, caché de 15 minutos): `{ ciudad, actualizado, temperatura, sensacion, humedad, viento, estado, descripcion, pronostico[] }`. 503 si el servicio no responde |
@@ -206,9 +209,24 @@ El usuario y la empresa se insertan en una sola transacción.
 | Fechas | Entrada desde hoy; salida posterior; máximo 30 noches; hasta 365 días de anticipación | Fecha desde hoy, hasta 365 días |
 | Cantidades | 1-20 habitaciones; personas ≤ habitaciones × capacidad | 1-60 personas |
 | Disponibilidad | Habitaciones de la publicación menos la ocupación máxima de cualquier noche del rango | Cupo diario menos las personas ya reservadas ese día |
-| Total | precio por noche × noches × habitaciones | precio por persona × personas |
+| Total | suma del precio de cada noche × habitaciones (precio por temporada, sección 4.0) | precio por persona × personas |
 | Concurrencia | La publicación se lee con `UPDLOCK, HOLDLOCK` dentro de la transacción; dos reservas simultáneas por el último cupo no pueden confirmarse ambas | Igual |
 | Cancelación | Solo reservas propias confirmadas que empiezan al menos al día siguiente | Igual |
+
+### 4.0 Precio por temporada (alojamientos)
+
+`src/utils/temporadas.js` calcula el precio de cada noche a partir del precio base de la publicación. Se aplica la primera temporada que coincide:
+
+| Temporada | Fechas | Factor |
+|---|---|---|
+| Navidad y Año Nuevo | 20 dic - 6 ene | ×1,35 |
+| Semana Santa | Domingo de Ramos a Sábado Santo (Pascua calculada cada año) | ×1,30 |
+| Temporada alta | 15 dic - 15 abr | ×1,15 |
+| Verano | julio y agosto | ×1,10 |
+| Temporada baja | 1 sep - 15 nov | ×0,85 |
+| Media | resto del año | ×1,00 |
+
+Las noches de viernes y sábado suben un 8 % (menos en Navidad). Cada noche se redondea a RD$50. La disponibilidad devuelve `desglose` con las noches agrupadas por temporada, y `precioUnitario` de la reserva es el promedio por noche. Los combos usan el mismo cálculo para la línea del hotel.
 
 ### 4.1 Alquiler de autos
 
@@ -321,6 +339,7 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 - Explorar y detalle: Leaflet 1.9.4 (`public/vendor/leaflet/`) y Leaflet.markercluster 1.5.3 (`public/vendor/markercluster/`, licencia MIT). **Panel de vistas abajo a la izquierda**, como en Google Maps, con una miniatura real de cada una: *Normal* (Esri World Street Map), *Calles* (OpenStreetMap) y *Satélite* (Esri World Imagery con nombres de lugares). Ninguna necesita clave. La vista elegida se recuerda en el navegador. Si una vista no carga ningún mosaico, se cambia una sola vez a la otra; si tampoco carga (sin internet), queda el contorno del país dibujado debajo, sin repetir intentos. (CARTO se retiró: ahora exige clave.)
 - Botón *Pantalla completa* (arriba a la derecha; Esc para salir) que conserva el centro y el zoom.
 - Explorar: mini mapa con *Ver en el mapa* sobre los filtros; la vista de mapa muestra la lista a la izquierda y el mapa a la derecha. Los marcadores llevan el precio y se agrupan con el número de publicaciones y el precio *desde*; al pasar el ratón por la lista se resalta el marcador y al pulsar un marcador se resalta su tarjeta.
+- Explorar, mapa en vivo: con *Buscar al mover el mapa* activo (predeterminado), al mover o acercar el mapa la lista se filtra a los resultados dentro de la vista (`filtrarPorZona`), sin otra consulta al servidor. En la vista de mapa se cargan hasta 5 páginas para tener todos los resultados. *Ver todo* vuelve a encuadrarlos. Los movimientos que hace el propio código (encuadre inicial, pantalla completa) no filtran.
 - Detalle: sección *Ubicación y clima* con el mapa a todo el ancho cuando no hay clima, *Cómo llegar en Google Maps* y *Abrir en Waze*.
 - Las publicaciones se ubican en su destino con un desplazamiento estable (ubicación aproximada).
 
@@ -395,7 +414,9 @@ Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado 
 | Enlace para la contraseña | *¿Olvidaste tu contraseña?* | Enlace de un solo uso (30 minutos) |
 | Aviso de seguridad | Cambio de contraseña o de correo | Qué cambió y enlace para recuperar la cuenta |
 
-**Correo real (Gmail).** `npm run correo` (en Windows, *menú Inicio > BookingRD > Configurar el correo de BookingRD*, o el paso 8 del instalador) pide la cuenta de Gmail y una contraseña de aplicación, prueba la conexión con `smtp.gmail.com:465`, manda un correo de prueba y escribe `SMTP_*` en `.env`. El servidor vuelve a leer `.env` antes de cada envío, así que no hace falta reiniciarlo. Si el servidor de correo falla al enviar un código o un enlace, el correo se guarda y la página ofrece *Abrir el correo*, para que el trámite no quede bloqueado. Los correos para las cuentas de ejemplo (`@bookingrd.com`, `@correo.com`) nunca salen por SMTP: se guardan en la PC para no generar rebotes. El instalador conserva la configuración del correo al actualizar.
+**Correo real (Gmail).** `npm run correo` (en Windows, *menú Inicio > BookingRD > Configurar BookingRD > 1*, o el paso 8 del instalador) pide la cuenta de Gmail y una contraseña de aplicación, prueba la conexión con `smtp.gmail.com:465`, manda un correo de prueba y escribe `SMTP_*` en `.env`. El servidor vuelve a leer `.env` antes de cada envío, así que no hace falta reiniciarlo. Si el servidor de correo falla al enviar un código o un enlace, el correo se guarda y la página ofrece *Abrir el correo*, para que el trámite no quede bloqueado. Los correos para las cuentas de ejemplo (`@bookingrd.com`, `@correo.com`) nunca salen por SMTP: se guardan en la PC para no generar rebotes. El instalador conserva la configuración del correo al actualizar.
+
+**Asistente con IA (opcional).** `npm run ia` (en Windows, *Configurar BookingRD > 2*) pide una clave de la API de Anthropic (console.anthropic.com > API Keys), hace una consulta de prueba y escribe `ANTHROPIC_API_KEY` y `ASISTENTE_MODELO` en `.env`; la opción 2 la quita. Como con el correo, el servidor relee `.env` y no hace falta reiniciarlo. Cada pregunta tiene un costo en la cuenta de Anthropic. El instalador conserva la clave al actualizar.
 
 ### 7.2 Plantillas
 

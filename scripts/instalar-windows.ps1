@@ -91,7 +91,7 @@ Escribir "  Destino: $Destino"
 # La configuración del correo (Gmail) de una instalación anterior se conserva.
 $correoAnterior = @()
 if (Test-Path "$Destino\.env") {
-    $correoAnterior = @(Get-Content "$Destino\.env" -ErrorAction SilentlyContinue | Where-Object { $_ -match '^(SMTP_[A-Z]+|CORREO_REMITENTE)=' })
+    $correoAnterior = @(Get-Content "$Destino\.env" -ErrorAction SilentlyContinue | Where-Object { $_ -match '^(SMTP_[A-Z]+|CORREO_REMITENTE|ANTHROPIC_API_KEY|ASISTENTE_MODELO)=' })
 }
 
 Paso 0 'Borrando versiones anteriores de BookingRD en esta PC'
@@ -276,10 +276,11 @@ function Crear-Acceso([string]$Carpeta, [string]$Nombre, [string]$Archivo, [stri
 $escritorioUsuario = [Environment]::GetFolderPath('Desktop')
 $menu = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'BookingRD'
 New-Item -ItemType Directory -Force -Path $menu | Out-Null
+Remove-Item (Join-Path $menu 'Configurar el correo de BookingRD.lnk') -Force -ErrorAction SilentlyContinue   # acceso de la versión anterior
 Crear-Acceso $escritorioUsuario 'BookingRD' 'INICIAR-BookingRD.bat' 'Abrir BookingRD'
 Crear-Acceso $menu 'BookingRD' 'INICIAR-BookingRD.bat' 'Abrir BookingRD'
 Crear-Acceso $menu 'Desinstalar BookingRD' 'DESINSTALAR-BookingRD.bat' 'Quitar BookingRD y su base de datos'
-Crear-Acceso $menu 'Configurar el correo de BookingRD' 'CONFIGURAR-CORREO.bat' 'Enviar los correos de verdad con Gmail'
+Crear-Acceso $menu 'Configurar BookingRD (correo e IA)' 'CONFIGURAR-BookingRD.bat' 'Correo real con Gmail y asistente con IA'
 Escribir "  Acceso 'BookingRD' en el escritorio y en el menú Inicio." Green
 
 # ---------------------------------------------------------------------------
@@ -296,9 +297,11 @@ if (-not (Select-String -Path "$Destino\.env" -Pattern '^SMTP_HOST=\S+' -Quiet))
         & node scripts\configurar-correo.js
         Pop-Location
     } else {
-        Escribir '  Puedes hacerlo después: menú Inicio > BookingRD > Configurar el correo de BookingRD.' Yellow
+        Escribir '  Puedes hacerlo después: menú Inicio > BookingRD > Configurar BookingRD.' Yellow
     }
 }
+Escribir '  Opcional: el asistente Caribe puede responder con IA (necesita una clave de Anthropic):'
+Escribir '  menú Inicio > BookingRD > Configurar BookingRD > 2.'
 
 Escribir ''
 Escribir '  BookingRD quedó instalado.' Green

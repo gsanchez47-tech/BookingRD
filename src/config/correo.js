@@ -23,7 +23,7 @@ let transporte = null;
  * .env si cambió, sin reiniciar el servidor.
  */
 const ARCHIVO_ENV = path.resolve(__dirname, '..', '..', '.env');
-const CLAVES_CORREO = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SEGURO', 'SMTP_USUARIO', 'SMTP_CLAVE', 'CORREO_REMITENTE', 'URL_SITIO'];
+const CLAVES_CORREO = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SEGURO', 'SMTP_USUARIO', 'SMTP_CLAVE', 'CORREO_REMITENTE', 'URL_SITIO', 'ANTHROPIC_API_KEY', 'ASISTENTE_MODELO', 'ANTHROPIC_BASE_URL'];
 let marcaEnv = null;
 
 function recargarConfiguracion() {

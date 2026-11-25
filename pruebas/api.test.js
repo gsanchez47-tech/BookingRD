@@ -22,6 +22,9 @@ const net = require('node:net');
 
 let servidor;
 let base;
+let iaFalsa;            // servidor que imita la API de Anthropic
+const pedidosIa = [];
+let iaFalla = false;
 
 /** Puerto libre asignado por el sistema operativo. */
 function puertoLibre() {
@@ -36,10 +39,21 @@ function puertoLibre() {
 }
 
 before(async () => {
+    iaFalsa = require('node:http').createServer((req, res) => {
+        let cuerpo = '';
+        req.on('data', (d) => { cuerpo += d; });
+        req.on('end', () => {
+            pedidosIa.push({ url: req.url, clave: req.headers['x-api-key'], cuerpo: JSON.parse(cuerpo || '{}') });
+            if (iaFalla) { res.writeHead(529, { 'content-type': 'application/json' }); return res.end('{"error":"overloaded"}'); }
+            res.writeHead(200, { 'content-type': 'application/json' });
+            res.end(JSON.stringify({ content: [{ type: 'text', text: '```json\n{"respuesta":"En Samaná te recomiendo el Coralia.","accion":"buscar","destino":"Samaná","personas":2}\n```' }] }));
+        });
+    });
+    await new Promise((r) => iaFalsa.listen(0, r));
     const puerto = await puertoLibre();
     base = `http://localhost:${puerto}/api`;
     servidor = spawn(process.execPath, [path.join(__dirname, '..', 'src', 'server.js')], {
-        env: Object.assign({}, process.env, { DB_MODO: 'demo', PORT: String(puerto), JWT_SECRET: 'pruebas-bookingrd-0123456789abcdef', LIMITE_INTENTOS_AUTH: '500', SMTP_HOST: '', CORREO_CARPETA: path.join(require('node:os').tmpdir(), `bookingrd-correos-${process.pid}`) }),
+        env: Object.assign({}, process.env, { DB_MODO: 'demo', PORT: String(puerto), JWT_SECRET: 'pruebas-bookingrd-0123456789abcdef', LIMITE_INTENTOS_AUTH: '500', SMTP_HOST: '', ANTHROPIC_API_KEY: 'sk-ant-prueba', ANTHROPIC_BASE_URL: `http://localhost:${iaFalsa.address().port}`, CORREO_CARPETA: path.join(require('node:os').tmpdir(), `bookingrd-correos-${process.pid}`) }),
         stdio: ['ignore', 'pipe', 'pipe']
     });
     await new Promise((resolver, rechazar) => {
@@ -55,6 +69,7 @@ before(async () => {
 });
 
 after(() => {
+    if (iaFalsa) iaFalsa.close();
     if (servidor) servidor.kill();
 });
 
@@ -691,4 +706,36 @@ test('precios por temporada: fiestas, Semana Santa, baja y fin de semana', async
     assert.equal(cal.status, 200);
     assert.equal(cal.datos.dias.length, 31);
     assert.ok(cal.datos.dias.every((d) => d.precio > 0 && d.temporada));
+});
+
+test('asistente con IA: respuesta, acción validada y respaldo si la IA falla', async () => {
+    const estado = await fetch(`${base}/asistente/estado`).then((r) => r.json());
+    assert.equal(estado.ia, true);
+
+    const vacio = await fetch(`${base}/asistente`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"mensaje":"  "}' });
+    assert.equal(vacio.status, 400);
+
+    const r = await fetch(`${base}/asistente`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ mensaje: '¿Qué hotel me recomiendas en Samaná para dos?', historial: [{ rol: 'asistente', texto: 'Hola' }, { rol: 'usuario', texto: 'Busco playa' }, { rol: 'asistente', texto: '¿Dónde?' }] })
+    });
+    assert.equal(r.status, 200);
+    const datos = await r.json();
+    assert.match(datos.respuesta, /Coralia/);
+    assert.equal(datos.accion, 'buscar');
+    assert.equal(datos.destino, 'Samaná');
+    assert.equal(datos.personas, 2);
+
+    const pedido = pedidosIa[pedidosIa.length - 1];
+    assert.equal(pedido.url, '/v1/messages');
+    assert.equal(pedido.clave, 'sk-ant-prueba');
+    assert.match(pedido.cuerpo.system, /Samaná/);            // lleva el catálogo real
+    assert.equal(pedido.cuerpo.messages[0].role, 'user');     // empieza con el visitante
+    assert.equal(pedido.cuerpo.messages.at(-1).role, 'user');
+    for (let i = 1; i < pedido.cuerpo.messages.length; i++) assert.notEqual(pedido.cuerpo.messages[i].role, pedido.cuerpo.messages[i - 1].role);
+
+    iaFalla = true;
+    const caida = await fetch(`${base}/asistente`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"mensaje":"hola, ¿hay tours?"}' });
+    iaFalla = false;
+    assert.equal(caida.status, 503);
 });
