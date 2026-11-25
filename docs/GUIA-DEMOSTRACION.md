@@ -98,6 +98,13 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 - **Tienda:** marca el pedido como enviado.
 - **Empresas:** suspende una empresa, abre Explorar en otra pestaña y muestra que sus publicaciones desaparecieron; reactívala.
 
+## 9.1 Asistente y correo real (1,5 minutos)
+
+- Pulsa **¿Te ayudo?** (abajo a la derecha) y escribe: *hotel en Samaná para 2 este fin de semana*. Caribe responde con los mejor valorados y el enlace con las fechas ya puestas.
+- Pulsa **Ver todas las opciones > Recuperar mi contraseña** y escribe un correo: el enlace llega al correo.
+  - *Qué decir:* el asistente no usa servicios externos; entiende opciones y palabras clave y llama a la misma API del sitio.
+- Si configuraste Gmail (*menú Inicio > BookingRD > Configurar el correo de BookingRD*), registra una cuenta con tu correo real: el código llega a tu bandeja. Haz una reserva y muestra el correo de confirmación con la foto y la campana del encabezado.
+
 ## 10. Cierre (30 segundos)
 
 - Botón **ES / RD$** del encabezado: cambia a **inglés** y **US$**. Los precios se convierten con la tasa del día.

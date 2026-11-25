@@ -17,7 +17,9 @@
 | Reservas | Creación con control de cupo en transacción, código único, listado del viajero y cancelación. |
 | Panel de empresa | Resumen con indicadores (incluida la valoración media) y gráficos; alta, edición, publicación u ocultación y eliminación de publicaciones con fotografía; reservas recibidas con búsqueda, filtro y exportación CSV; reseñas con respuesta pública; perfil público editable. |
 | Administración | Rol `admin` (equipo de desarrollo): indicadores y gráficos globales, suspensión y reactivación de cuentas, moderación de publicaciones (visibilidad y destacado) y de reseñas, consulta de reservas, pedidos de la tienda (enviar y entregar) y atención de mensajes de contacto. |
-| Cuentas | Registro de viajero (sencillo) y de empresa (tres pasos), inicio de sesión con *Recordarme*, cierre de sesión, expiración del token. |
+| Cuentas | Registro de viajero (sencillo) y de empresa (tres pasos) con código de verificación por correo; inicio de sesión con contraseña o con un código por correo, *Recordarme*; recuperación con enlace; *Mi cuenta y seguridad* (`cuenta.html`) para cambiar la contraseña y el correo; menú desplegable de la cuenta en el encabezado. |
+| Notificaciones | Campana en el encabezado con los avisos de la cuenta (`dbo.notificaciones`): reserva confirmada, reserva recibida (empresa), recordatorio un día antes, solicitud de reseña y cambios de seguridad. Cada aviso también llega por correo. |
+| Asistente | *Caribe* (`public/js/asistente.js`): botón flotante en todas las páginas con un chat guiado para recuperar la contraseña, reenviar el código, ver y cancelar reservas, buscar alojamiento por mensaje, ayuda para empresas, hablar con una persona (mensaje de contacto), emergencias en carretera y preguntas frecuentes. Funciona sin servicios externos (opciones y palabras clave) y usa la misma API. |
 | Contacto | Mensajes guardados en `dbo.mensajes_contacto`. |
 | Correos | Bienvenida al registrarse (viajero o empresa) y confirmación de cada reserva, por SMTP con nodemailer (sección 7.1). |
 | Pagos (simulados) | Al reservar: tarjeta (Visa, Mastercard, American Express) o pago en el destino. Validación de Luhn, vencimiento y CVV; tarjetas de prueba aprobadas y rechazadas; recibo imprimible; reembolso automático al cancelar; la empresa registra los cobros en destino (sección 4.2). |
@@ -112,6 +114,13 @@ Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`camp
 | `GET /api/auth/restablecer?clave=` | Comprueba el enlace: `{ correo }` enmascarado o 410 si venció o ya se usó |
 | `POST /api/auth/restablecer` | `{ clave, password, confirmarPassword }`. Cambia la contraseña, invalida el enlace e inicia sesión: `{ token, usuario }` |
 | `GET /api/auth/correo-prueba/:archivo` | Solo sin SMTP: muestra el correo guardado (es el `vistaPrevia` de las respuestas anteriores) |
+| `POST /api/auth/acceso` | `{ correo }`. Código de 6 dígitos para entrar sin contraseña (15 minutos, 5 intentos). Responde lo mismo exista o no la cuenta |
+| `POST /api/auth/acceso/verificar` | `{ correo, codigo }` -> `{ token, usuario }` |
+| `GET /api/auth/cuenta` | Con sesión: `{ nombre, correo, rol }` |
+| `POST /api/auth/password` | Con sesión: `{ actual, password, confirmarPassword }`. Avisa por correo y en la campana |
+| `POST /api/auth/correo` | Con sesión: `{ correo, password }`. Envía un código al correo nuevo |
+| `POST /api/auth/correo/confirmar` | Con sesión: `{ correo, codigo }` -> `{ token, usuario, correo }`. Avisa al correo anterior |
+| `GET /api/notificaciones` · `POST /api/notificaciones/leidas` | Con sesión: últimos 20 avisos y cuántos no se han leído; marcar todos como leídos |
 | `POST /api/auth/login` | `{ correo, password }`. 200 `{ token, usuario }`; 401 con mensaje genérico |
 | `GET /api/auth/sesion` | Usuario del token vigente |
 
@@ -223,7 +232,7 @@ El precio se guarda en la reserva (`precio_unitario`), por lo que un cambio post
 2. **Cobro** dentro de la transacción de la reserva, después de comprobar el cupo: las tarjetas `4000 0000 0000 0002` (rechazada), `4000 0000 0000 9995` (fondos insuficientes) y `4000 0000 0000 0127` (CVV incorrecto) responden 402 y la transacción se deshace, así que no queda reserva sin pago. Cualquier otra tarjeta válida se aprueba.
 3. **Moneda del cobro:** pesos (`DOP`) o dólares (`USD`); cualquier otra responde 400 (`pago-moneda`). Los precios y `monto` están en pesos; en dólares, antes de abrir la transacción `prepararCobro` toma la tasa del día de `externos.tasas()` (pesos por dólar; si el servicio no responde, la de respaldo `TASA_USD`) y se guardan `monto_cobrado` (total / tasa, a centavos) y `tasa_cambio`. Las reservas de un combo usan la misma tasa. Los reembolsos se hacen en la moneda del cobro. Los pedidos de la tienda guardan lo mismo en `pago_moneda`, `pago_monto_cobrado` y `pago_tasa_cambio`.
 4. **Pago en el destino:** se registra en pesos (al llegar se puede pagar en pesos o en dólares a la tasa del día); la reserva se crea con el pago `pendiente`; la empresa lo marca como `pagado` desde *Reservas recibidas* (`PATCH /api/empresa/reservas/:id/cobro`).
-5. **Cancelación:** en la misma transacción, la tarjeta pasa a `reembolsado` (con fecha de reembolso) y el pago en destino a `anulado`.
+5. **Cancelación:** en la misma transacción, la tarjeta pasa a `reembolsado` y el pago en destino a `anulado`. Se reembolsa el 90 % de lo cobrado y se retiene el 10 % como cargo por cancelación (`CARGO_CANCELACION_PCT` en `pagos.service.js`); se guardan `monto_reembolsado` y `cargo_cancelacion`. En dólares se aplica la misma proporción al monto cobrado. El pago en destino se anula sin cargo. Los pedidos de la tienda siguen la misma regla (`reembolso_monto`, `cargo_cancelacion`).
 
 Estados: `pagado`, `pendiente`, `reembolsado`, `anulado`. El viajero ve el estado y el recibo (imprimible o en PDF desde el navegador) en *Mis reservas*; la empresa y la administración, en sus tablas de reservas; la administración suma lo cobrado en línea, lo pendiente en destino y lo reembolsado.
 
@@ -248,7 +257,8 @@ Scripts generados por `npm run bd:generar` a partir de `database/esquema.sql` (t
 | Tabla | Propósito | Restricciones principales |
 |---|---|---|
 | `usuarios` | Cuentas | `correo` único; `rol` ∈ {cliente, empresa, admin} |
-| `verificaciones` | Códigos de registro y enlaces para restablecer la contraseña | Solo guarda el hash SHA-256 del código o enlace; `proposito` ∈ {registro, recuperar}; vencimiento, intentos y uso único. El registro pendiente (con la contraseña ya cifrada con bcrypt) va en `datos` hasta que se verifica el correo |
+| `notificaciones` | Avisos de la campana | `id_usuario`, `tipo`, `titulo`, `mensaje`, `enlace`, `leida`, `fecha` |
+| `verificaciones` | Códigos de registro, de acceso y de cambio de correo, y enlaces para restablecer la contraseña | Solo guarda el hash SHA-256 del código o enlace; `proposito` ∈ {registro, recuperar}; vencimiento, intentos y uso único. El registro pendiente (con la contraseña ya cifrada con bcrypt) va en `datos` hasta que se verifica el correo |
 | `empresas` | Datos de empresa (1:1 con `usuarios`) | `rnc` único; `tipo_servicio`; campos obligatorios según el servicio |
 | `imagenes` | Fotografías subidas | `VARBINARY(MAX)`; tipo jpeg, png o webp; máximo 3 MB |
 | `hoteles` | Alojamientos | FK a `empresas` e `imagenes`; `tipo_alojamiento` y `ciudad` de catálogo; precio, capacidad (1-30) y habitaciones (1-5000) |
@@ -377,7 +387,15 @@ Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado 
 |---|---|---|
 | Bienvenida de viajero | Registro de una cuenta `cliente` | Saludo con el nombre, ventajas (sin pago adelantado, cancelación, favoritos, reseñas) y botón a Explorar |
 | Bienvenida de empresa | Registro de una cuenta `empresa` | Nombre comercial, cuatro primeros pasos según el tipo de servicio y botón al panel |
-| Reserva confirmada | `POST /api/reservas` correcto | Código, publicación, fechas (con horas en autos), habitaciones o personas, extras y ciudad de devolución, total, depósito y documentos para recoger el auto, política de cancelación y botón a Mis reservas |
+| Reserva confirmada | `POST /api/reservas` o reserva de combo | Foto de la publicación (incrustada), código, fechas, habitaciones o personas, extras, pago, total, política de cancelación y botón a Mis reservas |
+| Reserva recibida | La misma reserva, a la empresa dueña | Foto, cliente, código, fechas, forma de pago, total y botón al panel |
+| Recordatorio | Un día antes del inicio (`avisos.service.js`, cada 30 minutos) | Foto, código, fechas, lugar y pronóstico del destino para mañana (Open-Meteo) |
+| Pide la reseña | Entre 1 y 7 días después de terminar, sin reseña | Foto y botón a *Mis reservas > Reseñas* |
+| Código de verificación, código para entrar, código del correo nuevo | Registro, entrar con código, cambio de correo | Código de 6 dígitos grande, vigencia |
+| Enlace para la contraseña | *¿Olvidaste tu contraseña?* | Enlace de un solo uso (30 minutos) |
+| Aviso de seguridad | Cambio de contraseña o de correo | Qué cambió y enlace para recuperar la cuenta |
+
+**Correo real (Gmail).** `npm run correo` (en Windows, *menú Inicio > BookingRD > Configurar el correo de BookingRD*, o el paso 8 del instalador) pide la cuenta de Gmail y una contraseña de aplicación, prueba la conexión con `smtp.gmail.com:465`, manda un correo de prueba y escribe `SMTP_*` en `.env`. El servidor vuelve a leer `.env` antes de cada envío, así que no hace falta reiniciarlo. Si el servidor de correo falla al enviar un código o un enlace, el correo se guarda y la página ofrece *Abrir el correo*, para que el trámite no quede bloqueado. Los correos para las cuentas de ejemplo (`@bookingrd.com`, `@correo.com`) nunca salen por SMTP: se guardan en la PC para no generar rebotes. El instalador conserva la configuración del correo al actualizar.
 
 ### 7.2 Plantillas
 
