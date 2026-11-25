@@ -752,7 +752,7 @@ function pintarPoliticas() {
     const politicas = ES_AUTO
         ? [
             ['Cancelación', 'Gratuita hasta un día antes de la recogida, desde Mis reservas.'],
-            ['Pago', 'Con tarjeta al reservar o en el mostrador al recoger el auto. Si cancelas a tiempo, el pago con tarjeta se reembolsa completo.'],
+            ['Pago', 'Con tarjeta al reservar o en el mostrador al recoger el auto. Si cancelas a tiempo, se reembolsa el 90 % del pago con tarjeta.'],
             ['Depósito', `${formatoMoneda.format(publicacion.deposito)} retenidos en la tarjeta de crédito del conductor y liberados al devolver el auto sin daños.`],
             ['Combustible', 'Lleno a lleno: se entrega con el tanque lleno y se devuelve igual. Si falta combustible, se cobra el faltante.'],
             ['Kilometraje', publicacion.kmPorDia ? `${publicacion.kmPorDia} km incluidos por día de alquiler.` : 'Ilimitado.'],
@@ -764,14 +764,14 @@ function pintarPoliticas() {
         ? [
             ['Cancelación', 'Gratuita hasta un día antes de la entrada, desde Mis reservas. Después de esa fecha, consulta con la empresa.'],
             ['Precio por temporada', 'El precio publicado es el de temporada media entre semana. Navidad y Año Nuevo +35 %, Semana Santa +30 %, temporada alta (15 dic a 15 abr) +15 %, verano +10 %, temporada baja (1 sep a 15 nov) -15 %; viernes y sábado +8 %. El calendario de precios muestra cada noche.'],
-            ['Pago', 'Con tarjeta al reservar o en el hotel al llegar. Si cancelas a tiempo, el pago con tarjeta se reembolsa completo.'],
+            ['Pago', 'Con tarjeta al reservar o en el hotel al llegar. Si cancelas a tiempo, se reembolsa el 90 % del pago con tarjeta.'],
             ['Entrada y salida', 'Coordina la hora de llegada con la empresa; puedes indicarla en el comentario de la reserva.'],
             ['Capacidad', `Hasta ${publicacion.capacidadPersonas} personas por habitación o unidad.`],
             ['Documentos', 'Cédula de identidad o pasaporte vigente del titular de la reserva.']
         ]
         : [
             ['Cancelación', 'Gratuita hasta un día antes de la actividad, desde Mis reservas.'],
-            ['Pago', 'Con tarjeta al reservar o al operador el día de la actividad. Si cancelas a tiempo, el pago con tarjeta se reembolsa completo.'],
+            ['Pago', 'Con tarjeta al reservar o al operador el día de la actividad. Si cancelas a tiempo, se reembolsa el 90 % del pago con tarjeta.'],
             ['Punto de encuentro', publicacion.puntoEncuentro],
             ['Duración', `${formatearDuracion(publicacion.duracionHoras)} aproximadamente.`],
             ['Recomendaciones', 'Llega 15 minutos antes, con protector solar, agua y ropa cómoda.']
