@@ -2520,6 +2520,293 @@ body:has(.banda-empresas) .pie {
     color: var(--tinta);
 }
 
+/* ----------------------------------------------------------------------------
+   Animaciones: menús que se despliegan, tarjetas que responden al cursor,
+   aparición al bajar por la página y cifras que cuentan. Con "reducir
+   movimiento" en el sistema todas quedan desactivadas (regla de arriba).
+   ------------------------------------------------------------------------- */
+
+@keyframes desplegar {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes salto {
+    40% { transform: scale(1.35); color: var(--caribe-deep); }
+}
+
+@keyframes entrar {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: none; }
+}
+
+.sugerencias:not([hidden]),
+.menu-desplegable:not([hidden]),
+.menu-cuenta:not([hidden]),
+.campana-panel:not([hidden]) {
+    animation: desplegar 0.18s ease-out;
+}
+
+.tarjeta-publicacion {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tarjeta-publicacion:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 22px 40px -24px rgba(0, 48, 135, 0.45);
+}
+
+.btn-primario:active,
+.btn-rojo:active,
+.btn-outline:active,
+.btn-claro:active {
+    transform: scale(0.97);
+}
+
+/* Aparición escalonada (comun.js añade .por-aparecer y luego .aparecido). */
+.por-aparecer {
+    opacity: 0;
+    transform: translateY(18px);
+}
+
+.por-aparecer.aparecido {
+    animation: entrar 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+    animation-delay: var(--retraso, 0s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .por-aparecer { opacity: 1; transform: none; }
+}
+
+/* ----------------------------------------------------------------------------
+   Encabezado: menú de la cuenta y campana de notificaciones
+   ------------------------------------------------------------------------- */
+
+.cuenta-desplegable,
+.campana {
+    position: relative;
+}
+
+.campana[hidden] { display: none; }
+
+button.usuario-chip {
+    padding: 4px 12px 4px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+button.usuario-chip::after {
+    content: '';
+    width: 7px;
+    height: 7px;
+    margin: -3px 0 0 2px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 0.2s ease;
+}
+
+button.usuario-chip[aria-expanded="true"]::after { margin-top: 3px; transform: rotate(-135deg); }
+button.usuario-chip:hover,
+button.usuario-chip[aria-expanded="true"] { background: rgba(255, 255, 255, 0.1); border-color: var(--caribe); }
+button.usuario-chip:focus-visible { outline: none; box-shadow: var(--enfoque); }
+
+.menu-cuenta,
+.campana-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 10px);
+    z-index: 1200;
+    border: 1px solid var(--linea);
+    border-top: 4px solid var(--caribe);
+    border-radius: var(--r-m);
+    background: #fff;
+    color: var(--tinta);
+    box-shadow: 0 22px 44px -18px rgba(5, 19, 43, 0.45);
+    transform-origin: top right;
+}
+
+.menu-cuenta {
+    display: grid;
+    min-width: 240px;
+    padding: 8px;
+}
+
+.menu-cuenta[hidden],
+.campana-panel[hidden] { display: none; }
+
+.menu-cuenta-correo {
+    margin: 4px 10px 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--linea);
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.menu-cuenta-correo:empty { display: none; }
+
+.menu-cuenta a,
+.menu-cuenta button {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: var(--r-s);
+    background: none;
+    color: var(--tinta);
+    font: 700 var(--t-s) var(--f-texto);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.menu-cuenta a[hidden] { display: none; }
+.menu-cuenta a:hover,
+.menu-cuenta button:hover { background: var(--azul-tenue); color: var(--azul); }
+.menu-cuenta button { margin-top: 4px; border-top: 1px solid var(--linea); border-radius: 0 0 var(--r-s) var(--r-s); color: var(--rojo); }
+
+.campana-boton {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+}
+
+.campana-boton:hover,
+.campana-boton[aria-expanded="true"] { background: rgba(255, 255, 255, 0.12); color: var(--caribe); }
+.campana-boton:focus-visible { outline: none; box-shadow: var(--enfoque); }
+
+.campana-boton svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    transform-origin: 50% 10%;
+}
+
+.campana-boton.sonando svg { animation: sonar 0.9s ease-in-out; }
+
+@keyframes sonar {
+    15% { transform: rotate(16deg); }
+    30% { transform: rotate(-14deg); }
+    45% { transform: rotate(10deg); }
+    60% { transform: rotate(-6deg); }
+    75% { transform: rotate(3deg); }
+}
+
+.campana-contador {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--rojo);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 18px;
+    text-align: center;
+}
+
+.campana-contador[hidden] { display: none; }
+
+.campana-panel {
+    width: 360px;
+    max-width: calc(100vw - 24px);
+    padding: 0;
+    overflow: hidden;
+}
+
+.campana-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--linea);
+}
+
+.campana-cabecera strong { font-family: var(--f-display); font-size: 1.05rem; }
+.campana-cabecera .boton-enlace { color: var(--azul); font-size: var(--t-xs); }
+
+.campana-lista {
+    max-height: 420px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.campana-lista li + li { border-top: 1px solid var(--linea); }
+
+.campana-lista a {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--tinta);
+    text-decoration: none;
+}
+
+.campana-lista a:hover { background: var(--azul-tenue); }
+.campana-lista li.sin-leer a { background: #EEF9FC; }
+.campana-lista li.sin-leer .aviso-texto strong::after {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: var(--rojo);
+    vertical-align: middle;
+}
+
+.aviso-icono {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--azul);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.aviso-reserva-recibida { background: #0E7A4E; }
+.aviso-recordatorio { background: var(--caribe-deep); }
+.aviso-resena { background: #E7A500; }
+.aviso-seguridad { background: var(--rojo); }
+
+.aviso-texto { display: grid; gap: 2px; min-width: 0; }
+.aviso-texto strong { font-size: var(--t-s); }
+.aviso-texto span { color: var(--tinta-2); font-size: var(--t-xs); line-height: 1.4; }
+.aviso-texto small { color: var(--tinta-3); font-size: 11px; font-weight: 700; }
+
+.campana-vacia {
+    padding: 22px 18px;
+    color: var(--tinta-3);
+    font-size: var(--t-s);
+    text-align: center;
+}
+
 /* ==========================================================================
    Estilos propios de la página (frontend/estilos/index.css)
    ======================================================================== */
@@ -2542,7 +2829,9 @@ body:has(.banda-empresas) .pie {
     padding: var(--e-8) 0 calc(var(--e-7) + 6px);
     background: var(--night);   /* respaldo si la fotografía no carga */
     color: #fff;
-    overflow: hidden;
+    /* overflow visible: el desplegable de huéspedes puede salir de la portada. */
+    overflow: visible;
+    z-index: 3;
 }
 
 .portada-foto {
@@ -2571,6 +2860,8 @@ body:has(.banda-empresas) .pie {
 }
 
 .portada-contenido {
+    position: relative;
+    z-index: 2;
     display: grid;
     gap: var(--e-6);
     width: 100%;
@@ -2630,7 +2921,8 @@ body:has(.banda-empresas) .pie {
     color: var(--azul);
 }
 
-.portada .buscador label {
+.portada .buscador label,
+.portada .buscador .campo-etiqueta {
     color: rgba(255, 255, 255, 0.86);
 }
 
@@ -2727,7 +3019,7 @@ body:has(.banda-empresas) .pie {
     }
 
     .portada .buscador-campos > .campo-personas {
-        flex: 0 0 110px;
+        flex: 0 0 250px;
     }
 
     .portada .buscador-enviar {
@@ -2931,6 +3223,126 @@ body:has(.banda-empresas) .pie {
     flex-shrink: 0;
     border-radius: 10px;
     background: var(--azul-tenue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23003087' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='m20 20-4.2-4.2'/%3E%3C/svg%3E") center / 20px no-repeat;
+}
+
+/* Desplegable de huéspedes (adultos, niños y habitaciones). */
+.huespedes {
+    position: relative;
+}
+
+.huespedes-boton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid var(--linea-fuerte);
+    border-radius: var(--r-s);
+    background: var(--superficie);
+    color: var(--tinta);
+    font: 700 var(--t-s) var(--f-texto);
+    text-align: left;
+    cursor: pointer;
+}
+
+.huespedes-boton span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.huespedes-boton::after {
+    content: '';
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    margin-top: -4px;
+    border-right: 2px solid var(--azul);
+    border-bottom: 2px solid var(--azul);
+    transform: rotate(45deg);
+    transition: transform 0.2s ease, margin 0.2s ease;
+}
+
+.huespedes-boton.abierto::after {
+    margin-top: 4px;
+    transform: rotate(-135deg);
+}
+
+.huespedes-boton:hover { border-color: var(--tinta-3); }
+.huespedes-boton:focus-visible { outline: none; border-color: var(--caribe-deep); box-shadow: var(--enfoque); }
+
+.huespedes-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 70;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    padding: 8px 16px 16px;
+    border: 1px solid var(--linea);
+    border-top: 4px solid var(--caribe);
+    border-radius: var(--r-m);
+    background: #fff;
+    color: var(--tinta);
+    text-align: left;
+    box-shadow: 0 18px 40px -18px rgba(11, 29, 69, 0.45);
+    transform-origin: top right;
+    animation: desplegar 0.18s ease-out;
+}
+
+.huespedes-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--linea);
+}
+
+.huespedes-fila[hidden] { display: none; }
+
+.huespedes-fila strong { display: block; font-size: 0.98rem; }
+.huespedes-fila small { color: var(--tinta-3); font-size: var(--t-xs); font-weight: 600; }
+
+.huespedes-contador {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.huespedes-contador button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1.5px solid var(--azul);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--azul);
+    font: 800 1.1rem/1 var(--f-texto);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.huespedes-contador button:hover:not(:disabled) { background: var(--azul); color: #fff; }
+.huespedes-contador button:active:not(:disabled) { transform: scale(0.9); }
+.huespedes-contador button:disabled { border-color: var(--linea-fuerte); color: var(--tinta-3); cursor: not-allowed; }
+
+.huespedes-contador output {
+    display: inline-block;
+    min-width: 22px;
+    text-align: center;
+    font: 800 1.05rem var(--f-texto);
+    font-variant-numeric: tabular-nums;
+}
+
+.huespedes-contador output.salto { animation: salto 0.25s ease-out; }
+
+.huespedes-listo {
+    width: 100%;
+    margin-top: 14px;
 }
 /* Tarjeta de combo con forma de boleto: fotografía, itinerario y talón con
    el precio separado por una línea perforada (inicio y combos). */

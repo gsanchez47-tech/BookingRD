@@ -674,7 +674,7 @@ function resumenVehiculo(v) {
  * de su URL). Los enlaces al detalle las conservan para que el formulario de
  * reserva aparezca ya completado.
  */
-const contextoViaje = { entrada: '', salida: '', fecha: '', personas: '', recogida: '', horaRecogida: '', devolucion: '', horaDevolucion: '' };
+const contextoViaje = { entrada: '', salida: '', fecha: '', personas: '', habitaciones: '', recogida: '', horaRecogida: '', devolucion: '', horaDevolucion: '' };
 
 /** Enlace a la página de detalle de una publicación, con el contexto de viaje que aplique. */
 function enlaceDetalle(publicacion) {
@@ -691,6 +691,7 @@ function enlaceDetalle(publicacion) {
         return `detalle.html?${parametros}`;
     }
     if (contextoViaje.personas) parametros.set('personas', contextoViaje.personas);
+    if (publicacion.tipo === 'hotel' && contextoViaje.habitaciones) parametros.set('habitaciones', contextoViaje.habitaciones);
     return `detalle.html?${parametros}`;
 }
 
@@ -1175,6 +1176,8 @@ document.addEventListener('DOMContentLoaded', () => {
     iniciarCierreSesion();
     mostrarAvisoProgramado();
     validarSesionRemota();
+    iniciarMenuCuenta();
+    iniciarCampana();
 
     // Corazones de favorito: delegación para las tarjetas que se agregan después.
     document.addEventListener('click', (evento) => {
@@ -1212,4 +1215,151 @@ function crearTarjetaOpinion(resena) {
                 <a href="${enlace}">${escaparHtml(resena.publicacion)}, ${escaparHtml(resena.ciudad)}</a></span>
             </figcaption>
         </figure>`;
+}
+
+/* ----------------------------------------------------------------------------
+   Aparición escalonada al bajar por la página: tarjetas, combos, servicios,
+   pasos y opiniones entran una tras otra la primera vez que se ven. También
+   las que se agregan después (resultados de búsqueda, recomendados...).
+   ------------------------------------------------------------------------- */
+
+const SELECTOR_APARICION = [
+    '.rejilla-tarjetas > *', '.combos-lista > *', '.servicios > *', '.experiencias > *',
+    '.pasos-inicio > *', '.opiniones > *', '.beneficios > *', '.lista-pasos > *',
+    '.productos > *', '.rejilla-productos > *', '.paradas > *', '.gruas-lista > *'
+].join(', ');
+
+function iniciarApariciones() {
+    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const observador = new IntersectionObserver((entradas) => {
+        const visibles = entradas.filter((e) => e.isIntersecting);
+        visibles.forEach((entrada, i) => {
+            entrada.target.style.setProperty('--retraso', `${Math.min(i, 6) * 70}ms`);
+            entrada.target.classList.add('aparecido');
+            observador.unobserve(entrada.target);
+        });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+
+    const preparar = (raiz) => {
+        raiz.querySelectorAll(SELECTOR_APARICION).forEach((el) => {
+            if (el.dataset.aparicion) return;
+            el.dataset.aparicion = '1';
+            // Lo que ya está en pantalla al cargar no se esconde.
+            const caja = el.getBoundingClientRect();
+            if (caja.top < window.innerHeight && caja.bottom > 0) return;
+            el.classList.add('por-aparecer');
+            observador.observe(el);
+        });
+    };
+    preparar(document);
+    new MutationObserver((cambios) => {
+        if (cambios.some((c) => c.addedNodes.length)) preparar(document);
+    }).observe(document.getElementById('contenido') || document.body, { childList: true, subtree: true });
+}
+
+document.addEventListener('DOMContentLoaded', iniciarApariciones);
+
+
+/* ----------------------------------------------------------------------------
+   Menú de la cuenta (desplegable del nombre) y campana de notificaciones
+   ------------------------------------------------------------------------- */
+
+/** Desplegable genérico: botón con aria-controls y panel; cierra al hacer clic fuera o con Escape. */
+function desplegable(boton, panel, alAbrir) {
+    const abrir = (abierto) => {
+        panel.hidden = !abierto;
+        boton.setAttribute('aria-expanded', String(abierto));
+        if (abierto && alAbrir) alAbrir();
+    };
+    boton.addEventListener('click', (evento) => {
+        evento.stopPropagation();
+        abrir(panel.hidden);
+    });
+    document.addEventListener('click', (evento) => {
+        if (!panel.hidden && !panel.contains(evento.target)) abrir(false);
+    });
+    document.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Escape' && !panel.hidden) {
+            abrir(false);
+            boton.focus();
+        }
+    });
+    return abrir;
+}
+
+function iniciarMenuCuenta() {
+    const boton = document.getElementById('boton-cuenta');
+    const menu = document.getElementById('menu-cuenta');
+    if (!boton || !menu) return;
+    let cargado = false;
+    desplegable(boton, menu, async () => {
+        if (cargado || !haySesionActiva()) return;
+        cargado = true;
+        try {
+            const cuenta = await apiFetch('/auth/cuenta');
+            menu.querySelectorAll('[data-correo-usuario]').forEach((e) => { e.textContent = cuenta.correo; });
+        } catch {
+            cargado = false;
+        }
+    });
+}
+
+const ICONOS_AVISO = {
+    reserva: '✓', 'reserva-recibida': '+', recordatorio: '⏰', resena: '★', seguridad: '!', pedido: '▣'
+};
+
+function haceCuanto(fechaIso) {
+    const minutos = Math.round((Date.now() - new Date(fechaIso).getTime()) / 60000);
+    if (minutos < 1) return 'ahora';
+    if (minutos < 60) return `hace ${minutos} min`;
+    const horas = Math.round(minutos / 60);
+    if (horas < 24) return `hace ${horas} h`;
+    const dias = Math.round(horas / 24);
+    return dias === 1 ? 'ayer' : `hace ${dias} días`;
+}
+
+function iniciarCampana() {
+    const boton = document.getElementById('boton-campana');
+    const panel = document.getElementById('panel-campana');
+    if (!boton || !panel || !haySesionActiva()) return;
+    const contador = document.getElementById('campana-contador');
+    const lista = document.getElementById('campana-lista');
+    let ultimoSinLeer = 0;
+
+    async function cargar() {
+        try {
+            const datos = await apiFetch('/notificaciones');
+            contador.hidden = !datos.sinLeer;
+            contador.textContent = datos.sinLeer > 9 ? '9+' : String(datos.sinLeer);
+            if (datos.sinLeer > ultimoSinLeer) {
+                boton.classList.remove('sonando');
+                void boton.offsetWidth;
+                boton.classList.add('sonando');
+            }
+            ultimoSinLeer = datos.sinLeer;
+            lista.innerHTML = datos.notificaciones.length
+                ? datos.notificaciones.map((n) => `
+                    <li class="${n.leida ? '' : 'sin-leer'}">
+                        <a href="${escaparHtml(n.enlace || '#')}">
+                            <span class="aviso-icono aviso-${escaparHtml(n.tipo)}" aria-hidden="true">${ICONOS_AVISO[n.tipo] || '•'}</span>
+                            <span class="aviso-texto"><strong>${escaparHtml(n.titulo)}</strong><span>${escaparHtml(n.mensaje)}</span><small>${haceCuanto(n.fecha)}</small></span>
+                        </a>
+                    </li>`).join('')
+                : '<li class="campana-vacia">Aquí verás tus reservas confirmadas, recordatorios y respuestas. Por ahora no hay nada nuevo.</li>';
+        } catch {
+            /* sin conexión: la campana se queda como estaba */
+        }
+    }
+
+    desplegable(boton, panel, cargar);
+    document.getElementById('campana-leer').addEventListener('click', async () => {
+        try {
+            await apiFetch('/notificaciones/leidas', { method: 'POST' });
+            ultimoSinLeer = 0;
+            contador.hidden = true;
+            lista.querySelectorAll('.sin-leer').forEach((li) => li.classList.remove('sin-leer'));
+        } catch { /* se reintenta la próxima vez */ }
+    });
+    cargar();
+    setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 60000);
 }

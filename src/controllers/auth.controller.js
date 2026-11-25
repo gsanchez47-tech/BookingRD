@@ -472,7 +472,143 @@ function obtenerSesion(req, res) {
     res.json({ usuario });
 }
 
+/* ---------------------------------------------------------------------------
+ * Entrar con un código (sin contraseña) y seguridad de la cuenta
+ * ------------------------------------------------------------------------- */
+
+/**
+ * POST /api/auth/acceso   Body: { correo }
+ * Envía un código de 6 dígitos para entrar sin contraseña. Responde lo mismo
+ * exista o no la cuenta.
+ */
+async function solicitarAcceso(req, res) {
+    const correo = String((req.body || {}).correo || '').trim().toLowerCase();
+    if (!esCorreoValido(correo)) return res.status(400).json(errorCampo('correo', 'Escribe el correo de tu cuenta.'));
+    const respuesta = { enviado: true, correo, minutos: MINUTOS_CODIGO };
+    const usuario = await cuentasRepo.obtenerCredenciales(correo);
+    if (!usuario || !usuario.activo) return res.json(respuesta);
+    const anterior = await cuentasRepo.verificacionPendiente(correo, 'acceso');
+    if (anterior && anterior.vigente && anterior.segundos < SEGUNDOS_REENVIO) {
+        const espera = SEGUNDOS_REENVIO - anterior.segundos;
+        return res.status(429).json({ error: `Ya te enviamos un código. Espera ${espera} segundos para pedir otro.`, espera });
+    }
+    const codigo = nuevoCodigo();
+    await cuentasRepo.crearVerificacion({ correo, proposito: 'acceso', codigoHash: hashCodigo(correo, codigo), minutos: MINUTOS_CODIGO });
+    respuesta.vistaPrevia = await enviarAhora(correo, plantillas.codigoAcceso({ nombre: usuario.nombre, codigo, minutos: MINUTOS_CODIGO, urlSitio: correoConfig.urlSitio() }));
+    res.json(respuesta);
+}
+
+/** Comprueba un código de verificación (acceso o cambio de correo). */
+async function comprobarCodigo(res, correo, proposito, codigo) {
+    const pendiente = await cuentasRepo.verificacionPendiente(correo, proposito);
+    if (!pendiente || !pendiente.vigente) {
+        res.status(410).json(errorCampo('codigo', 'El código venció o no existe. Pide uno nuevo.'));
+        return null;
+    }
+    if (pendiente.intentos >= MAXIMO_INTENTOS) {
+        res.status(429).json(errorCampo('codigo', 'Demasiados intentos con este código. Pide uno nuevo.'));
+        return null;
+    }
+    if (!mismoHash(pendiente.codigo_hash, hashCodigo(correo, codigo))) {
+        await cuentasRepo.sumarIntento(pendiente.id_verificacion);
+        const restantes = MAXIMO_INTENTOS - pendiente.intentos - 1;
+        res.status(400).json(errorCampo('codigo', restantes > 0
+            ? `El código no es correcto. Te quedan ${restantes} ${restantes === 1 ? 'intento' : 'intentos'}.`
+            : 'El código no es correcto. Pide uno nuevo.'));
+        return null;
+    }
+    if (!(await cuentasRepo.usarVerificacion(null, pendiente.id_verificacion))) {
+        res.status(410).json(errorCampo('codigo', 'Este código ya se usó.'));
+        return null;
+    }
+    return pendiente;
+}
+
+/** POST /api/auth/acceso/verificar   Body: { correo, codigo } -> { token, usuario } */
+async function verificarAcceso(req, res) {
+    const correo = String((req.body || {}).correo || '').trim().toLowerCase();
+    const codigo = String((req.body || {}).codigo || '').replace(/\D/g, '');
+    if (!esCorreoValido(correo) || codigo.length !== 6) return res.status(400).json(errorCampo('codigo', 'Escribe los 6 dígitos del código.'));
+    if (!(await comprobarCodigo(res, correo, 'acceso', codigo))) return undefined;
+    const usuario = await cuentasRepo.obtenerCredenciales(correo);
+    if (!usuario || !usuario.activo) return res.status(403).json({ error: 'Esta cuenta no puede iniciar sesión.' });
+    res.json({ token: generarToken(usuario), usuario: usuarioPublico(usuario) });
+}
+
+/** GET /api/auth/cuenta (con sesión): nombre y correo de la cuenta. */
+async function obtenerCuenta(req, res) {
+    const contacto = await cuentasRepo.obtenerContacto(req.usuario.id);
+    if (!contacto) return res.status(404).json({ error: 'La cuenta no existe.' });
+    res.json({ nombre: contacto.nombre, correo: contacto.correo, rol: req.usuario.rol });
+}
+
+/** POST /api/auth/password (con sesión)   Body: { actual, password, confirmarPassword } */
+async function cambiarPasswordCuenta(req, res) {
+    const body = req.body || {};
+    const contacto = await cuentasRepo.obtenerContacto(req.usuario.id);
+    const usuario = contacto && await cuentasRepo.obtenerCredenciales(contacto.correo);
+    if (!usuario) return res.status(404).json({ error: 'La cuenta no existe.' });
+    if (typeof body.actual !== 'string' || !(await bcrypt.compare(body.actual, usuario.password_hash))) {
+        return res.status(400).json(errorCampo('actual', 'La contraseña actual no es correcta.'));
+    }
+    if (typeof body.password !== 'string' || body.password.length < LONGITUD_MINIMA_PASSWORD) {
+        return res.status(400).json(errorCampo('password', `La contraseña nueva debe tener al menos ${LONGITUD_MINIMA_PASSWORD} caracteres.`));
+    }
+    if (body.password !== body.confirmarPassword) return res.status(400).json(errorCampo('confirmarPassword', 'Las contraseñas no coinciden.'));
+    if (body.password === body.actual) return res.status(400).json(errorCampo('password', 'La contraseña nueva debe ser distinta de la actual.'));
+    const hash = await bcrypt.hash(body.password, RONDAS_BCRYPT);
+    await conTransaccion((transaccion) => cuentasRepo.cambiarPassword(transaccion, contacto.correo, hash));
+    res.json({ cambiada: true });
+    correoService.enviarSinEsperar(contacto.correo, plantillas.avisoSeguridad({
+        nombre: contacto.nombre, cambio: 'La contraseña de tu cuenta de BookingRD se cambió.', urlSitio: correoConfig.urlSitio()
+    }), 'aviso de seguridad');
+    correoService.avisoEnCampana(req.usuario.id, 'seguridad', 'Contraseña cambiada', 'La contraseña de tu cuenta se cambió. Si no fuiste tú, recupérala.', 'cuenta.html');
+}
+
+/** POST /api/auth/correo (con sesión)   Body: { correo, password } -> envía un código al correo nuevo. */
+async function solicitarCambioCorreo(req, res) {
+    const body = req.body || {};
+    const nuevo = String(body.correo || '').trim().toLowerCase();
+    if (!esCorreoValido(nuevo)) return res.status(400).json(errorCampo('correo-nuevo', 'Escribe un correo válido.'));
+    const contacto = await cuentasRepo.obtenerContacto(req.usuario.id);
+    const usuario = contacto && await cuentasRepo.obtenerCredenciales(contacto.correo);
+    if (!usuario) return res.status(404).json({ error: 'La cuenta no existe.' });
+    if (nuevo === contacto.correo.toLowerCase()) return res.status(400).json(errorCampo('correo-nuevo', 'Ese ya es el correo de tu cuenta.'));
+    if (typeof body.password !== 'string' || !(await bcrypt.compare(body.password, usuario.password_hash))) {
+        return res.status(400).json(errorCampo('password-correo', 'La contraseña no es correcta.'));
+    }
+    if (await cuentasRepo.existeCorreo(nuevo)) return res.status(409).json(errorCampo('correo-nuevo', 'Ese correo ya tiene una cuenta en BookingRD.'));
+    const codigo = nuevoCodigo();
+    await cuentasRepo.crearVerificacion({ correo: nuevo, proposito: 'correo', codigoHash: hashCodigo(nuevo, codigo), datos: JSON.stringify({ idUsuario: req.usuario.id }), minutos: MINUTOS_CODIGO });
+    const vistaPrevia = await enviarAhora(nuevo, plantillas.codigoNuevoCorreo({ nombre: contacto.nombre, codigo, minutos: MINUTOS_CODIGO, urlSitio: correoConfig.urlSitio() }));
+    res.json({ enviado: true, correo: nuevo, minutos: MINUTOS_CODIGO, vistaPrevia });
+}
+
+/** POST /api/auth/correo/confirmar (con sesión)   Body: { correo, codigo } -> { token, usuario, correo } */
+async function confirmarCambioCorreo(req, res) {
+    const nuevo = String((req.body || {}).correo || '').trim().toLowerCase();
+    const codigo = String((req.body || {}).codigo || '').replace(/\D/g, '');
+    if (!esCorreoValido(nuevo) || codigo.length !== 6) return res.status(400).json(errorCampo('codigo', 'Escribe los 6 dígitos del código.'));
+    const pendiente = await comprobarCodigo(res, nuevo, 'correo', codigo);
+    if (!pendiente) return undefined;
+    if (JSON.parse(pendiente.datos || '{}').idUsuario !== req.usuario.id) return res.status(403).json({ error: 'Este código es de otra cuenta.' });
+    const anterior = await cuentasRepo.obtenerContacto(req.usuario.id);
+    const cambiado = await conTransaccion((transaccion) => cuentasRepo.cambiarCorreo(transaccion, req.usuario.id, nuevo));
+    if (!cambiado) return res.status(409).json(errorCampo('correo-nuevo', 'Ese correo ya tiene una cuenta en BookingRD.'));
+    const usuario = await cuentasRepo.obtenerCredenciales(nuevo);
+    res.json({ token: generarToken(usuario), usuario: usuarioPublico(usuario), correo: nuevo });
+    correoService.enviarSinEsperar(anterior.correo, plantillas.avisoSeguridad({
+        nombre: anterior.nombre, cambio: `El correo de tu cuenta de BookingRD cambió a ${nuevo}.`, urlSitio: correoConfig.urlSitio()
+    }), 'aviso de seguridad');
+}
+
 module.exports = {
+    solicitarAcceso,
+    verificarAcceso,
+    obtenerCuenta,
+    cambiarPasswordCuenta,
+    solicitarCambioCorreo,
+    confirmarCambioCorreo,
     registrar, verificarRegistro, reenviarCodigo, solicitarRecuperacion, comprobarEnlace,
     restablecerPassword, verCorreoPrueba, iniciarSesion, obtenerSesion
 };

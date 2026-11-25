@@ -619,3 +619,54 @@ test('administración: destacar, ocultar reseña y suspender una cuenta', async 
     const login = await api('/auth/login', { metodo: 'POST', cuerpo: { correo: 'hostal.prueba@correo.com', password: 'Prueba123' } });
     assert.equal(login.status, 403);
 });
+
+/** Código de 6 dígitos de cualquier correo guardado (acceso o cambio de correo). */
+async function codigoDe(vistaPrevia) {
+    const html = await (await fetch(base + vistaPrevia.replace(/^\/api/, ''))).text();
+    const codigo = (html.match(/:\s*(\d{6})</) || html.match(/(\d{3})&nbsp;(\d{3})/) || [])
+        .slice(1).join('');
+    assert.equal(codigo.length, 6, 'el correo debe traer el código');
+    return codigo;
+}
+
+test('cuenta: entrar con código, cambiar contraseña y correo, y avisos de la campana', async () => {
+    const correo = 'cuenta.prueba@gmail.com';
+    const creada = await registrarYVerificar({ tipoCuenta: 'cliente', nombre: 'Cuenta Prueba', correo, password: 'Prueba123', confirmarPassword: 'Prueba123' });
+    assert.equal(creada.status, 201);
+    const token = creada.datos.token;
+
+    // Entrar con un código enviado al correo.
+    const acceso = await api('/auth/acceso', { metodo: 'POST', cuerpo: { correo } });
+    assert.equal(acceso.status, 200);
+    const malo = await api('/auth/acceso/verificar', { metodo: 'POST', cuerpo: { correo, codigo: '000000' } });
+    assert.equal(malo.status, 400);
+    const codigo = await codigoDe(acceso.datos.vistaPrevia);
+    const entrada = await api('/auth/acceso/verificar', { metodo: 'POST', cuerpo: { correo, codigo } });
+    assert.equal(entrada.status, 200);
+    assert.ok(entrada.datos.token);
+    // Un correo sin cuenta recibe la misma respuesta (no revela qué correos existen).
+    assert.equal((await api('/auth/acceso', { metodo: 'POST', cuerpo: { correo: 'nadie@gmail.com' } })).status, 200);
+
+    // Cambiar la contraseña exige la actual.
+    assert.equal((await api('/auth/password', { metodo: 'POST', token, cuerpo: { actual: 'mala', password: 'Nueva12345', confirmarPassword: 'Nueva12345' } })).status, 400);
+    assert.equal((await api('/auth/password', { metodo: 'POST', token, cuerpo: { actual: 'Prueba123', password: 'Nueva12345', confirmarPassword: 'Nueva12345' } })).status, 200);
+    assert.equal((await api('/auth/login', { metodo: 'POST', cuerpo: { correo, password: 'Nueva12345' } })).status, 200);
+
+    // Cambiar el correo con un código enviado al correo nuevo.
+    const nuevo = 'cuenta.nueva@gmail.com';
+    const pedido = await api('/auth/correo', { metodo: 'POST', token, cuerpo: { correo: nuevo, password: 'Nueva12345' } });
+    assert.equal(pedido.status, 200, JSON.stringify(pedido.datos));
+    const confirmado = await api('/auth/correo/confirmar', { metodo: 'POST', token, cuerpo: { correo: nuevo, codigo: await codigoDe(pedido.datos.vistaPrevia) } });
+    assert.equal(confirmado.status, 200);
+    assert.equal((await api('/auth/login', { metodo: 'POST', cuerpo: { correo: nuevo, password: 'Nueva12345' } })).status, 200);
+    assert.equal((await api('/auth/cuenta', { token: confirmado.datos.token })).datos.correo, nuevo);
+
+    // Campana: el cambio de contraseña dejó un aviso; se marcan como leídos.
+    const avisos = await api('/notificaciones', { token });
+    assert.equal(avisos.status, 200);
+    assert.ok(avisos.datos.notificaciones.some((n) => n.tipo === 'seguridad'));
+    assert.ok(avisos.datos.sinLeer >= 1);
+    await api('/notificaciones/leidas', { metodo: 'POST', token });
+    assert.equal((await api('/notificaciones', { token })).datos.sinLeer, 0);
+    assert.equal((await api('/notificaciones')).status, 401);
+});

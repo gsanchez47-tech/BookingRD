@@ -16,7 +16,9 @@
     padding: var(--e-8) 0 calc(var(--e-7) + 6px);
     background: var(--night);   /* respaldo si la fotografía no carga */
     color: #fff;
-    overflow: hidden;
+    /* overflow visible: el desplegable de huéspedes puede salir de la portada. */
+    overflow: visible;
+    z-index: 3;
 }
 
 .portada-foto {
@@ -45,6 +47,8 @@
 }
 
 .portada-contenido {
+    position: relative;
+    z-index: 2;
     display: grid;
     gap: var(--e-6);
     width: 100%;
@@ -104,7 +108,8 @@
     color: var(--azul);
 }
 
-.portada .buscador label {
+.portada .buscador label,
+.portada .buscador .campo-etiqueta {
     color: rgba(255, 255, 255, 0.86);
 }
 
@@ -201,7 +206,7 @@
     }
 
     .portada .buscador-campos > .campo-personas {
-        flex: 0 0 110px;
+        flex: 0 0 250px;
     }
 
     .portada .buscador-enviar {

@@ -27,6 +27,12 @@ router.get('/restablecer', asyncHandler(authController.comprobarEnlace));
 router.post('/restablecer', asyncHandler(authController.restablecerPassword));
 router.get('/correo-prueba/:archivo', asyncHandler(authController.verCorreoPrueba));
 router.post('/login', asyncHandler(authController.iniciarSesion));
+router.post('/acceso', asyncHandler(authController.solicitarAcceso));
+router.post('/acceso/verificar', asyncHandler(authController.verificarAcceso));
+router.get('/cuenta', requiereSesion, asyncHandler(authController.obtenerCuenta));
+router.post('/password', requiereSesion, asyncHandler(authController.cambiarPasswordCuenta));
+router.post('/correo', requiereSesion, asyncHandler(authController.solicitarCambioCorreo));
+router.post('/correo/confirmar', requiereSesion, asyncHandler(authController.confirmarCambioCorreo));
 router.get('/sesion', requiereSesion, authController.obtenerSesion);
 
 module.exports = router;

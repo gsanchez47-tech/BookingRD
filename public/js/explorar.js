@@ -158,6 +158,7 @@ function leerUrl() {
     }
     if (fechaValida(parametros.get('fecha'))) contextoViaje.fecha = parametros.get('fecha');
     contextoViaje.personas = estado.personas;
+    if (/^([1-9]|1\d|20)$/.test(parametros.get('habitaciones') || '')) contextoViaje.habitaciones = parametros.get('habitaciones');
 }
 
 /** Refleja los filtros en la URL sin recargar la página. */
@@ -179,6 +180,7 @@ function escribirUrl() {
         parametros.set('salida', contextoViaje.salida);
     }
     if (contextoViaje.fecha) parametros.set('fecha', contextoViaje.fecha);
+    if (contextoViaje.habitaciones && estado.tipo === 'hotel') parametros.set('habitaciones', contextoViaje.habitaciones);
     if (contextoViaje.recogida) {
         for (const clave of ['recogida', 'horaRecogida', 'devolucion', 'horaDevolucion']) parametros.set(clave, contextoViaje[clave]);
     }
@@ -752,3 +754,39 @@ function iniciarMinimapa() {
         aplicarCambio(false);
     });
 }
+
+/* ----------------------------------------------------------------------------
+   Grupos de filtros plegables (Categoría, Transmisión, Precio, Valoración):
+   el título abre y cierra el grupo con una animación, como en los buscadores
+   de viajes más conocidos.
+   ------------------------------------------------------------------------- */
+
+function iniciarGruposPlegables() {
+    document.querySelectorAll('#form-filtros fieldset.grupo-filtro').forEach((grupo, i) => {
+        if (i === 0 || grupo.dataset.plegable) return;
+        const leyenda = grupo.querySelector('legend');
+        if (!leyenda) return;
+        grupo.dataset.plegable = '1';
+        const contenido = document.createElement('div');
+        contenido.className = 'grupo-contenido';
+        const interior = document.createElement('div');
+        while (leyenda.nextSibling) interior.appendChild(leyenda.nextSibling);
+        contenido.appendChild(interior);
+        grupo.appendChild(contenido);
+        contenido.id = `grupo-${i}`;
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = 'grupo-alternar';
+        boton.setAttribute('aria-expanded', 'true');
+        boton.setAttribute('aria-controls', contenido.id);
+        while (leyenda.firstChild) boton.appendChild(leyenda.firstChild);
+        leyenda.appendChild(boton);
+        boton.addEventListener('click', () => {
+            const abierto = boton.getAttribute('aria-expanded') === 'true';
+            boton.setAttribute('aria-expanded', String(!abierto));
+            grupo.classList.toggle('plegado', abierto);
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', iniciarGruposPlegables);

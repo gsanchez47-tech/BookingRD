@@ -356,3 +356,30 @@
 }
 
 .mensaje-formulario[hidden] { display: none; }
+
+.separador-o {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    text-transform: lowercase;
+}
+
+.separador-o::before,
+.separador-o::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--linea);
+}
+
+#codigo-acceso {
+    font-size: 1.3rem;
+    font-weight: 800;
+    letter-spacing: 0.3em;
+    text-align: center;
+}
+
+.campo[hidden] { display: none; }

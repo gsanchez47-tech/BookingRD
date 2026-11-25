@@ -31,6 +31,7 @@ function iniciarFormulario() {
     const formulario = document.getElementById('form-login');
     const boton = document.getElementById('boton-login');
     const mensajeError = document.getElementById('mensaje-error');
+    const mensajeInfo = document.getElementById('mensaje-info');
 
     if (parametros.get('motivo') === 'sesion-expirada') {
         const info = document.getElementById('mensaje-info');
@@ -66,10 +67,75 @@ function iniciarFormulario() {
         if (contenedor) contenedor.classList.remove('invalido');
     });
 
+    // Entrar con un código: se pide al correo y se escribe en lugar de la contraseña.
+    let modoCodigo = false;
+    let codigoEnviado = false;
+    const botonModo = document.getElementById('boton-modo-codigo');
+    function cambiarModo(conCodigo) {
+        modoCodigo = conCodigo;
+        codigoEnviado = false;
+        document.getElementById('campo-password').hidden = conCodigo;
+        document.getElementById('campo-codigo').hidden = true;
+        document.getElementById('enlace-olvido').hidden = conCodigo;
+        botonModo.textContent = conCodigo ? 'Entrar con mi contraseña' : 'Entrar con un código por correo';
+        botonNormal(boton, conCodigo ? 'Enviarme el código' : 'Iniciar sesión');
+        mensajeError.hidden = true;
+        document.getElementById('correo').focus();
+    }
+    botonModo.addEventListener('click', () => cambiarModo(!modoCodigo));
+
+    async function entrarConCodigo(correo, recordarme) {
+        if (!codigoEnviado) {
+            botonCargando(boton, 'Enviando...');
+            try {
+                const respuesta = await apiFetch('/auth/acceso', { method: 'POST', body: { correo } });
+                codigoEnviado = true;
+                document.getElementById('campo-codigo').hidden = false;
+                const demo = document.getElementById('aviso-acceso-demo');
+                demo.hidden = !respuesta.vistaPrevia;
+                if (respuesta.vistaPrevia) document.getElementById('enlace-acceso-demo').href = respuesta.vistaPrevia;
+                mensajeInfo.textContent = `Si ${correo} tiene una cuenta, te llegó un código de 6 dígitos. Vence en ${respuesta.minutos} minutos.`;
+                mensajeInfo.hidden = false;
+                botonNormal(boton, 'Entrar');
+                document.getElementById('codigo-acceso').focus();
+            } catch (error) {
+                mostrarError(error.message, 'correo');
+                botonNormal(boton, 'Enviarme el código');
+            }
+            return;
+        }
+        const codigo = document.getElementById('codigo-acceso').value.replace(/\D/g, '');
+        if (codigo.length !== 6) {
+            mostrarError('Escribe los 6 dígitos del código.', 'codigo-acceso');
+            return;
+        }
+        botonCargando(boton, 'Entrando...');
+        try {
+            const respuesta = await apiFetch('/auth/acceso/verificar', { method: 'POST', body: { correo, codigo } });
+            terminarInicio(respuesta, recordarme);
+        } catch (error) {
+            mostrarError(error.message, 'codigo-acceso');
+            botonNormal(boton, 'Entrar');
+        }
+    }
+
+    function terminarInicio(respuesta, recordarme) {
+        guardarSesion(respuesta.token, respuesta.usuario, recordarme);
+        programarAviso(`Bienvenido de vuelta, ${respuesta.usuario.nombre.split(' ')[0]}.`);
+        const inicioPorRol = { admin: 'admin.html', empresa: 'panel-empresa.html' };
+        const volver = parametros.get('volver');
+        window.location.href = volver ? destinoSeguro(volver) : (inicioPorRol[respuesta.usuario.rol] || 'index.html');
+    }
+
     formulario.addEventListener('submit', async (evento) => {
         evento.preventDefault();
         mensajeError.hidden = true;
         formulario.querySelectorAll('.invalido').forEach((campo) => campo.classList.remove('invalido'));
+        if (modoCodigo) {
+            const correoCodigo = document.getElementById('correo').value.trim();
+            if (!correoCodigo) return mostrarError('Escribe el correo de tu cuenta.', 'correo');
+            return entrarConCodigo(correoCodigo, document.getElementById('recordarme').checked);
+        }
 
         const correo = document.getElementById('correo').value.trim();
         const password = document.getElementById('password').value;

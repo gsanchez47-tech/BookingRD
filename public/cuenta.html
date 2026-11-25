@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mi cuenta y seguridad | BookingRD</title>
+    <meta name="description" content="Cambia tu contraseña y tu correo, y revisa los avisos de tu cuenta de BookingRD.">
+    <meta name="theme-color" content="#003087">
+    <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+    <link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/nunito.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/cuenta-ajustes.css">
+</head>
+<body class="pagina-cuenta-ajustes">
+    <a class="saltar-contenido" href="#contenido">Saltar al contenido</a>
+    <!-- Encabezado común. Los elementos con data-sesion se muestran según la
+         sesión activa (comun.js: aplicarEstadoSesion). -->
+    <header class="header-principal">
+        <div class="contenedor header-fila">
+            <a href="index.html" class="marca" aria-label="BookingRD, página de inicio">
+                <span class="marca-sello" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                <span>Booking<b>RD</b></span>
+            </a>
+
+            <nav class="nav-principal" aria-label="Principal">
+                <a href="explorar.html?tipo=hotel" data-nav="alojamiento">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad" data-nav="actividades">Actividades</a>
+                <a href="combos.html" data-nav="combos">Combos</a>
+                <a href="autos.html" data-nav="autos">Autos</a>
+                <a href="ruta.html" data-nav="ruta">En ruta</a>
+                <a href="tienda.html" data-nav="tienda">Tienda</a>
+            </nav>
+
+            <div class="header-acciones">
+                <div class="preferencias" data-preferencias></div>
+
+                <div class="acciones-escritorio" data-sesion="invitado">
+                    <a href="login.html" class="enlace-header">Iniciar sesión</a>
+                    <a href="registro.html" class="btn-primario btn-chico">Crear cuenta</a>
+                </div>
+                <div class="acciones-escritorio" data-sesion="usuario" hidden>
+                    <a href="mis-reservas.html?vista=guardados" class="enlace-header enlace-guardados" data-sesion="cliente" hidden aria-label="Guardados">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.6s-7.6-4.6-9.4-9.3C1.4 8 3.4 4.6 6.9 4.6c2 0 3.6 1.1 4.6 2.7h1c1-1.6 2.6-2.7 4.6-2.7 3.5 0 5.5 3.4 4.3 6.7-1.8 4.7-9.4 9.3-9.4 9.3z"/></svg>
+                        <span class="contador-favoritos" data-contador-favoritos hidden>0</span>
+                    </a>
+                    <a href="mis-reservas.html" class="enlace-header" data-sesion="cliente" hidden>Mis reservas</a>
+                    <a href="panel-empresa.html" class="enlace-header" data-sesion="empresa" hidden>Mi panel</a>
+                    <a href="admin.html" class="enlace-header" data-sesion="admin" hidden>Administración</a>
+                    <div class="cuenta-desplegable">
+                        <button type="button" class="usuario-chip" id="boton-cuenta" aria-haspopup="true" aria-expanded="false" aria-controls="menu-cuenta">
+                            <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                            <span data-nombre-usuario></span>
+                        </button>
+                        <div class="menu-cuenta" id="menu-cuenta" hidden>
+                            <p class="menu-cuenta-correo" data-correo-usuario></p>
+                            <a href="cuenta.html">Mi cuenta y seguridad</a>
+                            <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                            <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                            <a href="mis-reservas.html?vista=pedidos" data-sesion="cliente" hidden>Pedidos de la tienda</a>
+                            <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                            <a href="panel-empresa.html#publicaciones" data-sesion="empresa" hidden>Publicar una oferta</a>
+                            <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                            <button type="button" data-accion="cerrar-sesion">Cerrar sesión</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="campana" data-sesion="usuario" hidden>
+                    <button type="button" class="campana-boton" id="boton-campana" aria-haspopup="true" aria-expanded="false" aria-controls="panel-campana" aria-label="Notificaciones">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.6 1.8H4.4z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>
+                        <span class="campana-contador" id="campana-contador" hidden>0</span>
+                    </button>
+                    <div class="campana-panel" id="panel-campana" hidden>
+                        <div class="campana-cabecera">
+                            <strong>Notificaciones</strong>
+                            <button type="button" class="boton-enlace" id="campana-leer">Marcar como leídas</button>
+                        </div>
+                        <ul class="campana-lista" id="campana-lista"></ul>
+                    </div>
+                </div>
+
+                <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-expanded="false" aria-controls="menu-movil" aria-label="Abrir menú">
+                    <span aria-hidden="true"></span>
+                </button>
+            </div>
+        </div>
+
+        <div class="menu-movil" id="menu-movil">
+            <nav aria-label="Menú móvil">
+                <a href="explorar.html?tipo=hotel">Alojamiento</a>
+                <a href="explorar.html?tipo=actividad">Actividades</a>
+                <a href="combos.html">Combos con descuento</a>
+                <a href="autos.html">Alquiler de autos</a>
+                <a href="ruta.html">Ruta del Parador y asistencia vial</a>
+                <a href="tienda.html">Tienda de artesanía</a>
+                <a href="index.html#destinos">Destinos</a>
+                <a href="registro.html?tipo=empresa">Para empresas</a>
+                <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <a href="cuenta.html" data-sesion="usuario" hidden>Mi cuenta y seguridad</a>
+                <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
+                <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
+                <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="contenido">
+        <section class="cabecera-cuenta cabecera-caribe">
+            <div class="contenedor ajustes-cabecera">
+                <div>
+                    <p class="cabecera-cuenta-etiqueta">Mi cuenta</p>
+                    <h1>Cuenta y seguridad</h1>
+                    <p>Hola, <strong data-nombre-usuario translate="no"></strong>. Aquí cambias tu contraseña y tu correo. Cada cambio te llega por correo para que sepas que fuiste tú.</p>
+                </div>
+                <svg class="ajustes-ilustracion" viewBox="0 0 200 160" aria-hidden="true">
+                    <circle cx="100" cy="86" r="66" fill="#00B4D8" opacity=".25"/>
+                    <path d="M44 132c18-36 38-56 56-62M40 120c22-10 40-8 56 2M150 128c-10-30-26-48-44-56M162 112c-18-8-34-6-48 6" stroke="#52B788" stroke-width="7" stroke-linecap="round" fill="none"/>
+                    <path d="M100 30l40 14v30c0 28-17 46-40 56-23-10-40-28-40-56V44z" fill="#fff"/>
+                    <path d="M100 38l32 11v25c0 22-13 37-32 46z" fill="#CE1126"/>
+                    <path d="M100 38L68 49v25c0 22 13 37 32 46z" fill="#003087"/>
+                    <rect x="86" y="70" width="28" height="22" rx="4" fill="#fff"/>
+                    <path d="M91 70v-6a9 9 0 0 1 18 0v6" stroke="#fff" stroke-width="5" fill="none"/>
+                    <circle cx="100" cy="81" r="3.5" fill="#003087"/>
+                </svg>
+            </div>
+        </section>
+
+        <section class="contenedor ajustes" aria-label="Ajustes de la cuenta">
+            <article class="ajustes-tarjeta">
+                <h2>Tus datos</h2>
+                <dl class="ajustes-datos">
+                    <div><dt>Nombre</dt><dd id="dato-nombre" translate="no">-</dd></div>
+                    <div><dt>Correo</dt><dd id="dato-correo" translate="no">-</dd></div>
+                    <div><dt>Tipo de cuenta</dt><dd id="dato-rol">-</dd></div>
+                </dl>
+                <p class="ajustes-nota">¿Prefieres no escribir la contraseña? En <a href="login.html">Iniciar sesión</a> pulsa <strong>Entrar con un código</strong> y te lo enviamos al correo.</p>
+            </article>
+
+            <article class="ajustes-tarjeta">
+                <h2>Cambiar la contraseña</h2>
+                <form id="form-password" novalidate>
+                    <div class="campo">
+                        <label for="actual">Contraseña actual</label>
+                        <input type="password" id="actual" autocomplete="current-password" required>
+                        <p class="error-campo" id="error-actual" hidden></p>
+                    </div>
+                    <div class="campo">
+                        <label for="password">Contraseña nueva</label>
+                        <input type="password" id="password" autocomplete="new-password" minlength="8" required>
+                        <div class="fuerza" id="fuerza" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                        <p class="error-campo" id="error-password" hidden></p>
+                    </div>
+                    <div class="campo">
+                        <label for="confirmarPassword">Repite la contraseña nueva</label>
+                        <input type="password" id="confirmarPassword" autocomplete="new-password" required>
+                        <p class="error-campo" id="error-confirmarPassword" hidden></p>
+                    </div>
+                    <button type="submit" class="btn-primario" id="boton-password">Guardar la contraseña</button>
+                </form>
+            </article>
+
+            <article class="ajustes-tarjeta">
+                <h2>Cambiar el correo</h2>
+                <form id="form-correo" novalidate>
+                    <div id="paso-correo">
+                        <div class="campo">
+                            <label for="correo-nuevo">Correo nuevo</label>
+                            <input type="email" id="correo-nuevo" autocomplete="email" required>
+                            <p class="error-campo" id="error-correo-nuevo" hidden></p>
+                        </div>
+                        <div class="campo">
+                            <label for="password-correo">Tu contraseña</label>
+                            <input type="password" id="password-correo" autocomplete="current-password" required>
+                            <p class="error-campo" id="error-password-correo" hidden></p>
+                        </div>
+                        <button type="submit" class="btn-primario" id="boton-correo">Enviar el código</button>
+                    </div>
+                    <div id="paso-codigo" hidden>
+                        <p>Escribe el código de 6 dígitos que enviamos a <strong id="correo-destino"></strong>.</p>
+                        <div class="campo">
+                            <label for="codigo-correo">Código</label>
+                            <input type="text" id="codigo-correo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
+                            <p class="error-campo" id="error-codigo" hidden></p>
+                        </div>
+                        <p class="aviso-demostracion" id="aviso-correo-demo" hidden>Modo de demostración: <a id="enlace-correo-demo" target="_blank" rel="noopener">Abrir el correo</a></p>
+                        <div class="ajustes-acciones">
+                            <button type="button" class="btn-primario" id="boton-confirmar-correo">Confirmar el correo nuevo</button>
+                            <button type="button" class="boton-enlace" id="boton-volver-correo">Usar otro correo</button>
+                        </div>
+                    </div>
+                </form>
+            </article>
+        </section>
+    </main>
+
+    <footer class="pie">
+        <div class="contenedor">
+            <div class="pie-rejilla">
+                <div class="pie-marca">
+                    <a href="index.html" class="marca">
+                        <span class="marca-sello" aria-hidden="true"><span></span><span></span><span></span><span></span></span>
+                        <span>Booking<b>RD</b></span>
+                    </a>
+                    <p>Hoteles, villas, excursiones y autos de empresas turísticas dominicanas, con disponibilidad real y confirmación inmediata.</p>
+                </div>
+                <div>
+                    <h2>Explorar</h2>
+                    <ul>
+                        <li><a href="explorar.html?tipo=hotel">Alojamiento</a></li>
+                        <li><a href="explorar.html?tipo=actividad">Actividades</a></li>
+                        <li><a href="combos.html">Combos</a></li>
+                        <li><a href="autos.html">Alquiler de autos</a></li>
+                        <li><a href="index.html#destinos">Destinos</a></li>
+                        <li><a href="tienda.html">Tienda de artesanía</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h2>Empresas</h2>
+                    <ul>
+                        <li><a href="registro.html?tipo=empresa">Publicar mi empresa</a></li>
+                        <li><a href="login.html">Entrar al panel</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h2>Ayuda</h2>
+                    <ul>
+                        <li><a href="index.html#contacto">Contacto</a></li>
+                        <li><a href="mis-reservas.html">Mis reservas</a></li>
+                        <li><a href="ruta.html#asistencia">Asistencia vial</a></li>
+                        <li><a href="autos.html#preguntas">Preguntas sobre autos</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="pie-legal">
+                <span>&copy; 2026 BookingRD. Proyecto académico.</span>
+                <span>Clima por <a href="https://open-meteo.com" rel="noopener" target="_blank">Open-Meteo</a>. Tasas por <a href="https://www.exchangerate-api.com" rel="noopener" target="_blank">Exchange Rate API</a>.</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/cuenta.js"></script>
+</body>
+</html>

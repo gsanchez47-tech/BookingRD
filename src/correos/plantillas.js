@@ -217,6 +217,37 @@ function codigoVerificacion({ nombre, codigo, minutos, urlSitio }) {
     return { asunto: `Tu código de BookingRD: ${codigo}`, html: marco({ preencabezado: `Tu código es ${codigo}. Vence en ${minutos} minutos.`, titulo, cuerpo, urlSitio }), texto };
 }
 
+/** Código para entrar sin contraseña. */
+function codigoAcceso({ nombre, codigo, minutos, urlSitio }) {
+    const titulo = `Tu código para entrar, ${nombrePila(nombre)}`;
+    const cuerpo = parrafo('Escribe este código en la página de inicio de sesión de BookingRD para entrar sin contraseña:')
+        + codigoGrande(codigo)
+        + parrafo(`Vence en ${minutos} minutos y solo funciona una vez.`)
+        + `<p style="margin:18px 0 0;font-family:${TEXTO};font-size:13px;line-height:20px;color:${COLOR.gris};">Si no lo pediste, ignora este correo: sin el código nadie puede entrar a tu cuenta.</p>`;
+    const texto = `${titulo}\n\nTu código para entrar a BookingRD es: ${codigo}\nVence en ${minutos} minutos.`;
+    return { asunto: `Tu código para entrar a BookingRD: ${codigo}`, html: marco({ preencabezado: `Código ${codigo}. Vence en ${minutos} minutos.`, titulo, cuerpo, urlSitio }), texto };
+}
+
+/** Código para confirmar el correo nuevo de una cuenta. */
+function codigoNuevoCorreo({ nombre, codigo, minutos, urlSitio }) {
+    const titulo = `Confirma tu correo nuevo, ${nombrePila(nombre)}`;
+    const cuerpo = parrafo('Pediste usar esta dirección en tu cuenta de BookingRD. Escribe este código en la página de tu cuenta para confirmarla:')
+        + codigoGrande(codigo)
+        + parrafo(`Vence en ${minutos} minutos.`);
+    const texto = `${titulo}\n\nCódigo para confirmar tu correo nuevo: ${codigo}\nVence en ${minutos} minutos.`;
+    return { asunto: `Confirma tu correo nuevo: ${codigo}`, html: marco({ preencabezado: `Código ${codigo}.`, titulo, cuerpo, urlSitio }), texto };
+}
+
+/** Aviso de seguridad: cambio de contraseña o de correo. */
+function avisoSeguridad({ nombre, cambio, urlSitio }) {
+    const titulo = 'Se hizo un cambio en tu cuenta';
+    const cuerpo = parrafo(`Hola, ${e(nombrePila(nombre))}. ${e(cambio)}`)
+        + parrafo('Si fuiste tú, no tienes que hacer nada. Si no reconoces este cambio, recupera tu cuenta ahora:')
+        + boton('Recuperar mi cuenta', `${urlSitio}/restablecer.html`, COLOR.azul);
+    const texto = `${titulo}\n\n${cambio}\nSi no fuiste tú: ${urlSitio}/restablecer.html`;
+    return { asunto: 'BookingRD: cambio en tu cuenta', html: marco({ preencabezado: cambio, titulo, cuerpo, urlSitio }), texto };
+}
+
 /** Enlace para crear una contraseña nueva. */
 function restablecerPassword({ nombre, enlace, minutos, urlSitio }) {
     const titulo = `Crea una contraseña nueva, ${nombrePila(nombre)}`;
@@ -228,4 +259,4 @@ function restablecerPassword({ nombre, enlace, minutos, urlSitio }) {
     return { asunto: 'Restablece tu contraseña de BookingRD', html: marco({ preencabezado: 'Enlace para crear una contraseña nueva.', titulo, cuerpo, urlSitio }), texto };
 }
 
-module.exports = { bienvenidaViajero, bienvenidaEmpresa, confirmacionReserva, reservaRecibida, recordatorioReserva, pedirResena, codigoVerificacion, restablecerPassword };
+module.exports = { codigoAcceso, codigoNuevoCorreo, avisoSeguridad, bienvenidaViajero, bienvenidaEmpresa, confirmacionReserva, reservaRecibida, recordatorioReserva, pedirResena, codigoVerificacion, restablecerPassword };

@@ -721,3 +721,69 @@
         var(--foto-cabecera) center / cover no-repeat,
         var(--night);
 }
+
+/* Grupos de filtros plegables */
+.grupo-alternar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.grupo-alternar::after {
+    content: '';
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    margin-right: 4px;
+    border-right: 2px solid var(--azul);
+    border-bottom: 2px solid var(--azul);
+    transform: rotate(-135deg) translate(-2px, -2px);
+    transition: transform 0.22s ease;
+}
+
+.grupo-filtro.plegado .grupo-alternar::after {
+    transform: rotate(45deg);
+}
+
+.grupo-alternar:focus-visible {
+    outline: none;
+    border-radius: 6px;
+    box-shadow: var(--enfoque);
+}
+
+.grupo-filtro legend:has(.grupo-alternar) {
+    width: 100%;
+}
+
+.grupo-contenido {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.25s ease, opacity 0.2s ease;
+}
+
+.grupo-contenido > div {
+    min-height: 0;
+    overflow: hidden;
+}
+
+.grupo-filtro.plegado .grupo-contenido {
+    grid-template-rows: 0fr;
+    opacity: 0;
+}
+
+.grupo-contenido > div {
+    padding: 3px;
+    margin: -3px;
+}
+
+.grupo-filtro.plegado { gap: 0; }
+.grupo-filtro.plegado legend { margin-bottom: 0; }

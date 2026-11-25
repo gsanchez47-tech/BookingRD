@@ -46,11 +46,37 @@
                     <a href="mis-reservas.html" class="enlace-header" data-sesion="cliente" hidden>Mis reservas</a>
                     <a href="panel-empresa.html" class="enlace-header" data-sesion="empresa" hidden>Mi panel</a>
                     <a href="admin.html" class="enlace-header" data-sesion="admin" hidden>Administración</a>
-                    <span class="usuario-chip">
-                        <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
-                        <span data-nombre-usuario></span>
-                    </span>
-                    <button type="button" class="boton-enlace" data-accion="cerrar-sesion">Salir</button>
+                    <div class="cuenta-desplegable">
+                        <button type="button" class="usuario-chip" id="boton-cuenta" aria-haspopup="true" aria-expanded="false" aria-controls="menu-cuenta">
+                            <span class="usuario-inicial" data-inicial-usuario aria-hidden="true"></span>
+                            <span data-nombre-usuario></span>
+                        </button>
+                        <div class="menu-cuenta" id="menu-cuenta" hidden>
+                            <p class="menu-cuenta-correo" data-correo-usuario></p>
+                            <a href="cuenta.html">Mi cuenta y seguridad</a>
+                            <a href="mis-reservas.html" data-sesion="cliente" hidden>Mis reservas</a>
+                            <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
+                            <a href="mis-reservas.html?vista=pedidos" data-sesion="cliente" hidden>Pedidos de la tienda</a>
+                            <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
+                            <a href="panel-empresa.html#publicaciones" data-sesion="empresa" hidden>Publicar una oferta</a>
+                            <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                            <button type="button" data-accion="cerrar-sesion">Cerrar sesión</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="campana" data-sesion="usuario" hidden>
+                    <button type="button" class="campana-boton" id="boton-campana" aria-haspopup="true" aria-expanded="false" aria-controls="panel-campana" aria-label="Notificaciones">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 1 1 12 0v5.5l1.6 1.8H4.4z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/></svg>
+                        <span class="campana-contador" id="campana-contador" hidden>0</span>
+                    </button>
+                    <div class="campana-panel" id="panel-campana" hidden>
+                        <div class="campana-cabecera">
+                            <strong>Notificaciones</strong>
+                            <button type="button" class="boton-enlace" id="campana-leer">Marcar como leídas</button>
+                        </div>
+                        <ul class="campana-lista" id="campana-lista"></ul>
+                    </div>
                 </div>
 
                 <button type="button" class="boton-menu-movil" id="boton-menu-movil" aria-expanded="false" aria-controls="menu-movil" aria-label="Abrir menú">
@@ -73,6 +99,7 @@
                 <a href="mis-reservas.html?vista=guardados" data-sesion="cliente" hidden>Guardados</a>
                 <a href="panel-empresa.html" data-sesion="empresa" hidden>Mi panel</a>
                 <a href="admin.html" data-sesion="admin" hidden>Administración</a>
+                <a href="cuenta.html" data-sesion="usuario" hidden>Mi cuenta y seguridad</a>
                 <a href="login.html" class="enlace-destacado" data-sesion="invitado">Iniciar sesión</a>
                 <a href="registro.html" data-sesion="invitado">Crear cuenta</a>
                 <button type="button" data-sesion="usuario" data-accion="cerrar-sesion" hidden>Cerrar sesión</button>
@@ -179,7 +206,7 @@
                             </div>
                         </fieldset>
 
-                        <p class="filtro-garantias" id="texto-garantias">Cancelación gratuita hasta un día antes y confirmación inmediata.</p>
+                        <p class="filtro-garantias" id="texto-garantias">Cancela hasta un día antes (reembolso del 90 %) y confirmación inmediata.</p>
                     </form>
 
                     <div class="panel-filtros-pie">

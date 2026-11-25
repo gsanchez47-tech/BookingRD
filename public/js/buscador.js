@@ -149,6 +149,8 @@ function urlBusqueda() {
     }
     const personas = parseInt((campoBusqueda('busqueda-personas') || { value: '' }).value, 10);
     if (personas > 0) parametros.set('personas', personas);
+    const habitaciones = parseInt((document.getElementById('busqueda-habitaciones') || { value: '' }).value, 10);
+    if (tipo === 'hotel' && habitaciones > 1) parametros.set('habitaciones', habitaciones);
     if (tipo === 'hotel') {
         const entrada = document.getElementById('busqueda-entrada').value;
         const salida = document.getElementById('busqueda-salida').value;
@@ -244,3 +246,76 @@ function iniciarAutocompletado() {
     });
     campo.addEventListener('blur', () => setTimeout(cerrar, 100));
 }
+
+
+/* ----------------------------------------------------------------------------
+   Desplegable de huéspedes: adultos, niños y habitaciones (alojamiento), o
+   adultos y niños (actividades). Guarda el total en #busqueda-personas.
+   ------------------------------------------------------------------------- */
+
+function iniciarHuespedes() {
+    const boton = document.getElementById('boton-huespedes');
+    if (!boton) return;
+    const panel = document.getElementById('panel-huespedes');
+    const valores = { adultos: 2, ninos: 0, habitaciones: 1 };
+    const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+
+    function pintar() {
+        const esHotel = tipoBuscado() === 'hotel';
+        document.getElementById('fila-habitaciones').hidden = !esHotel;
+        document.getElementById('etiqueta-huespedes').textContent = esHotel ? 'Huéspedes' : 'Personas';
+        const partes = [plural(valores.adultos, 'adulto', 'adultos')];
+        if (valores.ninos) partes.push(plural(valores.ninos, 'niño', 'niños'));
+        if (esHotel) partes.push(plural(valores.habitaciones, 'habitación', 'habitaciones'));
+        document.getElementById('texto-huespedes').textContent = partes.join(' · ');
+        document.getElementById('busqueda-personas').value = valores.adultos + valores.ninos;
+        document.getElementById('busqueda-habitaciones').value = esHotel ? valores.habitaciones : 1;
+        panel.querySelectorAll('.huespedes-contador').forEach((c) => {
+            const clave = c.dataset.huespedes;
+            c.querySelector('output').textContent = valores[clave];
+            c.querySelector('[data-paso="-1"]').disabled = valores[clave] <= Number(c.dataset.min);
+            c.querySelector('[data-paso="1"]').disabled = valores[clave] >= Number(c.dataset.max);
+        });
+    }
+
+    function abrir(abierto) {
+        panel.hidden = !abierto;
+        boton.setAttribute('aria-expanded', String(abierto));
+        boton.classList.toggle('abierto', abierto);
+    }
+
+    boton.addEventListener('click', () => abrir(panel.hidden));
+    document.getElementById('huespedes-listo').addEventListener('click', () => {
+        abrir(false);
+        boton.focus();
+    });
+    panel.addEventListener('click', (evento) => {
+        const paso = evento.target.closest('[data-paso]');
+        if (!paso) return;
+        const contador = paso.closest('.huespedes-contador');
+        const clave = contador.dataset.huespedes;
+        const nuevo = valores[clave] + Number(paso.dataset.paso);
+        if (nuevo < Number(contador.dataset.min) || nuevo > Number(contador.dataset.max)) return;
+        valores[clave] = nuevo;
+        // Nunca más habitaciones que adultos.
+        if (valores.habitaciones > valores.adultos) valores.habitaciones = valores.adultos;
+        const salida = contador.querySelector('output');
+        salida.classList.remove('salto');
+        void salida.offsetWidth;
+        salida.classList.add('salto');
+        pintar();
+    });
+    document.addEventListener('click', (evento) => {
+        if (!panel.hidden && !evento.target.closest('.huespedes')) abrir(false);
+    });
+    document.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Escape' && !panel.hidden) {
+            abrir(false);
+            boton.focus();
+        }
+    });
+    document.querySelectorAll('#form-busqueda input[name="tipo"]').forEach((r) => r.addEventListener('change', pintar));
+    pintar();
+}
+
+document.addEventListener('DOMContentLoaded', iniciarHuespedes);

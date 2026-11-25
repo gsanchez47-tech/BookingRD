@@ -299,6 +299,8 @@ function prepararFormulario() {
     if (fechaValida(parametrosUrl.get('fecha'))) document.getElementById('reserva-fecha').value = parametrosUrl.get('fecha');
     const personas = parseInt(parametrosUrl.get('personas'), 10);
     if (personas >= 1 && personas <= 60) document.getElementById('reserva-personas').value = personas;
+    const habitaciones = parseInt(parametrosUrl.get('habitaciones'), 10);
+    if (habitaciones >= 1 && habitaciones <= 20) document.getElementById('reserva-habitaciones').value = habitaciones;
 
     // Tras iniciar sesión se vuelve a esta misma página, con las fechas elegidas.
     const loginReservar = document.getElementById('boton-login-reservar');

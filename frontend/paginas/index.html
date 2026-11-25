@@ -53,8 +53,41 @@
                                 </div>
                             </div>
                             <div class="campo campo-personas" data-busqueda-tipo="hotel actividad">
-                                <label for="busqueda-personas">Personas</label>
-                                <input type="number" id="busqueda-personas" min="1" max="60" value="2" inputmode="numeric">
+                                <span class="campo-etiqueta" id="etiqueta-huespedes">Huéspedes</span>
+                                <div class="huespedes">
+                                    <button type="button" class="huespedes-boton" id="boton-huespedes" aria-haspopup="true" aria-expanded="false" aria-controls="panel-huespedes" aria-describedby="etiqueta-huespedes">
+                                        <span id="texto-huespedes">2 adultos · 1 habitación</span>
+                                    </button>
+                                    <div class="huespedes-panel" id="panel-huespedes" role="group" aria-label="Huéspedes y habitaciones" hidden>
+                                        <div class="huespedes-fila">
+                                            <span><strong>Adultos</strong><small>13 años o más</small></span>
+                                            <div class="huespedes-contador" data-huespedes="adultos" data-min="1" data-max="30">
+                                                <button type="button" data-paso="-1" aria-label="Menos adultos">−</button>
+                                                <output>2</output>
+                                                <button type="button" data-paso="1" aria-label="Más adultos">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="huespedes-fila">
+                                            <span><strong>Niños</strong><small>De 0 a 12 años</small></span>
+                                            <div class="huespedes-contador" data-huespedes="ninos" data-min="0" data-max="10">
+                                                <button type="button" data-paso="-1" aria-label="Menos niños">−</button>
+                                                <output>0</output>
+                                                <button type="button" data-paso="1" aria-label="Más niños">+</button>
+                                            </div>
+                                        </div>
+                                        <div class="huespedes-fila" id="fila-habitaciones">
+                                            <span><strong>Habitaciones</strong><small>Hasta 20 por reserva</small></span>
+                                            <div class="huespedes-contador" data-huespedes="habitaciones" data-min="1" data-max="20">
+                                                <button type="button" data-paso="-1" aria-label="Menos habitaciones">−</button>
+                                                <output>1</output>
+                                                <button type="button" data-paso="1" aria-label="Más habitaciones">+</button>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn-primario huespedes-listo" id="huespedes-listo">Listo</button>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="busqueda-personas" value="2">
+                                <input type="hidden" id="busqueda-habitaciones" value="1">
                             </div>
                             <button type="submit" class="btn-rojo buscador-enviar">Buscar</button>
                         </div>

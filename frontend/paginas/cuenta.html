@@ -1,0 +1,97 @@
+<!-- @pagina titulo="Mi cuenta y seguridad | BookingRD" descripcion="Cambia tu contraseña y tu correo, y revisa los avisos de tu cuenta de BookingRD." css="cuenta-ajustes" -->
+<!-- @encabezado -->
+
+    <main id="contenido">
+        <section class="cabecera-cuenta cabecera-caribe">
+            <div class="contenedor ajustes-cabecera">
+                <div>
+                    <p class="cabecera-cuenta-etiqueta">Mi cuenta</p>
+                    <h1>Cuenta y seguridad</h1>
+                    <p>Hola, <strong data-nombre-usuario translate="no"></strong>. Aquí cambias tu contraseña y tu correo. Cada cambio te llega por correo para que sepas que fuiste tú.</p>
+                </div>
+                <svg class="ajustes-ilustracion" viewBox="0 0 200 160" aria-hidden="true">
+                    <circle cx="100" cy="86" r="66" fill="#00B4D8" opacity=".25"/>
+                    <path d="M44 132c18-36 38-56 56-62M40 120c22-10 40-8 56 2M150 128c-10-30-26-48-44-56M162 112c-18-8-34-6-48 6" stroke="#52B788" stroke-width="7" stroke-linecap="round" fill="none"/>
+                    <path d="M100 30l40 14v30c0 28-17 46-40 56-23-10-40-28-40-56V44z" fill="#fff"/>
+                    <path d="M100 38l32 11v25c0 22-13 37-32 46z" fill="#CE1126"/>
+                    <path d="M100 38L68 49v25c0 22 13 37 32 46z" fill="#003087"/>
+                    <rect x="86" y="70" width="28" height="22" rx="4" fill="#fff"/>
+                    <path d="M91 70v-6a9 9 0 0 1 18 0v6" stroke="#fff" stroke-width="5" fill="none"/>
+                    <circle cx="100" cy="81" r="3.5" fill="#003087"/>
+                </svg>
+            </div>
+        </section>
+
+        <section class="contenedor ajustes" aria-label="Ajustes de la cuenta">
+            <article class="ajustes-tarjeta">
+                <h2>Tus datos</h2>
+                <dl class="ajustes-datos">
+                    <div><dt>Nombre</dt><dd id="dato-nombre" translate="no">-</dd></div>
+                    <div><dt>Correo</dt><dd id="dato-correo" translate="no">-</dd></div>
+                    <div><dt>Tipo de cuenta</dt><dd id="dato-rol">-</dd></div>
+                </dl>
+                <p class="ajustes-nota">¿Prefieres no escribir la contraseña? En <a href="login.html">Iniciar sesión</a> pulsa <strong>Entrar con un código</strong> y te lo enviamos al correo.</p>
+            </article>
+
+            <article class="ajustes-tarjeta">
+                <h2>Cambiar la contraseña</h2>
+                <form id="form-password" novalidate>
+                    <div class="campo">
+                        <label for="actual">Contraseña actual</label>
+                        <input type="password" id="actual" autocomplete="current-password" required>
+                        <p class="error-campo" id="error-actual" hidden></p>
+                    </div>
+                    <div class="campo">
+                        <label for="password">Contraseña nueva</label>
+                        <input type="password" id="password" autocomplete="new-password" minlength="8" required>
+                        <div class="fuerza" id="fuerza" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                        <p class="error-campo" id="error-password" hidden></p>
+                    </div>
+                    <div class="campo">
+                        <label for="confirmarPassword">Repite la contraseña nueva</label>
+                        <input type="password" id="confirmarPassword" autocomplete="new-password" required>
+                        <p class="error-campo" id="error-confirmarPassword" hidden></p>
+                    </div>
+                    <button type="submit" class="btn-primario" id="boton-password">Guardar la contraseña</button>
+                </form>
+            </article>
+
+            <article class="ajustes-tarjeta">
+                <h2>Cambiar el correo</h2>
+                <form id="form-correo" novalidate>
+                    <div id="paso-correo">
+                        <div class="campo">
+                            <label for="correo-nuevo">Correo nuevo</label>
+                            <input type="email" id="correo-nuevo" autocomplete="email" required>
+                            <p class="error-campo" id="error-correo-nuevo" hidden></p>
+                        </div>
+                        <div class="campo">
+                            <label for="password-correo">Tu contraseña</label>
+                            <input type="password" id="password-correo" autocomplete="current-password" required>
+                            <p class="error-campo" id="error-password-correo" hidden></p>
+                        </div>
+                        <button type="submit" class="btn-primario" id="boton-correo">Enviar el código</button>
+                    </div>
+                    <div id="paso-codigo" hidden>
+                        <p>Escribe el código de 6 dígitos que enviamos a <strong id="correo-destino"></strong>.</p>
+                        <div class="campo">
+                            <label for="codigo-correo">Código</label>
+                            <input type="text" id="codigo-correo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}">
+                            <p class="error-campo" id="error-codigo" hidden></p>
+                        </div>
+                        <p class="aviso-demostracion" id="aviso-correo-demo" hidden>Modo de demostración: <a id="enlace-correo-demo" target="_blank" rel="noopener">Abrir el correo</a></p>
+                        <div class="ajustes-acciones">
+                            <button type="button" class="btn-primario" id="boton-confirmar-correo">Confirmar el correo nuevo</button>
+                            <button type="button" class="boton-enlace" id="boton-volver-correo">Usar otro correo</button>
+                        </div>
+                    </div>
+                </form>
+            </article>
+        </section>
+    </main>
+
+<!-- @pie -->
+
+    <script src="js/comun.js"></script>
+    <script src="js/preferencias.js"></script>
+    <script src="js/cuenta.js"></script>

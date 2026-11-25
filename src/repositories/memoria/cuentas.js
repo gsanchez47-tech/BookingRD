@@ -169,7 +169,17 @@ async function cambiarPassword(transaccion, correo, passwordHash) {
     return true;
 }
 
+async function cambiarCorreo(transaccion, idUsuario, correoNuevo) {
+    if (A.bd.usuarios.some((x) => x.correo.toLowerCase() === correoNuevo.toLowerCase() && x.id_usuario !== idUsuario)) return false;
+    const u = A.usuario(idUsuario);
+    if (!u) return false;
+    u.correo = correoNuevo;
+    A.guardar();
+    return true;
+}
+
 module.exports = {
+    cambiarCorreo,
     crearVerificacion,
     verificacionPendiente,
     verificacionPorHash,

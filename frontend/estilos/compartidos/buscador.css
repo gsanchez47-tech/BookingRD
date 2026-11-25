@@ -193,3 +193,123 @@
     border-radius: 10px;
     background: var(--azul-tenue) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23003087' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='m20 20-4.2-4.2'/%3E%3C/svg%3E") center / 20px no-repeat;
 }
+
+/* Desplegable de huéspedes (adultos, niños y habitaciones). */
+.huespedes {
+    position: relative;
+}
+
+.huespedes-boton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid var(--linea-fuerte);
+    border-radius: var(--r-s);
+    background: var(--superficie);
+    color: var(--tinta);
+    font: 700 var(--t-s) var(--f-texto);
+    text-align: left;
+    cursor: pointer;
+}
+
+.huespedes-boton span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.huespedes-boton::after {
+    content: '';
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    margin-top: -4px;
+    border-right: 2px solid var(--azul);
+    border-bottom: 2px solid var(--azul);
+    transform: rotate(45deg);
+    transition: transform 0.2s ease, margin 0.2s ease;
+}
+
+.huespedes-boton.abierto::after {
+    margin-top: 4px;
+    transform: rotate(-135deg);
+}
+
+.huespedes-boton:hover { border-color: var(--tinta-3); }
+.huespedes-boton:focus-visible { outline: none; border-color: var(--caribe-deep); box-shadow: var(--enfoque); }
+
+.huespedes-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    z-index: 70;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    padding: 8px 16px 16px;
+    border: 1px solid var(--linea);
+    border-top: 4px solid var(--caribe);
+    border-radius: var(--r-m);
+    background: #fff;
+    color: var(--tinta);
+    text-align: left;
+    box-shadow: 0 18px 40px -18px rgba(11, 29, 69, 0.45);
+    transform-origin: top right;
+    animation: desplegar 0.18s ease-out;
+}
+
+.huespedes-fila {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--linea);
+}
+
+.huespedes-fila[hidden] { display: none; }
+
+.huespedes-fila strong { display: block; font-size: 0.98rem; }
+.huespedes-fila small { color: var(--tinta-3); font-size: var(--t-xs); font-weight: 600; }
+
+.huespedes-contador {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.huespedes-contador button {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1.5px solid var(--azul);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--azul);
+    font: 800 1.1rem/1 var(--f-texto);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.huespedes-contador button:hover:not(:disabled) { background: var(--azul); color: #fff; }
+.huespedes-contador button:active:not(:disabled) { transform: scale(0.9); }
+.huespedes-contador button:disabled { border-color: var(--linea-fuerte); color: var(--tinta-3); cursor: not-allowed; }
+
+.huespedes-contador output {
+    display: inline-block;
+    min-width: 22px;
+    text-align: center;
+    font: 800 1.05rem var(--f-texto);
+    font-variant-numeric: tabular-nums;
+}
+
+.huespedes-contador output.salto { animation: salto 0.25s ease-out; }
+
+.huespedes-listo {
+    width: 100%;
+    margin-top: 14px;
+}

@@ -30,7 +30,7 @@ let reservaPorResenar = null;
 document.addEventListener('DOMContentLoaded', () => {
     if (!exigirSesion('cliente')) return;
 
-    const vista = new URLSearchParams(window.location.search).get('vista');
+    const vista = new URLSearchParams(window.location.search).get('vista') || window.location.hash.slice(1);
     if (PESTANAS.includes(vista)) filtroActual = vista;
 
     document.querySelectorAll('.pestana').forEach((pestana) => {

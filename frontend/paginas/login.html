@@ -32,7 +32,7 @@
                                 <label for="correo">Correo electrónico</label>
                                 <input type="email" id="correo" maxlength="200" autocomplete="email" placeholder="tucorreo@ejemplo.com">
                             </div>
-                            <div class="campo">
+                            <div class="campo" id="campo-password">
                                 <label for="password">Contraseña</label>
                                 <div class="campo-password">
                                     <input type="password" id="password" autocomplete="current-password">
@@ -48,7 +48,14 @@
                                 <a class="boton-enlace" id="enlace-olvido" href="restablecer.html">¿Olvidaste tu contraseña?</a>
                             </div>
 
+                            <div class="campo" id="campo-codigo" hidden>
+                                <label for="codigo-acceso">Código que llegó a tu correo</label>
+                                <input type="text" id="codigo-acceso" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+                                <p class="aviso-demostracion" id="aviso-acceso-demo" hidden>Modo de demostración: <a id="enlace-acceso-demo" target="_blank" rel="noopener">Abrir el correo</a></p>
+                            </div>
                             <button type="submit" id="boton-login" class="btn-rojo btn-bloque">Iniciar sesión</button>
+                            <div class="separador-o" aria-hidden="true"><span>o</span></div>
+                            <button type="button" id="boton-modo-codigo" class="btn-outline btn-bloque">Entrar con un código por correo</button>
                         </form>
 
                         <p class="pie-formulario">¿No tienes cuenta? <a href="registro.html">Crea una cuenta de viajero</a> o <a href="registro.html?tipo=empresa">registra tu empresa</a>.</p>

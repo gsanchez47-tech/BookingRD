@@ -252,7 +252,19 @@ async function cambiarPassword(transaccion, correo, passwordHash) {
     return resultado.rowsAffected[0] === 1;
 }
 
+/** Cambia el correo de una cuenta. false si el nuevo ya pertenece a otra. */
+async function cambiarCorreo(transaccion, idUsuario, correoNuevo) {
+    const consulta = await peticion(transaccion);
+    const resultado = await consulta
+        .input('id', sql.Int, idUsuario)
+        .input('correo', sql.NVarChar(200), correoNuevo)
+        .query(`UPDATE dbo.usuarios SET correo = @correo
+                WHERE id_usuario = @id AND NOT EXISTS (SELECT 1 FROM dbo.usuarios WHERE correo = @correo AND id_usuario <> @id)`);
+    return resultado.rowsAffected[0] === 1;
+}
+
 module.exports = {
+    cambiarCorreo,
     crearVerificacion,
     verificacionPendiente,
     verificacionPorHash,

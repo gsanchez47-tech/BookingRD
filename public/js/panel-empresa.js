@@ -187,6 +187,9 @@ function iniciarPestanas() {
             });
         });
     });
+    // Enlaces directos desde los correos y el menú de la cuenta (#reservas, #publicaciones...).
+    const pestanaInicial = document.querySelector(`.pestana[data-seccion="${window.location.hash.slice(1)}"]`);
+    if (pestanaInicial) pestanaInicial.click();
 }
 
 /* ----------------------------------------------------------------------------
