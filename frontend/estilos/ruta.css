@@ -24,7 +24,7 @@
     border-radius: 22px;
     background:
         radial-gradient(rgba(127, 227, 245, 0.08) 1px, transparent 1.5px) 0 0 / 22px 22px,
-        linear-gradient(135deg, var(--night) 0%, var(--night-mid) 60%, #0B3D6B 100%);
+        var(--night-mid);
     box-shadow: 0 30px 60px -30px rgba(5, 19, 43, 0.8);
     color: rgba(255, 255, 255, 0.8);
 }
@@ -78,13 +78,13 @@
 
 .llamada-emergencia {
     border-color: transparent;
-    background: linear-gradient(135deg, var(--rojo) 0%, #8E0B1B 100%);
+    background: var(--rojo);
     color: rgba(255, 255, 255, 0.9);
 }
 
 .llamada-emergencia:hover {
     border-color: #fff;
-    background: linear-gradient(135deg, #E0192F 0%, #8E0B1B 100%);
+    background: #E0192F;
 }
 
 .llamada-ubicacion strong {

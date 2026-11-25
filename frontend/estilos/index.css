@@ -36,9 +36,7 @@
     inset: 0;
     z-index: -1;
     background:
-        radial-gradient(60% 70% at 85% 15%, rgba(0, 180, 216, 0.28) 0%, transparent 60%),
-        linear-gradient(90deg, rgba(5, 19, 43, 0.9) 0%, rgba(5, 19, 43, 0.62) 50%, rgba(5, 19, 43, 0.3) 100%),
-        linear-gradient(0deg, rgba(5, 19, 43, 0.85) 0%, transparent 50%);
+        rgba(5, 19, 43, 0.5);
 }
 
 .portada-franja {
@@ -65,7 +63,7 @@
 
 .portada h1 em {
     display: block;
-    background: linear-gradient(90deg, #4FD8F0 0%, var(--caribe) 60%, #7FE3F5 100%);
+    background: var(--caribe);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -182,8 +180,7 @@
 
     .portada::before {
         background:
-            radial-gradient(80% 50% at 50% 0%, rgba(0, 180, 216, 0.25) 0%, transparent 70%),
-            linear-gradient(180deg, rgba(5, 19, 43, 0.7) 0%, rgba(5, 19, 43, 0.6) 45%, rgba(5, 19, 43, 0.92) 100%);
+            rgba(5, 19, 43, 0.6);
     }
 }
 
@@ -263,11 +260,7 @@
 }
 
 .servicio a::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: linear-gradient(180deg, transparent 35%, rgba(5, 19, 43, 0.75) 100%);
+    content: none;
 }
 
 .servicio a:hover img {
@@ -343,7 +336,7 @@
     height: 44px;
     padding: 10px;
     border-radius: 14px;
-    background: linear-gradient(135deg, var(--caribe-deep) 0%, var(--azul) 100%);
+    background: var(--azul);
     box-shadow: 0 10px 22px -12px rgba(0, 48, 135, 0.8);
     fill: none;
     stroke: #fff;
@@ -389,8 +382,7 @@
     position: relative;
     padding: var(--e-2);
     background:
-        radial-gradient(90% 80% at 55% 45%, rgba(0, 119, 168, 0.35) 0%, transparent 70%),
-        linear-gradient(180deg, rgba(10, 31, 68, 0.75) 0%, rgba(5, 19, 43, 0.85) 100%);
+        rgba(10, 31, 68, 0.75);
     overflow: hidden;
 }
 
@@ -526,8 +518,7 @@
     position: relative;
     aspect-ratio: 16 / 9;
     background:
-        radial-gradient(80% 90% at 80% 0%, rgba(0, 180, 216, 0.5) 0%, transparent 60%),
-        linear-gradient(135deg, var(--night-mid) 0%, var(--caribe-deep) 100%);
+        var(--caribe-deep);
 }
 
 .ficha-foto.sin-foto {
@@ -544,10 +535,7 @@
 }
 
 .ficha-foto::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(180deg, transparent 40%, rgba(5, 19, 43, 0.85) 100%);
+    content: none;
 }
 
 .ficha-cabecera {
@@ -752,7 +740,6 @@
     border: 1px solid var(--linea);
     border-radius: 18px;
     background:
-        radial-gradient(120% 100% at 100% 0%, rgba(0, 180, 216, 0.1) 0%, transparent 55%),
         var(--superficie);
     color: var(--tinta);
     text-decoration: none;
@@ -765,7 +752,7 @@
     inset: 0 auto 0 0;
     width: 4px;
     border-radius: 18px 0 0 18px;
-    background: linear-gradient(180deg, var(--caribe) 0%, var(--azul) 100%);
+    background: var(--azul);
 }
 
 .experiencia:hover {
@@ -792,7 +779,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--caribe) 0%, var(--azul) 100%);
+    background: var(--azul);
 }
 
 .experiencia strong {
@@ -840,7 +827,7 @@
     height: 48px;
     margin-bottom: var(--e-3);
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--caribe) 0%, var(--azul) 100%);
+    background: var(--azul);
     box-shadow: 0 0 0 6px rgba(0, 180, 216, 0.15), 0 10px 24px -10px rgba(0, 48, 135, 0.8);
     color: #fff;
     font-family: var(--f-display);
@@ -950,9 +937,12 @@
     position: absolute;
     inset: 0;
     z-index: -1;
-    background:
-        radial-gradient(60% 80% at 100% 50%, rgba(0, 180, 216, 0.3) 0%, transparent 60%),
-        linear-gradient(100deg, rgba(0, 48, 135, 0.94) 0%, rgba(0, 48, 135, 0.8) 45%, rgba(5, 19, 43, 0.7) 100%);
+    background: rgba(0, 48, 135, 0.55);
+}
+
+.banda-empresas h2,
+.banda-empresas p {
+    text-shadow: 0 2px 12px rgba(5, 19, 43, 0.5);
 }
 
 .banda-empresas-rejilla {
@@ -1108,7 +1098,7 @@
 
 /* Tasa de hoy: franja clara bajo la portada, con el conversor a la derecha. */
 .tasa-dia {
-    background: linear-gradient(90deg, #E9F7FA 0%, #F5FBFD 60%, #FFFFFF 100%);
+    background: #F5FBFD;
     border-bottom: 1px solid var(--linea);
 }
 
@@ -1229,4 +1219,17 @@
     .tasa-campo input { width: 100%; }
     .tasa-campo { flex: 1; }
     .tasa-conversor output { flex-basis: 100%; justify-content: center; }
+}
+
+/* Sin degradados: los textos sobre fotografía llevan sombra o un panel sólido. */
+.portada h1,
+.portada .portada-entrada,
+.portada-cifras {
+    text-shadow: 0 2px 14px rgba(5, 19, 43, 0.55);
+}
+
+.ficha-cabecera {
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: rgba(0, 48, 135, 0.86);
 }

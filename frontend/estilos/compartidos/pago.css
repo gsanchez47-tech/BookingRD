@@ -243,9 +243,7 @@ dialog.modal-pago {
     padding: 18px 20px;
     border-radius: 14px;
     background:
-        radial-gradient(120% 90% at 100% 0%, rgba(0, 180, 216, 0.75) 0%, transparent 55%),
-        radial-gradient(90% 80% at 0% 100%, rgba(206, 17, 38, 0.35) 0%, transparent 60%),
-        linear-gradient(135deg, var(--night) 0%, var(--azul) 100%);
+        var(--azul);
     color: #fff;
     box-shadow: 0 18px 36px -18px rgba(5, 19, 43, 0.7);
     font-family: var(--f-texto);
@@ -254,21 +252,19 @@ dialog.modal-pago {
 
 .tarjeta-visual[data-marca='mastercard'] {
     background:
-        radial-gradient(120% 90% at 100% 0%, rgba(244, 162, 97, 0.8) 0%, transparent 55%),
-        linear-gradient(135deg, var(--night) 0%, #3A1C4A 100%);
+        var(--night);
 }
 
 .tarjeta-visual[data-marca='american-express'] {
     background:
-        radial-gradient(120% 90% at 100% 0%, rgba(82, 183, 136, 0.8) 0%, transparent 55%),
-        linear-gradient(135deg, var(--night) 0%, var(--jungle) 100%);
+        var(--jungle);
 }
 
 .tarjeta-chip {
     width: 40px;
     height: 30px;
     border-radius: 6px;
-    background: linear-gradient(135deg, #F6D58E, #C9A24B);
+    background: #F6D58E;
 }
 
 .tarjeta-marca {

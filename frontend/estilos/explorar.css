@@ -717,8 +717,7 @@
 .explorar-cabecera.con-foto {
     background:
         radial-gradient(rgba(127, 227, 245, 0.09) 1px, transparent 1.5px) 0 0 / 24px 24px,
-        radial-gradient(60% 120% at 90% 10%, rgba(0, 180, 216, 0.3) 0%, transparent 60%),
-        linear-gradient(90deg, rgba(5, 19, 43, 0.92) 0%, rgba(5, 19, 43, 0.7) 50%, rgba(0, 119, 168, 0.35) 100%),
+        linear-gradient(rgba(5, 19, 43, 0.7), rgba(5, 19, 43, 0.7)),
         var(--foto-cabecera) center / cover no-repeat,
         var(--night);
 }

@@ -167,7 +167,7 @@
     gap: 2px;
     padding: var(--e-5);
     border-top: 2px dashed var(--linea);
-    background: linear-gradient(180deg, rgba(0, 180, 216, 0.07), rgba(0, 48, 135, 0.05));
+    background: rgba(0, 180, 216, 0.07);
 }
 
 .combo-talon::before,
