@@ -363,6 +363,8 @@ BEGIN
         fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_reservas_creacion DEFAULT SYSUTCDATETIME(),
         fecha_cancelacion   DATETIME2(0)    NULL,
         id_combo            INT             NULL CONSTRAINT FK_reservas_combos REFERENCES dbo.combos(id_combo),
+        recordatorio_enviado BIT            NOT NULL CONSTRAINT DF_reservas_recordatorio DEFAULT 0,
+        resena_pedida       BIT             NOT NULL CONSTRAINT DF_reservas_resena_pedida DEFAULT 0,
         CONSTRAINT CK_reservas_publicacion CHECK (
             (CASE WHEN id_hotel IS NULL THEN 0 ELSE 1 END
              + CASE WHEN id_actividad IS NULL THEN 0 ELSE 1 END
@@ -382,6 +384,10 @@ GO
 -- Bases instaladas con una versión anterior: agrega la columna del combo.
 IF COL_LENGTH(N'dbo.reservas', N'id_combo') IS NULL
     ALTER TABLE dbo.reservas ADD id_combo INT NULL CONSTRAINT FK_reservas_combos REFERENCES dbo.combos(id_combo);
+IF COL_LENGTH(N'dbo.reservas', N'recordatorio_enviado') IS NULL
+    ALTER TABLE dbo.reservas ADD recordatorio_enviado BIT NOT NULL CONSTRAINT DF_reservas_recordatorio DEFAULT 0;
+IF COL_LENGTH(N'dbo.reservas', N'resena_pedida') IS NULL
+    ALTER TABLE dbo.reservas ADD resena_pedida BIT NOT NULL CONSTRAINT DF_reservas_resena_pedida DEFAULT 0;
 GO
 
 -- pagos: un registro por reserva (relación 1 a 1). Pasarela SIMULADA: solo se
@@ -414,6 +420,8 @@ BEGIN
         autorizacion        CHAR(6)         NULL,
         fecha_pago          DATETIME2(0)    NOT NULL CONSTRAINT DF_pagos_fecha DEFAULT SYSUTCDATETIME(),
         fecha_reembolso     DATETIME2(0)    NULL,
+        monto_reembolsado   DECIMAL(12,2)   NULL,
+        cargo_cancelacion   DECIMAL(12,2)   NULL,
         CONSTRAINT CK_pagos_metodo CHECK (metodo IN ('tarjeta', 'en_destino')),
         CONSTRAINT CK_pagos_estado CHECK (estado IN ('pagado', 'pendiente', 'reembolsado', 'anulado')),
         CONSTRAINT CK_pagos_monto CHECK (monto > 0),
@@ -429,6 +437,9 @@ GO
 -- Bases instaladas con una versión anterior: columnas del cobro en dólares.
 IF COL_LENGTH(N'dbo.pagos', N'monto_cobrado') IS NULL
     ALTER TABLE dbo.pagos ADD monto_cobrado DECIMAL(12,2) NULL, tasa_cambio DECIMAL(12,6) NULL;
+-- Reembolso parcial: se retiene el cargo por cancelación (10 %).
+IF COL_LENGTH(N'dbo.pagos', N'monto_reembolsado') IS NULL
+    ALTER TABLE dbo.pagos ADD monto_reembolsado DECIMAL(12,2) NULL, cargo_cancelacion DECIMAL(12,2) NULL;
 GO
 
 -- mensajes_contacto: mensajes enviados desde el formulario de contacto.
@@ -540,6 +551,8 @@ BEGIN
         pago_moneda         CHAR(3)         NOT NULL CONSTRAINT DF_pedidos_moneda DEFAULT 'DOP',
         pago_monto_cobrado  DECIMAL(12,2)   NULL,
         pago_tasa_cambio    DECIMAL(12,6)   NULL,
+        reembolso_monto     DECIMAL(12,2)   NULL,
+        cargo_cancelacion   DECIMAL(12,2)   NULL,
         fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_pedidos_creacion DEFAULT SYSUTCDATETIME(),
         CONSTRAINT CK_pedidos_entrega CHECK (entrega IN ('hotel', 'domicilio')),
         CONSTRAINT CK_pedidos_estado CHECK (estado IN ('pagado', 'enviado', 'entregado', 'cancelado')),
@@ -548,6 +561,9 @@ BEGIN
         CONSTRAINT CK_pedidos_cambio CHECK (pago_moneda = 'DOP' OR (pago_monto_cobrado > 0 AND pago_tasa_cambio > 0))
     );
 END
+GO
+IF COL_LENGTH(N'dbo.pedidos', N'reembolso_monto') IS NULL
+    ALTER TABLE dbo.pedidos ADD reembolso_monto DECIMAL(12,2) NULL, cargo_cancelacion DECIMAL(12,2) NULL;
 GO
 
 -- pedido_detalle: productos de cada pedido con el precio del momento de la compra.
@@ -586,10 +602,32 @@ BEGIN
         usado           BIT             NOT NULL CONSTRAINT DF_verificaciones_usado DEFAULT 0,
         expira          DATETIME2(0)    NOT NULL,
         fecha_creacion  DATETIME2(0)    NOT NULL CONSTRAINT DF_verificaciones_fecha DEFAULT SYSUTCDATETIME(),
-        CONSTRAINT CK_verificaciones_proposito CHECK (proposito IN ('registro', 'recuperar')),
+        CONSTRAINT CK_verificaciones_proposito CHECK (proposito IN ('registro', 'recuperar', 'acceso', 'correo')),
         CONSTRAINT CK_verificaciones_intentos CHECK (intentos BETWEEN 0 AND 10)
     );
 END
+GO
+
+-- notificaciones: avisos que el usuario ve en la campana del encabezado
+-- (reserva confirmada, reserva recibida, recordatorio, respuesta a su reseña...).
+-- Cada aviso también se envía por correo.
+IF OBJECT_ID(N'dbo.notificaciones', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.notificaciones (
+        id_notificacion INT IDENTITY(1,1) PRIMARY KEY,
+        id_usuario      INT             NOT NULL CONSTRAINT FK_notificaciones_usuarios REFERENCES dbo.usuarios(id_usuario),
+        tipo            VARCHAR(30)     NOT NULL,
+        titulo          NVARCHAR(150)   NOT NULL,
+        mensaje         NVARCHAR(400)   NOT NULL,
+        enlace          NVARCHAR(300)   NULL,
+        leida           BIT             NOT NULL CONSTRAINT DF_notificaciones_leida DEFAULT 0,
+        fecha           DATETIME2(0)    NOT NULL CONSTRAINT DF_notificaciones_fecha DEFAULT SYSUTCDATETIME()
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_notificaciones_usuario')
+    CREATE INDEX IX_notificaciones_usuario ON dbo.notificaciones (id_usuario, leida, fecha DESC);
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_hoteles_empresa')
@@ -794,93 +832,93 @@ GO
 -- 4.3 Alojamiento
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Coralia Grand Resort & Spa')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Coralia Grand Resort & Spa', N'resort', N'Punta Cana', N'Playa Bávaro, Punta Cana', N'Resort todo incluido frente a la playa de Bávaro, con piscinas rodeadas de palmeras, cabañas privadas, spa y siete restaurantes.', N'todo-incluido,piscina,playa,spa,gimnasio,restaurante,wifi,aire,traslado', 14500, 4, 320, N'img/publicaciones/coralia-grand.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -300, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Coralia Grand Resort & Spa', N'resort', N'Punta Cana', N'Playa Bávaro, Punta Cana', N'Resort todo incluido frente a la playa de Bávaro, con piscinas rodeadas de palmeras, cabañas privadas, spa y siete restaurantes.', N'todo-incluido,piscina,playa,spa,gimnasio,restaurante,wifi,aire,traslado', 21500, 4, 320, N'img/publicaciones/coralia-grand.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -300, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Cayo Azul All-Inclusive Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Cayo Azul All-Inclusive Resort', N'resort', N'Punta Cana', N'Playa Arena Gorda, Bávaro', N'Palapas privadas sobre la arena blanca de Arena Gorda, piscinas conectadas con la playa y entretenimiento diurno y nocturno.', N'todo-incluido,piscina,playa,restaurante,wifi,aire,gimnasio', 12800, 4, 280, N'img/publicaciones/cayo-azul.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -297, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Cayo Azul All-Inclusive Resort', N'resort', N'Punta Cana', N'Playa Arena Gorda, Bávaro', N'Palapas privadas sobre la arena blanca de Arena Gorda, piscinas conectadas con la playa y entretenimiento diurno y nocturno.', N'todo-incluido,piscina,playa,restaurante,wifi,aire,gimnasio', 16900, 4, 280, N'img/publicaciones/cayo-azul.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -297, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Azura Caribbean Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Azura Caribbean Resort', N'hotel', N'Santo Domingo', N'Av. Anacaona, Los Cacicazgos', N'Hotel de ciudad frente al Parque Mirador Sur, con vista al mar Caribe, canchas de tenis y piscina tipo laguna.', N'piscina,restaurante,gimnasio,wifi,aire,estacionamiento,traslado', 6900, 3, 180, N'img/publicaciones/azura-caribbean.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -294, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Azura Caribbean Resort', N'hotel', N'Santo Domingo', N'Av. Anacaona, Los Cacicazgos', N'Hotel de ciudad frente al Parque Mirador Sur, con vista al mar Caribe, canchas de tenis y piscina tipo laguna.', N'piscina,restaurante,gimnasio,wifi,aire,estacionamiento,traslado', 7400, 3, 180, N'img/publicaciones/azura-caribbean.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -294, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Mirador del Mar Luxury Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Mirador del Mar Luxury Resort', N'boutique', N'Cabarete', N'Carretera Sosúa-Cabarete, Cabarete', N'Suites de piedra y madera con terraza privada, piscina individual y vista al Atlántico. Solo para adultos.', N'piscina,spa,restaurante,wifi,aire,desayuno', 9800, 2, 36, N'img/publicaciones/mirador-del-mar.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Mirador del Mar Luxury Resort', N'boutique', N'Cabarete', N'Carretera Sosúa-Cabarete, Cabarete', N'Suites de piedra y madera con terraza privada, piscina individual y vista al Atlántico. Solo para adultos.', N'piscina,spa,restaurante,wifi,aire,desayuno', 11500, 2, 36, N'img/publicaciones/mirador-del-mar.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Solaria Island Beach Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Solaria Island Beach Resort', N'resort', N'La Romana', N'Playa Dominicus, Bayahibe', N'Resort frente a la playa Dominicus, punto de salida de las excursiones a Isla Saona y a Isla Catalina.', N'todo-incluido,piscina,playa,restaurante,wifi,aire', 11200, 4, 240, N'img/publicaciones/solaria-island.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -288, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Solaria Island Beach Resort', N'resort', N'La Romana', N'Playa Dominicus, Bayahibe', N'Resort frente a la playa Dominicus, punto de salida de las excursiones a Isla Saona y a Isla Catalina.', N'todo-incluido,piscina,playa,restaurante,wifi,aire', 15800, 4, 240, N'img/publicaciones/solaria-island.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -288, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Bahía Serena Golf & Beach Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Bahía Serena Golf & Beach Resort', N'resort', N'Boca Chica', N'Calle Duarte, Boca Chica', N'Habitaciones con ventanales y vista a la ciudad costera, frente a la laguna de aguas tranquilas de Boca Chica y a 15 minutos del aeropuerto de Las Américas.', N'todo-incluido,piscina,playa,gimnasio,wifi,aire,estacionamiento', 8700, 4, 150, N'img/publicaciones/bahia-serena.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -285, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Bahía Serena Golf & Beach Resort', N'resort', N'Boca Chica', N'Calle Duarte, Boca Chica', N'Habitaciones con ventanales y vista a la ciudad costera, frente a la laguna de aguas tranquilas de Boca Chica y a 15 minutos del aeropuerto de Las Américas.', N'todo-incluido,piscina,playa,gimnasio,wifi,aire,estacionamiento', 10900, 4, 150, N'img/publicaciones/bahia-serena.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -285, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Costa Dorada Palace Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Costa Dorada Palace Resort', N'resort', N'Sosúa', N'Playa Alicia, Sosúa', N'Habitaciones amplias de diseño contemporáneo sobre la bahía de Sosúa, conocida por sus arrecifes de coral y su malecón peatonal.', N'todo-incluido,piscina,playa,spa,restaurante,wifi,aire', 9400, 4, 210, N'img/publicaciones/costa-dorada.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -282, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Costa Dorada Palace Resort', N'resort', N'Sosúa', N'Playa Alicia, Sosúa', N'Habitaciones amplias de diseño contemporáneo sobre la bahía de Sosúa, conocida por sus arrecifes de coral y su malecón peatonal.', N'todo-incluido,piscina,playa,spa,restaurante,wifi,aire', 11200, 4, 210, N'img/publicaciones/costa-dorada.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -282, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Palma Real Haven Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Palma Real Haven Resort', N'villa', N'Juan Dolio', N'Autopista Las Américas km 55, Juan Dolio', N'Villas privadas entre cocoteros con piscina, ranchos de techo de cana y área de barbacoa, a cinco minutos de la playa.', N'piscina,wifi,aire,estacionamiento,mascotas,restaurante', 16500, 8, 12, N'img/publicaciones/palma-real-haven.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -279, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Palma Real Haven Resort', N'villa', N'Juan Dolio', N'Autopista Las Américas km 55, Juan Dolio', N'Villas privadas entre cocoteros con piscina, ranchos de techo de cana y área de barbacoa, a cinco minutos de la playa.', N'piscina,wifi,aire,estacionamiento,mascotas,restaurante', 18500, 8, 12, N'img/publicaciones/palma-real-haven.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -279, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Samaná Bay Palms Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Samaná Bay Palms Resort', N'resort', N'Samaná', N'Carretera Las Galeras km 4, Samaná', N'Habitaciones con vista a una playa de arena blanca en la bahía de Samaná, punto de salida de los paseos a Cayo Levantado y de avistamiento de ballenas.', N'piscina,playa,restaurante,wifi,aire,desayuno', 7800, 4, 96, N'img/publicaciones/samana-bay-palms.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -276, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Samaná Bay Palms Resort', N'resort', N'Samaná', N'Carretera Las Galeras km 4, Samaná', N'Habitaciones con vista a una playa de arena blanca en la bahía de Samaná, punto de salida de los paseos a Cayo Levantado y de avistamiento de ballenas.', N'piscina,playa,restaurante,wifi,aire,desayuno', 9600, 4, 96, N'img/publicaciones/samana-bay-palms.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -276, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Paraíso Escondido Eco-Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Paraíso Escondido Eco-Resort', N'villa', N'Las Galeras', N'Camino a Playa Rincón, Las Galeras', N'Villas ecológicas sobre la colina con piscina infinita, jardines tropicales y vista al mar abierto.', N'piscina,desayuno,wifi,spa', 13200, 4, 10, N'img/publicaciones/paraiso-escondido.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -273, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Paraíso Escondido Eco-Resort', N'villa', N'Las Galeras', N'Camino a Playa Rincón, Las Galeras', N'Villas ecológicas sobre la colina con piscina infinita, jardines tropicales y vista al mar abierto.', N'piscina,desayuno,wifi,spa', 12400, 4, 10, N'img/publicaciones/paraiso-escondido.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -273, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Villa Acantilado Casa de Campo')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Villa Acantilado Casa de Campo', N'villa', N'La Romana', N'Casa de Campo, La Romana', N'Villa de cinco habitaciones sobre el acantilado, con piscina, terraza frente al mar Caribe, playa privada con sombrillas y servicio de mayordomo.', N'piscina,playa,wifi,aire,estacionamiento,traslado,desayuno', 38500, 10, 2, N'img/publicaciones/villa-casa-de-campo.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -270, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Villa Acantilado Casa de Campo', N'villa', N'La Romana', N'Casa de Campo, La Romana', N'Villa de cinco habitaciones sobre el acantilado, con piscina, terraza frente al mar Caribe, playa privada con sombrillas y servicio de mayordomo.', N'piscina,playa,wifi,aire,estacionamiento,traslado,desayuno', 68000, 10, 2, N'img/publicaciones/villa-casa-de-campo.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -270, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Torre Malecón Suites')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Torre Malecón Suites', N'apartamento', N'Santo Domingo', N'Av. Winston Churchill, Piantini, Santo Domingo', N'Apartamentos de una y dos habitaciones en el polígono central, con cocina equipada, vista a la ciudad y a pocos minutos del Malecón y la Zona Colonial.', N'wifi,aire,gimnasio,piscina,estacionamiento', 6200, 4, 24, N'img/publicaciones/torre-malecon.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -267, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Torre Malecón Suites', N'apartamento', N'Santo Domingo', N'Av. Winston Churchill, Piantini, Santo Domingo', N'Apartamentos de una y dos habitaciones en el polígono central, con cocina equipada, vista a la ciudad y a pocos minutos del Malecón y la Zona Colonial.', N'wifi,aire,gimnasio,piscina,estacionamiento', 5900, 4, 24, N'img/publicaciones/torre-malecon.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -267, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Hotel Boutique El Conde')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Hotel Boutique El Conde', N'boutique', N'Santo Domingo', N'Calle El Conde 410, Zona Colonial, Santo Domingo', N'Hotel boutique en una casona restaurada de la calle peatonal El Conde, con recepción 24 horas, desayuno criollo y la Catedral Primada a dos cuadras.', N'wifi,aire,desayuno,restaurante,traslado', 7400, 3, 28, N'img/publicaciones/hotel-el-conde.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -264, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Hotel Boutique El Conde', N'boutique', N'Santo Domingo', N'Calle El Conde 410, Zona Colonial, Santo Domingo', N'Hotel boutique en una casona restaurada de la calle peatonal El Conde, con recepción 24 horas, desayuno criollo y la Catedral Primada a dos cuadras.', N'wifi,aire,desayuno,restaurante,traslado', 7900, 3, 28, N'img/publicaciones/hotel-el-conde.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -264, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Atlántico Business Hotel')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Atlántico Business Hotel', N'hotel', N'Puerto Plata', N'Av. Luis Ginebra, Puerto Plata', N'Hotel de ciudad frente al Malecón de Puerto Plata, con salas de reuniones, gimnasio y check-in rápido para viajes de trabajo.', N'wifi,aire,gimnasio,piscina,estacionamiento,restaurante', 5600, 2, 60, N'img/publicaciones/atlantico-business.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Atlántico Business Hotel', N'hotel', N'Puerto Plata', N'Av. Luis Ginebra, Puerto Plata', N'Hotel de ciudad frente al Malecón de Puerto Plata, con salas de reuniones, gimnasio y check-in rápido para viajes de trabajo.', N'wifi,aire,gimnasio,piscina,estacionamiento,restaurante', 4800, 2, 60, N'img/publicaciones/atlantico-business.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Palmar de Bávaro Beach Resort')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Palmar de Bávaro Beach Resort', N'resort', N'Punta Cana', N'Playa Bávaro, Av. Alemania, Punta Cana', N'Resort todo incluido entre cocoteros, con piscinas conectadas por puentes de madera, siete restaurantes y acceso directo a la arena blanca de Bávaro.', N'wifi,piscina,playa,todo-incluido,restaurante,spa,gimnasio,aire,traslado', 16800, 4, 220, N'img/publicaciones/palmar-bavaro.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -258, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Palmar de Bávaro Beach Resort', N'resort', N'Punta Cana', N'Playa Bávaro, Av. Alemania, Punta Cana', N'Resort todo incluido entre cocoteros, con piscinas conectadas por puentes de madera, siete restaurantes y acceso directo a la arena blanca de Bávaro.', N'wifi,piscina,playa,todo-incluido,restaurante,spa,gimnasio,aire,traslado', 24800, 4, 220, N'img/publicaciones/palmar-bavaro.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -258, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132508741';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.hoteles WHERE nombre = N'Cabañas Río Yaque')
     INSERT INTO dbo.hoteles (id_empresa, nombre, tipo_alojamiento, ciudad, direccion, descripcion, servicios, precio_noche, capacidad_personas, habitaciones, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Cabañas Río Yaque', N'cabana', N'Jarabacoa', N'Camino a La Confluencia km 2, Jarabacoa', N'Cabañas de piedra y madera a orillas del río Yaque del Norte, con chimenea, cama king, desayuno de campo y salida a pie a los saltos de Jimenoa y Baiguate.', N'desayuno,wifi,estacionamiento,restaurante,mascotas', 5200, 3, 8, N'img/publicaciones/cabanas-rio-yaque.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -255, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Cabañas Río Yaque', N'cabana', N'Jarabacoa', N'Camino a La Confluencia km 2, Jarabacoa', N'Cabañas de piedra y madera a orillas del río Yaque del Norte, con chimenea, cama king, desayuno de campo y salida a pie a los saltos de Jimenoa y Baiguate.', N'desayuno,wifi,estacionamiento,restaurante,mascotas', 4900, 3, 8, N'img/publicaciones/cabanas-rio-yaque.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -255, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 -- 4.4 Actividades
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Excursión en catamarán a Isla Saona')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Excursión en catamarán a Isla Saona', N'tour-playa', N'La Romana', N'Muelle de Bayahibe', N'Navegación en catamarán hasta Isla Saona, almuerzo en la playa y regreso en lancha rápida con parada en la piscina natural.', N'Transporte, catamarán, almuerzo buffet, bebidas y parada en la piscina natural', 9, 5900, 60, N'img/publicaciones/isla-saona.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -300, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Excursión en catamarán a Isla Saona', N'tour-playa', N'La Romana', N'Muelle de Bayahibe', N'Navegación en catamarán hasta Isla Saona, almuerzo en la playa y regreso en lancha rápida con parada en la piscina natural.', N'Transporte, catamarán, almuerzo buffet, bebidas y parada en la piscina natural', 9, 4700, 60, N'img/publicaciones/isla-saona.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -300, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Excursión a Playa Rincón y Cabo Cabrón')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Excursión a Playa Rincón y Cabo Cabrón', N'tour-playa', N'Las Terrenas', N'Calle Duarte, Las Terrenas', N'Salida desde Las Terrenas, recorrido en lancha por los acantilados de Cabo Cabrón y día libre en Playa Rincón, una de las playas vírgenes más extensas del país.', N'Transporte, lancha, guía, almuerzo de pescado frito y bebidas', 7, 3200, 20, N'img/publicaciones/playa-rincon.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -297, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Excursión a Playa Rincón y Cabo Cabrón', N'tour-playa', N'Las Terrenas', N'Calle Duarte, Las Terrenas', N'Salida desde Las Terrenas, recorrido en lancha por los acantilados de Cabo Cabrón y día libre en Playa Rincón, una de las playas vírgenes más extensas del país.', N'Transporte, lancha, guía, almuerzo de pescado frito y bebidas', 7, 3800, 20, N'img/publicaciones/playa-rincon.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -297, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Bahía de las Águilas en bote')
@@ -890,12 +928,12 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Bahía de las Águ
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Senderismo al Salto El Limón')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Senderismo al Salto El Limón', N'tour-montana', N'Samaná', N'Comunidad de El Limón', N'Sendero entre la selva húmeda de la península hasta la cascada de 40 metros del Salto El Limón, con baño en la poza.', N'Guía local, caballo opcional, almuerzo criollo', 4, 2200, 30, N'img/publicaciones/salto-el-limon.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Senderismo al Salto El Limón', N'tour-montana', N'Samaná', N'Comunidad de El Limón', N'Sendero entre la selva húmeda de la península hasta la cascada de 40 metros del Salto El Limón, con baño en la poza.', N'Guía local, caballo opcional, almuerzo criollo', 4, 2500, 30, N'img/publicaciones/salto-el-limon.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ascenso al Pico Duarte')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Ascenso al Pico Duarte', N'tour-montana', N'Jarabacoa', N'La Ciénaga de Manabao', N'Expedición de tres días al punto más alto del Caribe (3,098 m) por bosques de pino, con amanecer sobre el mar de nubes junto al busto de Duarte.', N'Guías certificados, mulas de carga, comidas, permisos y equipo de campamento', 72, 14500, 12, N'img/publicaciones/pico-duarte.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -288, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Ascenso al Pico Duarte', N'tour-montana', N'Jarabacoa', N'La Ciénaga de Manabao', N'Expedición de tres días al punto más alto del Caribe (3,098 m) por bosques de pino, con amanecer sobre el mar de nubes junto al busto de Duarte.', N'Guías certificados, mulas de carga, comidas, permisos y equipo de campamento', 72, 18500, 12, N'img/publicaciones/pico-duarte.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -288, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Valle del Rincón y cascadas de Jarabacoa')
@@ -910,7 +948,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Cabalgata a los ca
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ruta del cacao orgánico')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Ruta del cacao orgánico', N'tour-gastronomico', N'Río San Juan', N'Parque central de Río San Juan', N'Visita a una comunidad productora de cacao orgánico: del árbol a la tableta de chocolate hecha por los visitantes.', N'Transporte, visita a la finca, taller de chocolate y almuerzo', 5, 2300, 20, N'img/publicaciones/ruta-cacao.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -279, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Ruta del cacao orgánico', N'tour-gastronomico', N'Río San Juan', N'Parque central de Río San Juan', N'Visita a una comunidad productora de cacao orgánico: del árbol a la tableta de chocolate hecha por los visitantes.', N'Transporte, visita a la finca, taller de chocolate y almuerzo', 5, 2800, 20, N'img/publicaciones/ruta-cacao.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -279, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Desayuno criollo y Mercado Modelo')
@@ -920,7 +958,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Desayuno criollo y
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Clase de cocina: sancocho dominicano')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Clase de cocina: sancocho dominicano', N'tour-gastronomico', N'Boca Chica', N'Casa de cocina La Caldera, Boca Chica', N'Aprende a preparar el sancocho de siete carnes con víveres de la tierra y compártelo en la mesa con el chef y el grupo.', N'Ingredientes, chef instructor, recetario y almuerzo', 3, 2700, 12, N'img/publicaciones/sancocho.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -273, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Clase de cocina: sancocho dominicano', N'tour-gastronomico', N'Boca Chica', N'Casa de cocina La Caldera, Boca Chica', N'Aprende a preparar el sancocho de siete carnes con víveres de la tierra y compártelo en la mesa con el chef y el grupo.', N'Ingredientes, chef instructor, recetario y almuerzo', 3, 3500, 12, N'img/publicaciones/sancocho.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -273, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Almuerzo típico: la bandera dominicana')
@@ -935,12 +973,12 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Zona Colonial a pi
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Parque Nacional Los Haitises y cuevas taínas')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Parque Nacional Los Haitises y cuevas taínas', N'cultural', N'Samaná', N'Muelle de Samaná', N'Navegación entre cayos y manglares hasta las cuevas de la Arena y de la Línea, con pictografías taínas.', N'Lancha, guía, entrada al parque y almuerzo', 6, 3400, 24, N'img/publicaciones/los-haitises.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -264, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Parque Nacional Los Haitises y cuevas taínas', N'cultural', N'Samaná', N'Muelle de Samaná', N'Navegación entre cayos y manglares hasta las cuevas de la Arena y de la Línea, con pictografías taínas.', N'Lancha, guía, entrada al parque y almuerzo', 6, 4200, 24, N'img/publicaciones/los-haitises.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -264, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Basílica de Higüey y Altos de Chavón')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Basílica de Higüey y Altos de Chavón', N'cultural', N'Punta Cana', N'Recogida en el hotel (zona Bávaro)', N'Visita a la Basílica de Nuestra Señora de la Altagracia y al pueblo de estilo mediterráneo de Altos de Chavón, con su anfiteatro sobre el río.', N'Transporte, guía, entradas y almuerzo', 7, 3900, 30, N'img/publicaciones/basilica-higuey.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Basílica de Higüey y Altos de Chavón', N'cultural', N'Punta Cana', N'Recogida en el hotel (zona Bávaro)', N'Visita a la Basílica de Nuestra Señora de la Altagracia y al pueblo de estilo mediterráneo de Altos de Chavón, con su anfiteatro sobre el río.', N'Transporte, guía, entradas y almuerzo', 7, 5200, 30, N'img/publicaciones/basilica-higuey.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Puerto Plata victoriana y Calle de la Sombrilla')
@@ -950,32 +988,32 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Puerto Plata victo
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Santiago de los Caballeros y su Monumento')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Santiago de los Caballeros y su Monumento', N'cultural', N'Puerto Plata', N'Parque central de Puerto Plata', N'Excursión a la ciudad corazón del Cibao: Monumento a los Héroes de la Restauración, Centro León y una fábrica de cigarros artesanales.', N'Transporte, guía, entrada al Monumento y al Centro León, almuerzo', 8, 3500, 20, N'img/publicaciones/monumento-santiago.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -255, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Santiago de los Caballeros y su Monumento', N'cultural', N'Puerto Plata', N'Parque central de Puerto Plata', N'Excursión a la ciudad corazón del Cibao: Monumento a los Héroes de la Restauración, Centro León y una fábrica de cigarros artesanales.', N'Transporte, guía, entrada al Monumento y al Centro León, almuerzo', 8, 4300, 20, N'img/publicaciones/monumento-santiago.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -255, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Canopy en la selva de Anamuya')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Canopy en la selva de Anamuya', N'zip-line', N'Punta Cana', N'Recogida en el hotel (zona Bávaro)', N'Doce líneas de tirolesa sobre las montañas de Anamuya, con plataformas en los árboles y una línea de 700 metros.', N'Transporte, equipo certificado, 12 líneas de tirolesa y refrigerio', 4, 4200, 24, N'img/publicaciones/canopy-anamuya.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -252, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Canopy en la selva de Anamuya', N'zip-line', N'Punta Cana', N'Recogida en el hotel (zona Bávaro)', N'Doce líneas de tirolesa sobre las montañas de Anamuya, con plataformas en los árboles y una línea de 700 metros.', N'Transporte, equipo certificado, 12 líneas de tirolesa y refrigerio', 4, 5900, 24, N'img/publicaciones/canopy-anamuya.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -252, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Vuelo en parapente sobre el valle de Constanza')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Vuelo en parapente sobre el valle de Constanza', N'zip-line', N'Constanza', N'Mirador de Constanza', N'Vuelo biplaza con piloto certificado sobre el valle agrícola más alto del Caribe, sin experiencia previa.', N'Piloto certificado, equipo completo, fotos y video del vuelo', 2, 5500, 8, N'img/publicaciones/parapente-constanza.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -249, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Vuelo en parapente sobre el valle de Constanza', N'zip-line', N'Constanza', N'Mirador de Constanza', N'Vuelo biplaza con piloto certificado sobre el valle agrícola más alto del Caribe, sin experiencia previa.', N'Piloto certificado, equipo completo, fotos y video del vuelo', 2, 6500, 8, N'img/publicaciones/parapente-constanza.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -249, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ruta en cuatrimoto por Valle Nuevo')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Ruta en cuatrimoto por Valle Nuevo', N'motocross', N'Constanza', N'Parque central de Constanza', N'Recorrido en cuatrimoto por las carreteras y caminos de montaña de Constanza, entre fincas y lomas, hasta las pirámides de Valle Nuevo.', N'Cuatrimoto, casco, guía, merienda y almuerzo campestre', 5, 5200, 10, N'img/publicaciones/cuatrimoto-constanza.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -246, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Ruta en cuatrimoto por Valle Nuevo', N'motocross', N'Constanza', N'Parque central de Constanza', N'Recorrido en cuatrimoto por las carreteras y caminos de montaña de Constanza, entre fincas y lomas, hasta las pirámides de Valle Nuevo.', N'Cuatrimoto, casco, guía, merienda y almuerzo campestre', 5, 5800, 10, N'img/publicaciones/cuatrimoto-constanza.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -246, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Snorkel en los arrecifes de Isla Catalina')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Snorkel en los arrecifes de Isla Catalina', N'acuaticas', N'La Romana', N'Marina de Casa de Campo', N'Snorkel en las paredes de coral de Isla Catalina, con peces tropicales, esponjas y aguas de visibilidad excepcional.', N'Barco, equipo de snorkel, guía de buceo y almuerzo', 7, 4600, 40, N'img/publicaciones/snorkel-catalina.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -243, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Snorkel en los arrecifes de Isla Catalina', N'acuaticas', N'La Romana', N'Marina de Casa de Campo', N'Snorkel en las paredes de coral de Isla Catalina, con peces tropicales, esponjas y aguas de visibilidad excepcional.', N'Barco, equipo de snorkel, guía de buceo y almuerzo', 7, 5400, 40, N'img/publicaciones/snorkel-catalina.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -243, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'27 Charcos de Damajagua')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'27 Charcos de Damajagua', N'acuaticas', N'Puerto Plata', N'Centro de visitantes de Damajagua, Imbert', N'Descenso por saltos y toboganes naturales de piedra caliza en el río Damajagua, acompañado por guías.', N'Transporte, casco, chaleco, guías y almuerzo', 5, 3100, 30, N'img/publicaciones/27-charcos.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -240, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'27 Charcos de Damajagua', N'acuaticas', N'Puerto Plata', N'Centro de visitantes de Damajagua, Imbert', N'Descenso por saltos y toboganes naturales de piedra caliza en el río Damajagua, acompañado por guías.', N'Transporte, casco, chaleco, guías y almuerzo', 5, 4500, 30, N'img/publicaciones/27-charcos.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -240, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Paseo en yate por la Marina de Casa de Campo')
@@ -985,12 +1023,12 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Paseo en yate por 
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Día de parque acuático en Punta Cana')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Día de parque acuático en Punta Cana', N'acuaticas', N'Punta Cana', N'Recepción del parque, Bávaro', N'Toboganes de espiral, piscinas y zona infantil para pasar el día en familia, con almuerzo incluido.', N'Entrada, toboganes, piscinas, almuerzo y casillero', 6, 2900, 80, N'img/publicaciones/parque-acuatico.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -234, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Día de parque acuático en Punta Cana', N'acuaticas', N'Punta Cana', N'Recepción del parque, Bávaro', N'Toboganes de espiral, piscinas y zona infantil para pasar el día en familia, con almuerzo incluido.', N'Entrada, toboganes, piscinas, almuerzo y casillero', 6, 4200, 80, N'img/publicaciones/parque-acuatico.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -234, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Golf en Teeth of the Dog, Casa de Campo')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Golf en Teeth of the Dog, Casa de Campo', N'golf', N'La Romana', N'Casa Club de Casa de Campo, La Romana', N'Ronda de 18 hoyos en el campo diseñado por Pete Dye, con siete hoyos junto al mar Caribe. Alquiler de palos disponible.', N'Green fee de 18 hoyos, carrito compartido, cubeta de práctica y caddie', 5, 18500, 16, N'img/publicaciones/golf-casa-de-campo.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -231, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Golf en Teeth of the Dog, Casa de Campo', N'golf', N'La Romana', N'Casa Club de Casa de Campo, La Romana', N'Ronda de 18 hoyos en el campo diseñado por Pete Dye, con siete hoyos junto al mar Caribe. Alquiler de palos disponible.', N'Green fee de 18 hoyos, carrito compartido, cubeta de práctica y caddie', 5, 27500, 16, N'img/publicaciones/golf-casa-de-campo.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -231, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Parque Nacional Los Tres Ojos')
@@ -1015,17 +1053,17 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ruta de bachata y 
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Mirador de San José de Ocoa por Valle Nuevo')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Mirador de San José de Ocoa por Valle Nuevo', N'tour-montana', N'Constanza', N'Parque central de Constanza', N'Travesía en 4x4 por el Parque Nacional Valle Nuevo hasta los miradores de San José de Ocoa, con parada en las Pirámides y almuerzo campestre.', N'Transporte 4x4, guía, almuerzo y entrada al parque', 8, 3900, 12, N'img/publicaciones/mirador-ocoa.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -216, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Mirador de San José de Ocoa por Valle Nuevo', N'tour-montana', N'Constanza', N'Parque central de Constanza', N'Travesía en 4x4 por el Parque Nacional Valle Nuevo hasta los miradores de San José de Ocoa, con parada en las Pirámides y almuerzo campestre.', N'Transporte 4x4, guía, almuerzo y entrada al parque', 8, 4500, 12, N'img/publicaciones/mirador-ocoa.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -216, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Tirolesa sobre la península de Samaná')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Tirolesa sobre la península de Samaná', N'zip-line', N'Samaná', N'Base de la tirolesa, carretera Samaná - Las Galeras km 6', N'Doce líneas de tirolesa sobre el bosque húmedo con vista a la bahía de Samaná, incluida la línea final de 600 metros. Apta desde los 8 años.', N'Equipo de seguridad, guías certificados, transporte desde Samaná y fruta', 3, 4300, 40, N'img/publicaciones/tirolesa-samana.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -213, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Tirolesa sobre la península de Samaná', N'zip-line', N'Samaná', N'Base de la tirolesa, carretera Samaná - Las Galeras km 6', N'Doce líneas de tirolesa sobre el bosque húmedo con vista a la bahía de Samaná, incluida la línea final de 600 metros. Apta desde los 8 años.', N'Equipo de seguridad, guías certificados, transporte desde Samaná y fruta', 3, 5200, 40, N'img/publicaciones/tirolesa-samana.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -213, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Vuelo en helicóptero sobre Punta Cana')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Vuelo en helicóptero sobre Punta Cana', N'zip-line', N'Punta Cana', N'Helipuerto de Bávaro, Av. Barceló', N'Vuelo panorámico de 20 minutos sobre las playas de Bávaro, Cabeza de Toro y Cap Cana, con salida desde Bávaro y recogida en tu hotel.', N'Vuelo, piloto, auriculares, recogida y regreso al hotel', 1.5, 9800, 18, N'img/publicaciones/helicoptero-punta-cana.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -210, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Vuelo en helicóptero sobre Punta Cana', N'zip-line', N'Punta Cana', N'Helipuerto de Bávaro, Av. Barceló', N'Vuelo panorámico de 20 minutos sobre las playas de Bávaro, Cabeza de Toro y Cap Cana, con salida desde Bávaro y recogida en tu hotel.', N'Vuelo, piloto, auriculares, recogida y regreso al hotel', 1.5, 12500, 18, N'img/publicaciones/helicoptero-punta-cana.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -210, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Paseo en yate privado desde Boca Chica')
@@ -1040,7 +1078,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Catamarán privado
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Moto acuática en playa Bávaro')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Moto acuática en playa Bávaro', N'acuaticas', N'Punta Cana', N'Playa Bávaro, frente al Palmar de Bávaro Beach Resort', N'Media hora en moto acuática por la costa de Bávaro con instructor, para una o dos personas por moto. No se necesita experiencia.', N'Moto acuática, chaleco, instrucción y combustible', 0.5, 3200, 30, N'img/publicaciones/moto-acuatica.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -201, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Moto acuática en playa Bávaro', N'acuaticas', N'Punta Cana', N'Playa Bávaro, frente al Palmar de Bávaro Beach Resort', N'Media hora en moto acuática por la costa de Bávaro con instructor, para una o dos personas por moto. No se necesita experiencia.', N'Moto acuática, chaleco, instrucción y combustible', 0.5, 5500, 30, N'img/publicaciones/moto-acuatica.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -201, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Teleférico de Puerto Plata y Cristo Redentor')
@@ -1050,7 +1088,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Teleférico de Pue
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Canyoning y tubing en el río Jimenoa')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Canyoning y tubing en el río Jimenoa', N'tour-montana', N'Jarabacoa', N'Base de Montaña Verde, Calle Independencia 18, Jarabacoa', N'Descenso con cuerdas por el cañón del río Jimenoa, saltos a pozas de agua cristalina y regreso flotando en neumático por los rápidos suaves. El único río del Caribe donde se hace rafting de verdad está a la vuelta.', N'Guías certificados, casco, arnés, traje de neopreno, neumático y almuerzo de campo', 5, 3600, 16, N'img/publicaciones/canyoning-jarabacoa.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -195, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Canyoning y tubing en el río Jimenoa', N'tour-montana', N'Jarabacoa', N'Base de Montaña Verde, Calle Independencia 18, Jarabacoa', N'Descenso con cuerdas por el cañón del río Jimenoa, saltos a pozas de agua cristalina y regreso flotando en neumático por los rápidos suaves. El único río del Caribe donde se hace rafting de verdad está a la vuelta.', N'Guías certificados, casco, arnés, traje de neopreno, neumático y almuerzo de campo', 5, 5600, 16, N'img/publicaciones/canyoning-jarabacoa.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -195, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'130774519';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Clase de bachata y merengue en la Zona Colonial')
@@ -1060,17 +1098,17 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Clase de bachata y
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Aves endémicas de Los Haitises')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Aves endémicas de Los Haitises', N'tour-montana', N'Samaná', N'Muelle de Sabana de la Mar', N'Recorrido en bote y a pie con un guía ornitólogo para ver la cotorra de La Española, el gavilán de La Española y las colonias de pelícanos y fragatas entre los mogotes del parque nacional.', N'Guía especialista, binoculares, bote, entrada al parque y merienda', 5, 3800, 12, N'img/publicaciones/aves-los-haitises.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -189, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Aves endémicas de Los Haitises', N'tour-montana', N'Samaná', N'Muelle de Sabana de la Mar', N'Recorrido en bote y a pie con un guía ornitólogo para ver la cotorra de La Española, el gavilán de La Española y las colonias de pelícanos y fragatas entre los mogotes del parque nacional.', N'Guía especialista, binoculares, bote, entrada al parque y merienda', 5, 4500, 12, N'img/publicaciones/aves-los-haitises.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -189, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131456789';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Montaña Redonda: columpios y tirolesa')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Montaña Redonda: columpios y tirolesa', N'zip-line', N'Miches', N'Parqueo de Montaña Redonda, carretera Miches-Sabana de la Mar', N'Subida en camión 4x4 a la cima de Montaña Redonda, columpios gigantes con vista de 360 grados a las lagunas Redonda y Limón y descenso por tirolesa. Termina en Playa Esmeralda.', N'Transporte 4x4, entrada, tirolesa con equipo de seguridad y tiempo libre en Playa Esmeralda', 6, 3900, 30, N'img/publicaciones/montana-redonda.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -186, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Montaña Redonda: columpios y tirolesa', N'zip-line', N'Miches', N'Parqueo de Montaña Redonda, carretera Miches-Sabana de la Mar', N'Subida en camión 4x4 a la cima de Montaña Redonda, columpios gigantes con vista de 360 grados a las lagunas Redonda y Limón y descenso por tirolesa. Termina en Playa Esmeralda.', N'Transporte 4x4, entrada, tirolesa con equipo de seguridad y tiempo libre en Playa Esmeralda', 6, 5800, 30, N'img/publicaciones/montana-redonda.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -186, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131998452';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Barahona: Río Los Patos y balneario San Rafael')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Barahona: Río Los Patos y balneario San Rafael', N'tour-playa', N'Barahona', N'Parque central de Barahona', N'Ruta por la costa sur entre montaña y mar: el balneario de San Rafael con sus pozas escalonadas y el Río Los Patos, el río más corto del país, que desemboca en el Caribe. Parada en el mirador de Paraíso.', N'Transporte, guía, almuerzo de pescado frito con tostones y bebidas', 7, 2900, 20, N'img/publicaciones/rio-los-patos.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -183, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Barahona: Río Los Patos y balneario San Rafael', N'tour-playa', N'Barahona', N'Parque central de Barahona', N'Ruta por la costa sur entre montaña y mar: el balneario de San Rafael con sus pozas escalonadas y el Río Los Patos, el río más corto del país, que desemboca en el Caribe. Parada en el mirador de Paraíso.', N'Transporte, guía, almuerzo de pescado frito con tostones y bebidas', 7, 3600, 20, N'img/publicaciones/rio-los-patos.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -183, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132115630';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Ruta de las fresas y las flores de Constanza')
@@ -1095,7 +1133,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Equipo de snorkel 
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Tabla de paddleboard con chaleco')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Tabla de paddleboard con chaleco', N'alquiler-equipo', N'Las Terrenas', N'Playa Bonita, Las Terrenas', N'Tabla inflable de paddle surf estable para principiantes, remo de aluminio y chaleco salvavidas. Ideal para las aguas tranquilas de Playa Bonita y Cosón por la mañana.', N'Tabla, remo, chaleco salvavidas e indicaciones básicas', 24, 1600, 12, N'img/publicaciones/paddleboard.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -168, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Tabla de paddleboard con chaleco', N'alquiler-equipo', N'Las Terrenas', N'Playa Bonita, Las Terrenas', N'Tabla inflable de paddle surf estable para principiantes, remo de aluminio y chaleco salvavidas. Ideal para las aguas tranquilas de Playa Bonita y Cosón por la mañana.', N'Tabla, remo, chaleco salvavidas e indicaciones básicas', 24, 2500, 12, N'img/publicaciones/paddleboard.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -168, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131225874';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Chalecos salvavidas certificados')
@@ -1110,17 +1148,17 @@ IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Neverita portátil
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Video con dron en Kite Beach')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Video con dron en Kite Beach', N'fotografia', N'Cabarete', N'Kite Beach, Cabarete', N'Piloto de dron certificado que graba tu sesión de kitesurf o windsurf desde el aire y desde la orilla. Recibes un video editado de un minuto y todo el material en alta resolución.', N'Piloto de dron, cámara en tierra, video editado y archivos originales en 48 horas', 2, 6500, 4, N'img/publicaciones/dron.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -159, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Video con dron en Kite Beach', N'fotografia', N'Cabarete', N'Kite Beach, Cabarete', N'Piloto de dron certificado que graba tu sesión de kitesurf o windsurf desde el aire y desde la orilla. Recibes un video editado de un minuto y todo el material en alta resolución.', N'Piloto de dron, cámara en tierra, video editado y archivos originales en 48 horas', 2, 9500, 4, N'img/publicaciones/dron.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -159, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131225874';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Sesión de fotos en una playa virgen')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Sesión de fotos en una playa virgen', N'fotografia', N'Las Galeras', N'Pueblo de Las Galeras, salida en lancha', N'Fotógrafo local que te lleva en lancha a Playa Frontón o Playa Madama para una sesión de pareja, familia o luna de miel con la luz del atardecer.', N'Fotógrafo, lancha, 60 fotos editadas y galería en línea', 3, 5800, 3, N'img/publicaciones/camara-playa.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -156, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Sesión de fotos en una playa virgen', N'fotografia', N'Las Galeras', N'Pueblo de Las Galeras, salida en lancha', N'Fotógrafo local que te lleva en lancha a Playa Frontón o Playa Madama para una sesión de pareja, familia o luna de miel con la luz del atardecer.', N'Fotógrafo, lancha, 60 fotos editadas y galería en línea', 3, 8500, 3, N'img/publicaciones/camara-playa.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -156, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131225874';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.actividades WHERE nombre = N'Fotógrafo de aventura en la montaña')
     INSERT INTO dbo.actividades (id_empresa, nombre, categoria, ciudad, punto_encuentro, descripcion, incluye, duracion_horas, precio_persona, cupo_diario, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Fotógrafo de aventura en la montaña', N'fotografia', N'Jarabacoa', N'Tu punto de salida en Jarabacoa o Constanza', N'Creador de contenido que acompaña tu ruta de senderismo, canyoning o parapente y captura fotos y video en acción, incluidas tomas aéreas cuando el lugar lo permite.', N'Fotógrafo con equipo resistente al agua, 80 fotos editadas y un video corto', 5, 5200, 3, N'img/publicaciones/fotografo-montana.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -153, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Fotógrafo de aventura en la montaña', N'fotografia', N'Jarabacoa', N'Tu punto de salida en Jarabacoa o Constanza', N'Creador de contenido que acompaña tu ruta de senderismo, canyoning o parapente y captura fotos y video en acción, incluidas tomas aéreas cuando el lugar lo permite.', N'Fotógrafo con equipo resistente al agua, 80 fotos editadas y un video corto', 5, 9000, 3, N'img/publicaciones/fotografo-montana.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -153, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131225874';
 GO
 -- 4.5 Autos de alquiler
@@ -1141,7 +1179,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Ford Mustang Convert
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Cadillac Escalade')
     INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Cadillac Escalade', N'Cadillac', N'Escalade', 2024, N'suv', N'automatica', N'gasolina', 7, 5, 5, 1, NULL, N'Punta Cana', N'Aeropuerto Internacional de Punta Cana (PUJ), terminal B', N'SUV de lujo de tres filas para familias o grupos con mucho equipaje. Asientos de piel, pantalla trasera y techo panorámico.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, kilometraje ilimitado', 14500, 60000, 25, NULL, 7500, 2, N'img/publicaciones/cadillac-escalade.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Cadillac Escalade', N'Cadillac', N'Escalade', 2024, N'suv', N'automatica', N'gasolina', 7, 5, 5, 1, NULL, N'Punta Cana', N'Aeropuerto Internacional de Punta Cana (PUJ), terminal B', N'SUV de lujo de tres filas para familias o grupos con mucho equipaje. Asientos de piel, pantalla trasera y techo panorámico.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, kilometraje ilimitado', 15500, 60000, 25, NULL, 7500, 2, N'img/publicaciones/cadillac-escalade.jpg', 1, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -291, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'132667418';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Jeep Gladiator 4x4')
@@ -1156,7 +1194,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Kia K7 o similar')
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Volvo XC40')
     INSERT INTO dbo.vehiculos (id_empresa, nombre, marca, modelo, anio, categoria, transmision, combustible, pasajeros, puertas, maletas, aire, km_por_dia, ciudad, lugar_recogida, descripcion, incluye, precio_dia, deposito, edad_minima, cargo_conductor_joven, cargo_otra_ciudad, unidades, imagen_url, destacado, fecha_creacion)
-    SELECT e.id_empresa, N'Volvo XC40', N'Volvo', N'XC40', 2024, N'lujo', N'automatica', N'hibrido', 5, 5, 3, 1, NULL, N'Santo Domingo', N'Aeropuerto Internacional Las Américas (SDQ), mostrador en llegadas', N'SUV compacto premium híbrido, con techo panorámico, asistente de carril y sonido de alta gama. Bajo consumo para recorrer la costa este.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, entrega con tanque lleno', 8200, 40000, 25, NULL, 6000, 2, N'img/publicaciones/volvo-xc40.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -282, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT e.id_empresa, N'Volvo XC40', N'Volvo', N'XC40', 2024, N'lujo', N'automatica', N'hibrido', 5, 5, 3, 1, NULL, N'Santo Domingo', N'Aeropuerto Internacional Las Américas (SDQ), mostrador en llegadas', N'SUV compacto premium híbrido, con techo panorámico, asistente de carril y sonido de alta gama. Bajo consumo para recorrer la costa este.', N'Seguro de colisión con deducible reducido, asistencia 24 horas, entrega con tanque lleno', 7200, 40000, 25, NULL, 6000, 2, N'img/publicaciones/volvo-xc40.jpg', 0, DATEADD(HOUR, 12, CAST(DATEADD(DAY, -282, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.empresas e WHERE e.rnc = N'131778902';
 GO
 IF NOT EXISTS (SELECT 1 FROM dbo.vehiculos WHERE nombre = N'Honda CR-V')
@@ -1244,7 +1282,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD7K2M9QA')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD7K2M9QA', u.id_usuario, h.id_hotel, DATEADD(DAY, 30, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 33, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 14500, 43500,
+           NULL, 2, 1, 21500, 64500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1258,7 +1296,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD4H8T2LX')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD4H8T2LX', u.id_usuario, a.id_actividad, DATEADD(DAY, 12, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 2200, 4400,
+           NULL, 2, NULL, 2500, 5000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -9, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1272,7 +1310,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD9P3W6ZE')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD9P3W6ZE', u.id_usuario, h.id_hotel, DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 9800, 19600,
+           NULL, 2, 1, 11500, 23000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1300,7 +1338,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDC5K8M2T')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDC5K8M2T', u.id_usuario, h.id_hotel, DATEADD(DAY, 40, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 43, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 8624, 25872,
+           NULL, 2, 1, 10120, 30360,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            (SELECT id_combo FROM dbo.combos WHERE nombre = N'Costa Norte: charcos y teleférico')
@@ -1314,7 +1352,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDC6L9N3U')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDC6L9N3U', u.id_usuario, a.id_actividad, DATEADD(DAY, 41, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 2728, 5456,
+           NULL, 2, NULL, 3960, 7920,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            (SELECT id_combo FROM dbo.combos WHERE nombre = N'Costa Norte: charcos y teleférico')
@@ -1342,7 +1380,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD5L7Q2MA')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD5L7Q2MA', u.id_usuario, h.id_hotel, DATEADD(DAY, 18, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 22, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 7800, 31200,
+           NULL, 2, 1, 9600, 38400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1356,7 +1394,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD8T3V6NB')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD8T3V6NB', u.id_usuario, a.id_actividad, DATEADD(DAY, 19, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 3400, 6800,
+           NULL, 2, NULL, 4200, 8400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1370,7 +1408,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD3R9K4PC')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD3R9K4PC', u.id_usuario, a.id_actividad, DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, NULL, 3200, 12800,
+           NULL, 4, NULL, 3800, 15200,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1384,7 +1422,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD6M2X8RD')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD6M2X8RD', u.id_usuario, h.id_hotel, DATEADD(DAY, 25, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 28, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, 1, 13200, 39600,
+           NULL, 4, 1, 12400, 37200,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1398,7 +1436,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD9N5H2SE')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD9N5H2SE', u.id_usuario, a.id_actividad, DATEADD(DAY, 8, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, NULL, 5900, 23600,
+           NULL, 4, NULL, 4700, 18800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1412,7 +1450,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD4P7J3TF')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD4P7J3TF', u.id_usuario, a.id_actividad, DATEADD(DAY, -30, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 4200, 8400,
+           NULL, 2, NULL, 5900, 11800,
            N'cancelada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), DATEADD(HOUR, 10, CAST(DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))),
            NULL
@@ -1426,7 +1464,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD2W8F5UG')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD2W8F5UG', u.id_usuario, h.id_hotel, DATEADD(DAY, 40, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 45, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, 1, 12800, 64000,
+           NULL, 3, 1, 16900, 84500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1440,7 +1478,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRD7Y4C9VH')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRD7Y4C9VH', u.id_usuario, a.id_actividad, DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 14500, 29000,
+           NULL, 2, NULL, 18500, 37000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1468,7 +1506,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDA7C2K9V')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDA7C2K9V', u.id_usuario, v.id_vehiculo, DATEADD(DAY, 30, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 33, CAST(SYSUTCDATETIME() AS DATE)),
            N'11:00', N'10:00', N'Punta Cana', 34, N'proteccion-total,silla-infantil',
-           60000, 1, NULL, 14500, 47250,
+           60000, 1, NULL, 15500, 50250,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1510,7 +1548,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0001RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0001RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -120, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 14500, 58000,
+           NULL, 2, 1, 21500, 86000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -141, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1524,7 +1562,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0002RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0002RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -75, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, 1, 14500, 72500,
+           NULL, 4, 1, 21500, 107500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1538,7 +1576,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0003RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0003RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -30, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -27, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 14500, 43500,
+           NULL, 2, 1, 21500, 64500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1552,7 +1590,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0004RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0004RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -150, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 12800, 51200,
+           NULL, 2, 1, 16900, 67600,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1566,7 +1604,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0005RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0005RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -47, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, 1, 12800, 38400,
+           NULL, 3, 1, 16900, 50700,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -71, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1580,7 +1618,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0006RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0006RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -93, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 1, 1, 6900, 13800,
+           NULL, 1, 1, 7400, 14800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1594,7 +1632,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0007RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0007RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -38, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 6900, 13800,
+           NULL, 2, 1, 7400, 14800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1608,7 +1646,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0009RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0009RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -110, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -107, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 9800, 29400,
+           NULL, 2, 1, 11500, 34500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1622,7 +1660,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0010RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0010RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -200, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -196, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 11200, 44800,
+           NULL, 2, 1, 15800, 63200,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -221, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1636,7 +1674,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0011RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0011RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -57, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 11200, 33600,
+           NULL, 2, 1, 15800, 47400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1650,7 +1688,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0012RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0012RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -130, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -127, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, 1, 8700, 26100,
+           NULL, 4, 1, 10900, 32700,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -151, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1664,7 +1702,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0013RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0013RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -25, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -23, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 8700, 17400,
+           NULL, 2, 1, 10900, 21800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1678,7 +1716,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0014RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0014RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -180, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -175, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 9400, 47000,
+           NULL, 2, 1, 11200, 56000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -201, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1692,7 +1730,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0015RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0015RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, 1, 9400, 37600,
+           NULL, 3, 1, 11200, 44800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1706,7 +1744,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0016RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0016RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -87, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 6, 1, 16500, 49500,
+           NULL, 6, 1, 18500, 55500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1720,7 +1758,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0017RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0017RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -20, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -18, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, 1, 16500, 33000,
+           NULL, 4, 1, 18500, 37000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1734,7 +1772,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0018RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0018RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -140, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -136, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 7800, 31200,
+           NULL, 2, 1, 9600, 38400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -161, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1748,7 +1786,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0019RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0019RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -42, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, 1, 7800, 23400,
+           NULL, 4, 1, 9600, 28800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1762,7 +1800,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0020RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0020RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -100, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -97, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 13200, 39600,
+           NULL, 2, 1, 12400, 37200,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -121, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1776,7 +1814,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0021RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0021RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 13200, 26400,
+           NULL, 2, 1, 12400, 24800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1790,7 +1828,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0022RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0022RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -160, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, NULL, 5900, 23600,
+           NULL, 4, NULL, 4700, 18800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -181, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1804,7 +1842,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0023RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0023RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -55, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 5900, 11800,
+           NULL, 2, NULL, 4700, 9400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -76, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1818,7 +1856,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0024RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0024RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -15, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, NULL, 5900, 17700,
+           NULL, 3, NULL, 4700, 14100,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -36, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1832,7 +1870,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0026RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0026RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -80, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 3200, 6400,
+           NULL, 2, NULL, 3800, 7600,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1874,7 +1912,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0029RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0029RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -170, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 2200, 4400,
+           NULL, 2, NULL, 2500, 5000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -191, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1888,7 +1926,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0030RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0030RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -28, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, NULL, 2200, 6600,
+           NULL, 3, NULL, 2500, 7500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1902,7 +1940,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0032RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0032RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -240, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 1, NULL, 14500, 14500,
+           NULL, 1, NULL, 18500, 18500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -1958,7 +1996,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0036RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0036RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -190, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, NULL, 2300, 6900,
+           NULL, 3, NULL, 2800, 8400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -211, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2042,7 +2080,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0042RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0042RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -145, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 3400, 6800,
+           NULL, 2, NULL, 4200, 8400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -166, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2056,7 +2094,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0043RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0043RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -12, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, NULL, 3400, 13600,
+           NULL, 4, NULL, 4200, 16800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2070,7 +2108,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0044RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0044RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -125, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 3900, 7800,
+           NULL, 2, NULL, 5200, 10400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2098,7 +2136,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0046RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0046RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -110, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 4200, 8400,
+           NULL, 2, NULL, 5900, 11800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2112,7 +2150,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0047RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0047RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, NULL, 4200, 12600,
+           NULL, 3, NULL, 5900, 17700,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2126,7 +2164,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0048RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0048RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 1, NULL, 5500, 5500,
+           NULL, 1, NULL, 6500, 6500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2140,7 +2178,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0049RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0049RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 5200, 10400,
+           NULL, 2, NULL, 5800, 11600,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2154,7 +2192,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0050RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0050RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -175, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, NULL, 4600, 13800,
+           NULL, 3, NULL, 5400, 16200,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -196, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2168,7 +2206,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0051RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0051RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -80, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 3100, 6200,
+           NULL, 2, NULL, 4500, 9000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2182,7 +2220,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0052RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0052RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -150, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 8, 1, 38500, 154000,
+           NULL, 8, 1, 68000, 272000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2196,7 +2234,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0053RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0053RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -60, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -57, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 6, 1, 38500, 115500,
+           NULL, 6, 1, 68000, 204000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2224,7 +2262,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0055RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0055RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -22, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, NULL, 2900, 11600,
+           NULL, 4, NULL, 4200, 16800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2238,7 +2276,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0056RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0056RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -26, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, NULL, 3100, 12400,
+           NULL, 4, NULL, 4500, 18000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -47, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2280,7 +2318,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0059RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0059RS', u.id_usuario, v.id_vehiculo, DATEADD(DAY, -70, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -65, CAST(SYSUTCDATETIME() AS DATE)),
            N'10:00', N'10:00', N'Punta Cana', 32, NULL,
-           60000, 1, NULL, 14500, 72500,
+           60000, 1, NULL, 15500, 77500,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2322,7 +2360,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0062RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0062RS', u.id_usuario, a.id_actividad, DATEADD(DAY, -45, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 18500, 37000,
+           NULL, 2, NULL, 27500, 55000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2336,7 +2374,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDV0063RS')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDV0063RS', u.id_usuario, h.id_hotel, DATEADD(DAY, -28, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -26, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 7400, 14800,
+           NULL, 2, 1, 7900, 15800,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2350,7 +2388,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN2P8K4T')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDN2P8K4T', u.id_usuario, h.id_hotel, DATEADD(DAY, -40, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -36, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 16800, 67200,
+           NULL, 2, 1, 24800, 99200,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2364,7 +2402,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN3Q7M2V')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDN3Q7M2V', u.id_usuario, h.id_hotel, DATEADD(DAY, -95, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, -90, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 4, 1, 16800, 84000,
+           NULL, 4, 1, 24800, 124000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2378,7 +2416,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN4R6W8X')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDN4R6W8X', u.id_usuario, h.id_hotel, DATEADD(DAY, 58, CAST(SYSUTCDATETIME() AS DATE)), DATEADD(DAY, 62, CAST(SYSUTCDATETIME() AS DATE)),
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, 1, 16800, 67200,
+           NULL, 2, 1, 24800, 99200,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2420,7 +2458,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN7U2C8D')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDN7U2C8D', u.id_usuario, a.id_actividad, DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 3, NULL, 4300, 12900,
+           NULL, 3, NULL, 5200, 15600,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -54, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2434,7 +2472,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDN8V9E7F')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDN8V9E7F', u.id_usuario, a.id_actividad, DATEADD(DAY, -75, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 4300, 8600,
+           NULL, 2, NULL, 5200, 10400,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2476,7 +2514,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.reservas WHERE codigo = N'BRDP3Y6L4M')
          fecha_creacion, fecha_cancelacion, id_combo)
     SELECT N'BRDP3Y6L4M', u.id_usuario, a.id_actividad, DATEADD(DAY, -48, CAST(SYSUTCDATETIME() AS DATE)), NULL,
            NULL, NULL, NULL, NULL, NULL,
-           NULL, 2, NULL, 9800, 19600,
+           NULL, 2, NULL, 12500, 25000,
            N'confirmada', NULL,
            DATEADD(HOUR, 15, CAST(DATEADD(DAY, -69, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL,
            NULL
@@ -2544,95 +2582,95 @@ INSERT INTO dbo.pagos (id_reserva, metodo, estado, monto, marca, ultimos4, titul
 SELECT r.id_reserva, v.metodo, v.estado, v.monto, v.marca, v.ultimos4,
        CASE WHEN v.metodo = 'tarjeta' THEN u.nombre END, v.referencia, v.autorizacion, v.fecha_pago, v.fecha_reembolso
 FROM (VALUES
-        (N'BRD7K2M9QA', N'tarjeta', N'pagado', 43500, N'Mastercard', N'4444', N'PAY7K2M9QAD', N'324057', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD4H8T2LX', N'en_destino', N'pendiente', 4400, NULL, NULL, N'PAY4H8T2LXD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -9, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD9P3W6ZE', N'tarjeta', N'pagado', 19600, N'Visa', N'4242', N'PAY9P3W6ZED', N'955371', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD7K2M9QA', N'tarjeta', N'pagado', 64500, N'Mastercard', N'4444', N'PAY7K2M9QAD', N'324057', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD4H8T2LX', N'en_destino', N'pendiente', 5000, NULL, NULL, N'PAY4H8T2LXD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -9, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD9P3W6ZE', N'tarjeta', N'pagado', 23000, N'Visa', N'4242', N'PAY9P3W6ZED', N'955371', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRD2C5N8RV', N'tarjeta', N'pagado', 4500, N'Visa', N'4242', N'PAY2C5N8RVD', N'717801', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDC5K8M2T', N'en_destino', N'pendiente', 25872, NULL, NULL, N'PAYC5K8M2TD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDC6L9N3U', N'en_destino', N'pendiente', 5456, NULL, NULL, N'PAYC6L9N3UD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDC5K8M2T', N'en_destino', N'pendiente', 30360, NULL, NULL, N'PAYC5K8M2TD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDC6L9N3U', N'en_destino', N'pendiente', 7920, NULL, NULL, N'PAYC6L9N3UD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDC7M2P4V', N'tarjeta', N'pagado', 3696, N'Mastercard', N'4444', N'PAYC7M2P4VD', N'751683', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD5L7Q2MA', N'tarjeta', N'pagado', 31200, N'Visa', N'4242', N'PAY5L7Q2MAD', N'031054', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD8T3V6NB', N'en_destino', N'pendiente', 6800, NULL, NULL, N'PAY8T3V6NBD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD3R9K4PC', N'tarjeta', N'pagado', 12800, N'Mastercard', N'4444', N'PAY3R9K4PCD', N'466599', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD6M2X8RD', N'tarjeta', N'pagado', 39600, N'Mastercard', N'4444', N'PAY6M2X8RDD', N'226823', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD9N5H2SE', N'tarjeta', N'pagado', 23600, N'Visa', N'4242', N'PAY9N5H2SED', N'387409', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD4P7J3TF', N'tarjeta', N'reembolsado', 8400, N'Mastercard', N'4444', N'PAY4P7J3TFD', N'727926', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), DATEADD(HOUR, 10, CAST(DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))),
-        (N'BRD2W8F5UG', N'tarjeta', N'pagado', 64000, N'American Express', N'0005', N'PAY2W8F5UGD', N'044686', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRD7Y4C9VH', N'en_destino', N'pagado', 29000, NULL, NULL, N'PAY7Y4C9VHD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD5L7Q2MA', N'tarjeta', N'pagado', 38400, N'Visa', N'4242', N'PAY5L7Q2MAD', N'031054', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD8T3V6NB', N'en_destino', N'pendiente', 8400, NULL, NULL, N'PAY8T3V6NBD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD3R9K4PC', N'tarjeta', N'pagado', 15200, N'Mastercard', N'4444', N'PAY3R9K4PCD', N'466599', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD6M2X8RD', N'tarjeta', N'pagado', 37200, N'Mastercard', N'4444', N'PAY6M2X8RDD', N'226823', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD9N5H2SE', N'tarjeta', N'pagado', 18800, N'Visa', N'4242', N'PAY9N5H2SED', N'387409', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD4P7J3TF', N'tarjeta', N'reembolsado', 11800, N'Mastercard', N'4444', N'PAY4P7J3TFD', N'727926', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), DATEADD(HOUR, 10, CAST(DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))),
+        (N'BRD2W8F5UG', N'tarjeta', N'pagado', 84500, N'American Express', N'0005', N'PAY2W8F5UGD', N'044686', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRD7Y4C9VH', N'en_destino', N'pagado', 37000, NULL, NULL, N'PAY7Y4C9VHD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRD5Z6B3WJ', N'tarjeta', N'pagado', 3600, N'Visa', N'4242', N'PAY5Z6B3WJD', N'195147', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -16, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDA7C2K9V', N'tarjeta', N'pagado', 47250, N'Mastercard', N'4444', N'PAYA7C2K9VD', N'252786', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDA7C2K9V', N'tarjeta', N'pagado', 50250, N'Mastercard', N'4444', N'PAYA7C2K9VD', N'252786', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDA3J8M4P', N'tarjeta', N'pagado', 38100, N'Visa', N'4242', N'PAYA3J8M4PD', N'054811', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -3, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDA9T5Q2R', N'tarjeta', N'pagado', 24250, N'Mastercard', N'4444', N'PAYA9T5Q2RD', N'870468', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -13, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0001RS', N'tarjeta', N'pagado', 58000, N'American Express', N'0005', N'PAYV0001RSD', N'524238', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -141, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0002RS', N'en_destino', N'pagado', 72500, NULL, NULL, N'PAYV0002RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0003RS', N'tarjeta', N'pagado', 43500, N'Visa', N'4242', N'PAYV0003RSD', N'650942', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0004RS', N'tarjeta', N'pagado', 51200, N'American Express', N'0005', N'PAYV0004RSD', N'714294', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0005RS', N'tarjeta', N'pagado', 38400, N'Mastercard', N'4444', N'PAYV0005RSD', N'777646', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -71, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0006RS', N'tarjeta', N'pagado', 13800, N'Visa', N'4242', N'PAYV0006RSD', N'840998', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0007RS', N'en_destino', N'pagado', 13800, NULL, NULL, N'PAYV0007RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0009RS', N'tarjeta', N'pagado', 29400, N'Visa', N'4242', N'PAYV0009RSD', N'031054', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0010RS', N'tarjeta', N'pagado', 44800, N'Mastercard', N'4444', N'PAYV0010RSD', N'516319', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -221, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0011RS', N'tarjeta', N'pagado', 33600, N'Visa', N'4242', N'PAYV0011RSD', N'579671', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0012RS', N'tarjeta', N'pagado', 26100, N'American Express', N'0005', N'PAYV0012RSD', N'643023', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -151, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0013RS', N'en_destino', N'pagado', 17400, NULL, NULL, N'PAYV0013RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0014RS', N'tarjeta', N'pagado', 47000, N'Visa', N'4242', N'PAYV0014RSD', N'769727', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -201, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0015RS', N'tarjeta', N'pagado', 37600, N'American Express', N'0005', N'PAYV0015RSD', N'833079', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0016RS', N'tarjeta', N'pagado', 49500, N'Mastercard', N'4444', N'PAYV0016RSD', N'896431', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0017RS', N'tarjeta', N'pagado', 33000, N'Visa', N'4242', N'PAYV0017RSD', N'959783', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0018RS', N'en_destino', N'pagado', 31200, NULL, NULL, N'PAYV0018RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -161, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0019RS', N'tarjeta', N'pagado', 23400, N'Mastercard', N'4444', N'PAYV0019RSD', N'086487', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0020RS', N'tarjeta', N'pagado', 39600, N'American Express', N'0005', N'PAYV0020RSD', N'571752', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -121, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0021RS', N'tarjeta', N'pagado', 26400, N'Mastercard', N'4444', N'PAYV0021RSD', N'635104', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0022RS', N'tarjeta', N'pagado', 23600, N'Visa', N'4242', N'PAYV0022RSD', N'698456', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -181, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0023RS', N'tarjeta', N'pagado', 11800, N'American Express', N'0005', N'PAYV0023RSD', N'761808', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -76, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0024RS', N'en_destino', N'pagado', 17700, NULL, NULL, N'PAYV0024RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -36, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0026RS', N'tarjeta', N'pagado', 6400, N'American Express', N'0005', N'PAYV0026RSD', N'951864', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0001RS', N'tarjeta', N'pagado', 86000, N'American Express', N'0005', N'PAYV0001RSD', N'524238', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -141, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0002RS', N'en_destino', N'pagado', 107500, NULL, NULL, N'PAYV0002RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0003RS', N'tarjeta', N'pagado', 64500, N'Visa', N'4242', N'PAYV0003RSD', N'650942', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -51, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0004RS', N'tarjeta', N'pagado', 67600, N'American Express', N'0005', N'PAYV0004RSD', N'714294', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0005RS', N'tarjeta', N'pagado', 50700, N'Mastercard', N'4444', N'PAYV0005RSD', N'777646', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -71, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0006RS', N'tarjeta', N'pagado', 14800, N'Visa', N'4242', N'PAYV0006RSD', N'840998', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0007RS', N'en_destino', N'pagado', 14800, NULL, NULL, N'PAYV0007RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0009RS', N'tarjeta', N'pagado', 34500, N'Visa', N'4242', N'PAYV0009RSD', N'031054', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0010RS', N'tarjeta', N'pagado', 63200, N'Mastercard', N'4444', N'PAYV0010RSD', N'516319', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -221, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0011RS', N'tarjeta', N'pagado', 47400, N'Visa', N'4242', N'PAYV0011RSD', N'579671', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0012RS', N'tarjeta', N'pagado', 32700, N'American Express', N'0005', N'PAYV0012RSD', N'643023', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -151, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0013RS', N'en_destino', N'pagado', 21800, NULL, NULL, N'PAYV0013RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0014RS', N'tarjeta', N'pagado', 56000, N'Visa', N'4242', N'PAYV0014RSD', N'769727', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -201, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0015RS', N'tarjeta', N'pagado', 44800, N'American Express', N'0005', N'PAYV0015RSD', N'833079', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0016RS', N'tarjeta', N'pagado', 55500, N'Mastercard', N'4444', N'PAYV0016RSD', N'896431', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0017RS', N'tarjeta', N'pagado', 37000, N'Visa', N'4242', N'PAYV0017RSD', N'959783', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -41, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0018RS', N'en_destino', N'pagado', 38400, NULL, NULL, N'PAYV0018RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -161, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0019RS', N'tarjeta', N'pagado', 28800, N'Mastercard', N'4444', N'PAYV0019RSD', N'086487', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0020RS', N'tarjeta', N'pagado', 37200, N'American Express', N'0005', N'PAYV0020RSD', N'571752', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -121, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0021RS', N'tarjeta', N'pagado', 24800, N'Mastercard', N'4444', N'PAYV0021RSD', N'635104', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0022RS', N'tarjeta', N'pagado', 18800, N'Visa', N'4242', N'PAYV0022RSD', N'698456', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -181, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0023RS', N'tarjeta', N'pagado', 9400, N'American Express', N'0005', N'PAYV0023RSD', N'761808', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -76, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0024RS', N'en_destino', N'pagado', 14100, NULL, NULL, N'PAYV0024RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -36, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0026RS', N'tarjeta', N'pagado', 7600, N'American Express', N'0005', N'PAYV0026RSD', N'951864', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0027RS', N'tarjeta', N'pagado', 7200, N'Mastercard', N'4444', N'PAYV0027RSD', N'015216', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -231, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0028RS', N'tarjeta', N'pagado', 14400, N'Visa', N'4242', N'PAYV0028RSD', N'078568', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -86, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0029RS', N'en_destino', N'pagado', 4400, NULL, NULL, N'PAYV0029RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -191, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0030RS', N'en_destino', N'pagado', 6600, NULL, NULL, N'PAYV0030RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0032RS', N'tarjeta', N'pagado', 14500, N'Mastercard', N'4444', N'PAYV0032RSD', N'753889', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0029RS', N'en_destino', N'pagado', 5000, NULL, NULL, N'PAYV0029RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -191, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0030RS', N'en_destino', N'pagado', 7500, NULL, NULL, N'PAYV0030RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0032RS', N'tarjeta', N'pagado', 18500, N'Mastercard', N'4444', N'PAYV0032RSD', N'753889', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -261, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0033RS', N'tarjeta', N'pagado', 4800, N'Visa', N'4242', N'PAYV0033RSD', N'817241', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -106, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0034RS', N'tarjeta', N'pagado', 5200, N'American Express', N'0005', N'PAYV0034RSD', N'880593', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -136, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0035RS', N'en_destino', N'pagado', 5200, NULL, NULL, N'PAYV0035RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0036RS', N'tarjeta', N'pagado', 6900, N'Visa', N'4242', N'PAYV0036RSD', N'007297', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -211, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0036RS', N'tarjeta', N'pagado', 8400, N'Visa', N'4242', N'PAYV0036RSD', N'007297', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -211, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0037RS', N'tarjeta', N'pagado', 3600, N'American Express', N'0005', N'PAYV0037RSD', N'070649', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0038RS', N'tarjeta', N'pagado', 3600, N'Mastercard', N'4444', N'PAYV0038RSD', N'134001', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -39, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0039RS', N'tarjeta', N'pagado', 4800, N'Visa', N'4242', N'PAYV0039RSD', N'197353', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -121, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0040RS', N'tarjeta', N'pagado', 3000, N'Mastercard', N'4444', N'PAYV0040RSD', N'682618', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -281, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0041RS', N'en_destino', N'pagado', 3000, NULL, NULL, N'PAYV0041RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0042RS', N'tarjeta', N'pagado', 6800, N'American Express', N'0005', N'PAYV0042RSD', N'809322', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -166, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0043RS', N'tarjeta', N'pagado', 13600, N'Mastercard', N'4444', N'PAYV0043RSD', N'872674', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0044RS', N'tarjeta', N'pagado', 7800, N'Visa', N'4242', N'PAYV0044RSD', N'936026', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0042RS', N'tarjeta', N'pagado', 8400, N'American Express', N'0005', N'PAYV0042RSD', N'809322', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -166, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0043RS', N'tarjeta', N'pagado', 16800, N'Mastercard', N'4444', N'PAYV0043RSD', N'872674', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -33, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0044RS', N'tarjeta', N'pagado', 10400, N'Visa', N'4242', N'PAYV0044RSD', N'936026', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -146, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0045RS', N'tarjeta', N'pagado', 3400, N'American Express', N'0005', N'PAYV0045RSD', N'999378', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0046RS', N'en_destino', N'pagado', 8400, NULL, NULL, N'PAYV0046RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0047RS', N'tarjeta', N'pagado', 12600, N'Visa', N'4242', N'PAYV0047RSD', N'126082', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0048RS', N'tarjeta', N'pagado', 5500, N'American Express', N'0005', N'PAYV0048RSD', N'189434', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0049RS', N'tarjeta', N'pagado', 10400, N'Mastercard', N'4444', N'PAYV0049RSD', N'252786', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0050RS', N'tarjeta', N'pagado', 13800, N'American Express', N'0005', N'PAYV0050RSD', N'738051', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -196, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0051RS', N'tarjeta', N'pagado', 6200, N'Mastercard', N'4444', N'PAYV0051RSD', N'801403', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0052RS', N'en_destino', N'pagado', 154000, NULL, NULL, N'PAYV0052RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0053RS', N'tarjeta', N'pagado', 115500, N'American Express', N'0005', N'PAYV0053RSD', N'928107', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0046RS', N'en_destino', N'pagado', 11800, NULL, NULL, N'PAYV0046RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -131, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0047RS', N'tarjeta', N'pagado', 17700, N'Visa', N'4242', N'PAYV0047RSD', N'126082', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0048RS', N'tarjeta', N'pagado', 6500, N'American Express', N'0005', N'PAYV0048RSD', N'189434', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0049RS', N'tarjeta', N'pagado', 11600, N'Mastercard', N'4444', N'PAYV0049RSD', N'252786', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0050RS', N'tarjeta', N'pagado', 16200, N'American Express', N'0005', N'PAYV0050RSD', N'738051', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -196, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0051RS', N'tarjeta', N'pagado', 9000, N'Mastercard', N'4444', N'PAYV0051RSD', N'801403', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -101, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0052RS', N'en_destino', N'pagado', 272000, NULL, NULL, N'PAYV0052RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -171, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0053RS', N'tarjeta', N'pagado', 204000, N'American Express', N'0005', N'PAYV0053RSD', N'928107', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -81, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0054RS', N'tarjeta', N'pagado', 31200, N'Mastercard', N'4444', N'PAYV0054RSD', N'991459', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0055RS', N'tarjeta', N'pagado', 11600, N'Visa', N'4242', N'PAYV0055RSD', N'054811', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0056RS', N'tarjeta', N'pagado', 12400, N'American Express', N'0005', N'PAYV0056RSD', N'118163', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -47, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0055RS', N'tarjeta', N'pagado', 16800, N'Visa', N'4242', N'PAYV0055RSD', N'054811', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0056RS', N'tarjeta', N'pagado', 18000, N'American Express', N'0005', N'PAYV0056RSD', N'118163', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -47, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0057RS', N'en_destino', N'pagado', 11600, NULL, NULL, N'PAYV0057RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -71, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0058RS', N'tarjeta', N'pagado', 8700, N'Visa', N'4242', N'PAYV0058RSD', N'244867', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -46, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0059RS', N'tarjeta', N'pagado', 72500, N'American Express', N'0005', N'PAYV0059RSD', N'308219', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0059RS', N'tarjeta', N'pagado', 77500, N'American Express', N'0005', N'PAYV0059RSD', N'308219', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -91, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0060RS', N'tarjeta', N'pagado', 26700, N'Visa', N'4242', N'PAYV0060RSD', N'793484', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -56, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDV0061RS', N'tarjeta', N'pagado', 31200, N'American Express', N'0005', N'PAYV0061RSD', N'856836', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -111, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0062RS', N'tarjeta', N'pagado', 37000, N'Mastercard', N'4444', N'PAYV0062RSD', N'920188', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDV0063RS', N'en_destino', N'pagado', 14800, NULL, NULL, N'PAYV0063RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDN2P8K4T', N'tarjeta', N'pagado', 67200, N'American Express', N'0005', N'PAYN2P8K4TD', N'902144', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDN3Q7M2V', N'tarjeta', N'pagado', 84000, N'Visa', N'4242', N'PAYN3Q7M2VD', N'076362', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDN4R6W8X', N'tarjeta', N'pagado', 67200, N'American Express', N'0005', N'PAYN4R6W8XD', N'327564', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0062RS', N'tarjeta', N'pagado', 55000, N'Mastercard', N'4444', N'PAYV0062RSD', N'920188', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -66, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDV0063RS', N'en_destino', N'pagado', 15800, NULL, NULL, N'PAYV0063RSD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -49, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN2P8K4T', N'tarjeta', N'pagado', 99200, N'American Express', N'0005', N'PAYN2P8K4TD', N'902144', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -61, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN3Q7M2V', N'tarjeta', N'pagado', 124000, N'Visa', N'4242', N'PAYN3Q7M2VD', N'076362', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -116, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN4R6W8X', N'tarjeta', N'pagado', 99200, N'American Express', N'0005', N'PAYN4R6W8XD', N'327564', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDN5S4Y3Z', N'tarjeta', N'pagado', 3800, N'American Express', N'0005', N'PAYN5S4Y3ZD', N'232536', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -43, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDN6T3A9B', N'en_destino', N'pagado', 7600, NULL, NULL, N'PAYN6T3A9BD', NULL, DATEADD(HOUR, 15, CAST(DATEADD(DAY, -82, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDN7U2C8D', N'tarjeta', N'pagado', 12900, N'Mastercard', N'4444', N'PAYN7U2C8DD', N'516319', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -54, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDN8V9E7F', N'tarjeta', N'pagado', 8600, N'Mastercard', N'4444', N'PAYN8V9E7FD', N'205272', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN7U2C8D', N'tarjeta', N'pagado', 15600, N'Mastercard', N'4444', N'PAYN7U2C8DD', N'516319', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -54, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDN8V9E7F', N'tarjeta', N'pagado', 10400, N'Mastercard', N'4444', N'PAYN8V9E7FD', N'205272', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -96, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDN9W8G6H', N'tarjeta', N'pagado', 2900, N'American Express', N'0005', N'PAYN9W8G6HD', N'450761', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -35, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDP2X7J5K', N'tarjeta', N'pagado', 27600, N'Mastercard', N'4444', N'PAYP2X7J5KD', N'585384', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -301, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
-        (N'BRDP3Y6L4M', N'tarjeta', N'pagado', 19600, N'American Express', N'0005', N'PAYP3Y6L4MD', N'830873', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -69, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
+        (N'BRDP3Y6L4M', N'tarjeta', N'pagado', 25000, N'American Express', N'0005', N'PAYP3Y6L4MD', N'830873', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -69, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDP4Z5N3P', N'tarjeta', N'pagado', 20800, N'Mastercard', N'4444', N'PAYP4Z5N3PD', N'155552', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDP5A4Q2R', N'tarjeta', N'pagado', 28000, N'Mastercard', N'4444', N'PAYP5A4Q2RD', N'229029', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -87, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
         (N'BRDP6B3S9T', N'tarjeta', N'pagado', 15150, N'American Express', N'0005', N'PAYP6B3S9TD', N'044686', DATEADD(HOUR, 15, CAST(DATEADD(DAY, -50, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0))), NULL),
@@ -3154,9 +3192,9 @@ SELECT v.* FROM (VALUES
         (N'Pulsera de ámbar y semillas', N'ambar', N'Pulsera elástica de cuentas de ámbar pulido alternadas con semillas de jabilla, hecha por artesanas de Santiago.', N'Ámbar Septentrional', N'Santiago', 1900, 30, N'img/productos/pulsera-ambar.jpg', 0),
         (N'Cuadro de petroglifos taínos', N'arte', N'Pintura acrílica sobre lienzo de 40 x 50 cm inspirada en los petroglifos de Las Caritas del Lago Enriquillo, firmada por el artista.', N'Colectivo Arte Taíno', N'Santo Domingo', 6800, 6, N'img/productos/cuadro-petroglifos.jpg', 1),
         (N'Cemí taíno tallado en piedra', N'arte', N'Réplica de un cemí de tres puntas tallada en piedra caliza coralina, de unos 15 cm. Se entrega con una nota sobre su significado.', N'Colectivo Arte Taíno', N'La Romana', 2600, 10, N'img/productos/cemi-taino.jpg', 0),
-        (N'Café de Jarabacoa, 454 g', N'cafe-cacao', N'Café arábica de altura cultivado a más de 1,000 metros, tostado medio y molido para colador o greca. Notas a chocolate y caña.', N'Cooperativa Cafetalera de la Cordillera', N'Jarabacoa', 850, 60, N'img/productos/cafe-jarabacoa.jpg', 1),
-        (N'Chocolate 70 % de cacao orgánico', N'cafe-cacao', N'Barra de 80 g de cacao orgánico fermentado en la finca, con solo azúcar de caña. Del grano a la barra en San Francisco de Macorís.', N'Cacao del Cibao', N'San Francisco de Macorís', 450, 80, N'img/productos/chocolate-sfm.jpg', 0),
-        (N'Bolas de cacao para chocolate caliente', N'cafe-cacao', N'Seis bolas de cacao puro con canela, como se preparan en el campo dominicano. Se disuelven en leche caliente con un poco de azúcar.', N'Cacao del Cibao', N'San Francisco de Macorís', 520, 45, N'img/productos/bolas-cacao.jpg', 0),
+        (N'Café de Jarabacoa, 454 g', N'cafe-cacao', N'Café arábica de altura cultivado a más de 1,000 metros, tostado medio y molido para colador o greca. Notas a chocolate y caña.', N'Cooperativa Cafetalera de la Cordillera', N'Jarabacoa', 650, 60, N'img/productos/cafe-jarabacoa.jpg', 1),
+        (N'Chocolate 70 % de cacao orgánico', N'cafe-cacao', N'Barra de 80 g de cacao orgánico fermentado en la finca, con solo azúcar de caña. Del grano a la barra en San Francisco de Macorís.', N'Cacao del Cibao', N'San Francisco de Macorís', 350, 80, N'img/productos/chocolate-sfm.jpg', 0),
+        (N'Bolas de cacao para chocolate caliente', N'cafe-cacao', N'Seis bolas de cacao puro con canela, como se preparan en el campo dominicano. Se disuelven en leche caliente con un poco de azúcar.', N'Cacao del Cibao', N'San Francisco de Macorís', 380, 45, N'img/productos/bolas-cacao.jpg', 0),
         (N'Muñeca Limé sin rostro', N'artesania', N'Muñeca de barro de 25 cm con vestido de flores pintado a mano, el recuerdo más típico de la artesanía dominicana. Su rostro sin rasgos representa a la mujer de todas las razas del país.', N'Artesanas de Higüerito', N'Moca', 1650, 25, N'img/productos/muneca-lime.jpg', 1),
         (N'Máscara de diablo cojuelo', N'artesania', N'Máscara de carnaval en papel maché con cuernos y colores vivos, hecha por los mismos artesanos que preparan las comparsas del carnaval de La Vega.', N'Comparsa Los Cojuelos', N'La Vega', 2400, 8, N'img/productos/mascara-carnaval.jpg', 0)
 ) AS v (nombre, categoria, descripcion, taller, origen, precio, existencias, imagen_url, destacado)
@@ -3167,7 +3205,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.pedidos WHERE codigo = N'PEDK4M7Q2A')
 BEGIN
     INSERT INTO dbo.pedidos (codigo, id_usuario, entrega, destinatario, direccion, telefono, subtotal, envio, total, estado,
                              pago_marca, pago_ultimos4, pago_titular, pago_referencia, pago_autorizacion, fecha_creacion)
-    SELECT N'PEDK4M7Q2A', u.id_usuario, N'hotel', N'María Rodríguez', N'Coralia Grand Resort & Spa, Playa Bávaro, Punta Cana', N'809-555-0190', 5900, 0, 5900, N'entregado', N'Visa', N'4242', u.nombre, N'PAYK4M7Q2AT', N'326263', DATEADD(HOUR, 16, CAST(DATEADD(DAY, -6, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT N'PEDK4M7Q2A', u.id_usuario, N'hotel', N'María Rodríguez', N'Coralia Grand Resort & Spa, Playa Bávaro, Punta Cana', N'809-555-0190', 5500, 0, 5500, N'entregado', N'Visa', N'4242', u.nombre, N'PAYK4M7Q2AT', N'326263', DATEADD(HOUR, 16, CAST(DATEADD(DAY, -6, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.usuarios u WHERE u.correo = N'cliente@bookingrd.com';
 
     INSERT INTO dbo.pedido_detalle (id_pedido, id_producto, cantidad, precio_unitario)
@@ -3182,7 +3220,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.pedidos WHERE codigo = N'PEDP8T3W6B')
 BEGIN
     INSERT INTO dbo.pedidos (codigo, id_usuario, entrega, destinatario, direccion, telefono, subtotal, envio, total, estado,
                              pago_marca, pago_ultimos4, pago_titular, pago_referencia, pago_autorizacion, fecha_creacion)
-    SELECT N'PEDP8T3W6B', u.id_usuario, N'domicilio', N'Luis Fernández', N'Calle Las Carreras 14, Santiago de los Caballeros', N'829-555-0111', 3000, 450, 3450, N'enviado', N'Visa', N'4242', u.nombre, N'PAYP8T3W6BT', N'498275', DATEADD(HOUR, 16, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
+    SELECT N'PEDP8T3W6B', u.id_usuario, N'domicilio', N'Luis Fernández', N'Calle Las Carreras 14, Santiago de los Caballeros', N'829-555-0111', 2700, 450, 3150, N'enviado', N'Visa', N'4242', u.nombre, N'PAYP8T3W6BT', N'498275', DATEADD(HOUR, 16, CAST(DATEADD(DAY, -2, CAST(SYSUTCDATETIME() AS DATE)) AS DATETIME2(0)))
     FROM dbo.usuarios u WHERE u.correo = N'luis.fernandez@correo.com';
 
     INSERT INTO dbo.pedido_detalle (id_pedido, id_producto, cantidad, precio_unitario)
