@@ -88,6 +88,12 @@ Escribir "  Destino: $Destino"
 # ---------------------------------------------------------------------------
 # 1. Node.js
 # ---------------------------------------------------------------------------
+# La configuración del correo (Gmail) de una instalación anterior se conserva.
+$correoAnterior = @()
+if (Test-Path "$Destino\.env") {
+    $correoAnterior = @(Get-Content "$Destino\.env" -ErrorAction SilentlyContinue | Where-Object { $_ -match '^(SMTP_[A-Z]+|CORREO_REMITENTE)=' })
+}
+
 Paso 0 'Borrando versiones anteriores de BookingRD en esta PC'
 # Se detiene la aplicación si está abierta.
 Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue |
@@ -237,6 +243,11 @@ if (-not (Test-Path "$Destino\.env") -or -not (Select-String -Path "$Destino\.en
     Fallar 'No se pudo configurar SQL Server (detalle en C:\BookingRD\database\local\sqlserver-instalacion.log).'
 }
 
+if ($correoAnterior.Count -gt 0) {
+    Add-Content -Path "$Destino\.env" -Value (@('', '# Correo (npm run correo)') + $correoAnterior) -Encoding UTF8
+    Escribir '  Se conservó la configuración del correo de la instalación anterior.' Green
+}
+
 # ---------------------------------------------------------------------------
 # 6. Prueba de conexión desde la aplicación
 # ---------------------------------------------------------------------------
@@ -268,7 +279,26 @@ New-Item -ItemType Directory -Force -Path $menu | Out-Null
 Crear-Acceso $escritorioUsuario 'BookingRD' 'INICIAR-BookingRD.bat' 'Abrir BookingRD'
 Crear-Acceso $menu 'BookingRD' 'INICIAR-BookingRD.bat' 'Abrir BookingRD'
 Crear-Acceso $menu 'Desinstalar BookingRD' 'DESINSTALAR-BookingRD.bat' 'Quitar BookingRD y su base de datos'
+Crear-Acceso $menu 'Configurar el correo de BookingRD' 'CONFIGURAR-CORREO.bat' 'Enviar los correos de verdad con Gmail'
 Escribir "  Acceso 'BookingRD' en el escritorio y en el menú Inicio." Green
+
+# ---------------------------------------------------------------------------
+# 8. Correo real (opcional)
+# ---------------------------------------------------------------------------
+if (-not (Select-String -Path "$Destino\.env" -Pattern '^SMTP_HOST=\S+' -Quiet)) {
+    Paso 8 'Correo electrónico'
+    Escribir '  Ahora los correos (código de verificación, recuperar contraseña y reservas)'
+    Escribir '  se guardan en esta PC y la página los muestra. Para que lleguen de verdad'
+    Escribir '  a la bandeja de entrada necesitas una cuenta de Gmail con una contraseña de aplicación.'
+    $respuesta = Read-Host '  ¿Configurarlo ahora? (S/N)'
+    if ($respuesta -match '^[sSyY]') {
+        Push-Location $Destino
+        & node scripts\configurar-correo.js
+        Pop-Location
+    } else {
+        Escribir '  Puedes hacerlo después: menú Inicio > BookingRD > Configurar el correo de BookingRD.' Yellow
+    }
+}
 
 Escribir ''
 Escribir '  BookingRD quedó instalado.' Green

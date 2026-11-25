@@ -14,6 +14,20 @@
  */
 
 const CATALOGO_EN = {
+    /* Cancelación con cargo del 10 % */
+    'Cancela cada parte hasta un día antes desde Mis reservas: se reembolsa el 90 % de lo pagado.': 'Cancel each part up to one day before from My bookings: 90% of what you paid is refunded.',
+    'Cancelación flexible': 'Flexible cancellation',
+    'Hasta un día antes de la recogida, desde Mis reservas, con reembolso del 90 %.': 'Up to one day before pick-up, from My bookings, with a 90% refund.',
+    'Hasta un día antes, con reembolso del 90 % a tu tarjeta.': 'Up to one day before, with a 90% refund to your card.',
+    'Cancela hasta un día antes (reembolso del 90 %) y confirmación inmediata.': 'Cancel up to one day before (90% refund) and instant confirmation.',
+    'Cancela hasta un día antes con reembolso del 90 %. Paga con tarjeta o en el destino.': 'Cancel up to one day before with a 90% refund. Pay by card or at the destination.',
+    'Cancela hasta un día antes de la recogida con reembolso del 90 %. Paga con tarjeta o en el mostrador.': 'Cancel up to one day before pick-up with a 90% refund. Pay by card or at the counter.',
+    'Seguro básico y asistencia 24 horas incluidos. Cancela hasta un día antes de la recogida (reembolso del 90 %).': 'Basic insurance and 24-hour assistance included. Cancel up to one day before pick-up (90% refund).',
+    'Cancela hasta un día antes de la recogida': 'Cancel up to one day before pick-up',
+    'Cancela hasta un día antes (reembolso del 90 %).': 'Cancel up to one day before (90% refund).',
+    'Cancela hasta un día antes': 'Cancel up to one day before',
+    'Hasta un día antes de la recogida, desde Mis reservas. Se reembolsa el 90 % de lo pagado con tarjeta; si pagas en el mostrador no hay cargo.': 'Up to one day before pick-up, from My bookings. 90% of a card payment is refunded; paying at the counter has no fee.',
+    'Hasta un día antes de la fecha, desde Mis reservas. Se reembolsa el 90 % de lo pagado con tarjeta; si pagas en el destino no hay cargo.': 'Up to one day before the date, from My bookings. 90% of a card payment is refunded; paying at the destination has no fee.',
     /* Mapas, tasa del día, verificación y recuperación ----------------- */
     'Tasa de hoy': "Today's exchange rate",
     'Dólar': 'Dollar',
@@ -1461,7 +1475,7 @@ const PATRONES_EN = [
     [/^¿Qué pasa si tengo menos de (\d+) años\?$/, (_, n) => `What if I am under ${n}?`],
     [/^Algunos modelos aceptan conductores desde (\d+) o (\d+) años con un cargo diario por conductor joven\. Los autos de lujo y las SUV grandes exigen (\d+) años\.$/, (_, a, b, c) => `Some models accept drivers from ${a} or ${b} with a daily young driver fee. Luxury cars and large SUVs require drivers aged ${c}.`],
     [/^Por bloques de 24 horas desde la hora de recogida, con una hora de cortesía en la devolución\. Si recoges a las (.+) y devuelves al día siguiente hasta las (.+), pagas un día\.$/, (_, a, b) => `In 24-hour blocks from pick-up, with a one-hour grace period on return. If you pick up at ${a} and return the next day by ${b}, you pay for one day.`],
-    [/^Recoge tu auto entre las (.+) y las (.+)\. Cancelación gratuita hasta un día antes\.$/, (_, a, b) => `Pick up your car between ${a} and ${b}. Free cancellation up to one day before.`],
+    [/^Recoge tu auto entre las (.+) y las (.+)\. Cancela hasta un día antes \(reembolso del 90 %\)\.$/, (_, a, b) => `Pick up your car between ${a} and ${b}. Cancel up to one day before (90% refund).`],
     [/^Recogida y devolución de (.+) a (.+)\.$/, (_, a, b) => `Pick-up and return from ${a} to ${b}.`],
     [/^(.+) a (.+), todos los días$/, (_, a, b) => `${a} to ${b}, every day`],
     [/^Lunes a sábado, de (.+) a (.+)\.?$/, (_, a, b) => `Monday to Saturday, ${a} to ${b}`],

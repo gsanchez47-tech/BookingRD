@@ -40,6 +40,7 @@ const bd = {
     favoritos: [],
     mensajes_contacto: [],
     verificaciones: [],
+    notificaciones: [],
     productos: [],
     pedidos: [],
     pedido_detalle: []
@@ -282,7 +283,7 @@ function cargar() {
 const ARCHIVO_LOCAL = process.env.DB_ARCHIVO
     || path.join(__dirname, '..', '..', '..', 'database', 'local', 'bookingrd-local.json');
 /** Versión del formato de la base local; si cambia, se vuelven a cargar los datos de ejemplo. */
-const VERSION_LOCAL = 4;
+const VERSION_LOCAL = 5;
 const ISO_INSTANTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
 /** Fechas y contenidos binarios a JSON y de vuelta. */

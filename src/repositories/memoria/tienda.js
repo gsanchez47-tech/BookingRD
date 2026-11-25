@@ -77,6 +77,12 @@ async function bloquearPedido(transaccion, id) {
     return aPedidoBloqueado(A.bd.pedidos.find((p) => p.id_pedido === id));
 }
 
+async function registrarReembolsoPedido(transaccion, id, reembolso) {
+    const f = A.bd.pedidos.find((p) => p.id_pedido === id);
+    f.reembolso_monto = reembolso.monto;
+    f.cargo_cancelacion = reembolso.cargo;
+}
+
 async function cambiarEstadoPedido(transaccion, id, estado) {
     const f = A.bd.pedidos.find((p) => p.id_pedido === id);
     f.estado = estado;
@@ -94,5 +100,5 @@ module.exports = {
     listarPedidosPorUsuario,
     listarPedidos,
     bloquearPedido,
-    cambiarEstadoPedido
+    cambiarEstadoPedido, registrarReembolsoPedido
 };

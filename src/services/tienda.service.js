@@ -131,8 +131,15 @@ async function cancelarPedido(usuario, idPedido) {
         const pedido = await tiendaRepo.bloquearPedido(transaccion, id);
         if (!pedido || pedido.idUsuario !== usuario.id) throw noEncontrado('El pedido no existe.');
         if (pedido.estado !== 'pagado') throw conflicto('Solo se pueden cancelar los pedidos que aún no se han enviado.');
+        const calculo = pagosService.calcularReembolso(pedido.total, pedido.montoCobrado);
         await tiendaRepo.cambiarEstadoPedido(transaccion, id, 'cancelado');
-        return { reembolso: { monto: pedido.total, moneda: pedido.moneda, montoCobrado: pedido.montoCobrado, marca: pedido.marca, ultimos4: pedido.ultimos4 } };
+        await tiendaRepo.registrarReembolsoPedido(transaccion, id, calculo);
+        return {
+            reembolso: {
+                monto: calculo.monto, cargo: calculo.cargo, porcentajeCargo: calculo.porcentaje, total: pedido.total,
+                moneda: pedido.moneda, montoCobrado: calculo.montoCobrado, marca: pedido.marca, ultimos4: pedido.ultimos4
+            }
+        };
     });
 }
 

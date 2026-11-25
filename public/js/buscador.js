@@ -107,7 +107,7 @@ function actualizarResumenBusqueda() {
         const dias = recogida && devolucion ? diasAlquiler(recogida, horaR, devolucion, horaD) : 0;
         resumen.textContent = dias
             ? `${dias} ${dias === 1 ? 'día' : 'días'} de alquiler: del ${formatearFecha(recogida)} ${formatearHora(horaR)} al ${formatearFecha(devolucion)} ${formatearHora(horaD)}`
-            : 'Recoge tu auto entre las 6:00 a. m. y las 10:00 p. m. Cancelación gratuita hasta un día antes.';
+            : 'Recoge tu auto entre las 6:00 a. m. y las 10:00 p. m. Cancela hasta un día antes (reembolso del 90 %).';
         return;
     }
     if (tipoBuscado() !== 'hotel') {

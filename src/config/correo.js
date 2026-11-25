@@ -17,8 +17,46 @@ const nodemailer = require('nodemailer');
 
 let transporte = null;
 
+/*
+ * La configuración del correo se puede cambiar con la aplicación abierta
+ * (npm run correo / CONFIGURAR CORREO): antes de cada envío se vuelve a leer
+ * .env si cambió, sin reiniciar el servidor.
+ */
+const ARCHIVO_ENV = path.resolve(__dirname, '..', '..', '.env');
+const CLAVES_CORREO = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SEGURO', 'SMTP_USUARIO', 'SMTP_CLAVE', 'CORREO_REMITENTE', 'URL_SITIO'];
+let marcaEnv = null;
+
+function recargarConfiguracion() {
+    let marca;
+    try {
+        marca = fs.statSync(ARCHIVO_ENV).mtimeMs;
+    } catch {
+        return;
+    }
+    if (marcaEnv === null) {
+        marcaEnv = marca;
+        return;
+    }
+    if (marca === marcaEnv) return;
+    marcaEnv = marca;
+    try {
+        const valores = require('dotenv').parse(fs.readFileSync(ARCHIVO_ENV));
+        for (const clave of CLAVES_CORREO) {
+            if (valores[clave] !== undefined) process.env[clave] = valores[clave];
+            else delete process.env[clave];
+        }
+        transporte = null;
+        console.log('  Configuración de correo actualizada desde .env.');
+    } catch (error) {
+        console.error(`No se pudo leer .env: ${error.message}`);
+    }
+}
+
 /** true si hay un servidor SMTP configurado. */
-const smtpConfigurado = () => Boolean(process.env.SMTP_HOST);
+const smtpConfigurado = () => {
+    recargarConfiguracion();
+    return Boolean(process.env.SMTP_HOST);
+};
 
 /** Remitente de los correos ("BookingRD <no-responder@...>"). */
 function remitente() {
@@ -56,10 +94,36 @@ function carpetaCorreos() {
  * @param {{para: string, asunto: string, html: string, texto: string}} mensaje
  * @returns {Promise<{modo: 'smtp'|'archivo', id?: string, archivo?: string}>}
  */
-async function enviar({ para, asunto, html, texto }) {
-    if (smtpConfigurado()) {
-        const info = await obtenerTransporte().sendMail({ from: remitente(), to: para, subject: asunto, html, text: texto });
+/**
+ * Dominios de las cuentas de ejemplo (database/datos-demo.js): no existen, así
+ * que sus correos se guardan en la PC aunque haya SMTP, para no generar rebotes.
+ */
+const DOMINIOS_DEMO = ['bookingrd.com', 'correo.com', 'ejemplo.com'];
+const esCorreoDeEjemplo = (para) => DOMINIOS_DEMO.includes(String(para).split('@').pop().toLowerCase());
+
+async function enviar({ para, asunto, html, texto, adjuntos = [] }) {
+    if (smtpConfigurado() && !esCorreoDeEjemplo(para)) {
+        const info = await obtenerTransporte().sendMail({ from: remitente(), to: para, subject: asunto, html, text: texto, attachments: adjuntos });
         return { modo: 'smtp', id: info.messageId };
+    }
+    return guardarEnArchivo({ para, asunto, html, adjuntos });
+}
+
+/**
+ * Guarda el correo como HTML (sin SMTP, o como respaldo si el servidor de
+ * correo falla). Las imágenes incrustadas (cid:) se convierten en data: URI
+ * para que se vean al abrir el archivo.
+ */
+async function guardarEnArchivo({ para, asunto, html, adjuntos = [] }) {
+    for (const a of adjuntos) {
+        if (!a.cid || !a.path) continue;
+        try {
+            const datos = await fs.promises.readFile(a.path);
+            const tipo = /\.png$/i.test(a.path) ? 'image/png' : 'image/jpeg';
+            html = html.split(`cid:${a.cid}`).join(`data:${tipo};base64,${datos.toString('base64')}`);
+        } catch {
+            /* imagen no disponible: el correo se guarda sin ella */
+        }
     }
     const carpeta = carpetaCorreos();
     await fs.promises.mkdir(carpeta, { recursive: true });
@@ -70,4 +134,11 @@ async function enviar({ para, asunto, html, texto }) {
     return { modo: 'archivo', archivo };
 }
 
-module.exports = { enviar, smtpConfigurado, urlSitio, carpetaCorreos };
+/** Comprueba la conexión y el usuario con el servidor SMTP. */
+async function verificarSmtp() {
+    if (!smtpConfigurado()) return false;
+    await obtenerTransporte().verify();
+    return true;
+}
+
+module.exports = { enviar, esCorreoDeEjemplo, guardarEnArchivo, verificarSmtp, smtpConfigurado, urlSitio, carpetaCorreos, remitente };

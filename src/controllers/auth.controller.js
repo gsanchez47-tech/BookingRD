@@ -66,7 +66,15 @@ function mismoHash(a, b) {
  * @returns {Promise<string|null>} vistaPrevia
  */
 async function enviarAhora(para, mensaje) {
-    const resultado = await correoConfig.enviar({ para, ...mensaje });
+    let resultado;
+    try {
+        resultado = await correoConfig.enviar({ para, ...mensaje });
+    } catch (error) {
+        // Si el servidor de correo falla, el correo se guarda y la página lo
+        // muestra, para que el registro o la recuperación no queden bloqueados.
+        console.error(`El servidor de correo no aceptó el mensaje para ${para}: ${error.message}. Se guarda en la carpeta de correos.`);
+        resultado = await correoConfig.guardarEnArchivo({ para, ...mensaje });
+    }
     return resultado.modo === 'archivo' ? `/api/auth/correo-prueba/${encodeURIComponent(path.basename(resultado.archivo))}` : null;
 }
 

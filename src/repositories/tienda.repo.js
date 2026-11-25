@@ -91,7 +91,7 @@ async function crearPedido(transaccion, pedido) {
 const COLUMNAS_PEDIDO = `
     pe.id_pedido, pe.codigo, pe.entrega, pe.destinatario, pe.direccion, pe.telefono, pe.subtotal, pe.envio, pe.total,
     pe.estado, pe.pago_marca, pe.pago_ultimos4, pe.pago_titular, pe.pago_referencia, pe.pago_autorizacion, pe.fecha_creacion,
-    pe.pago_moneda, pe.pago_monto_cobrado, pe.pago_tasa_cambio,
+    pe.pago_moneda, pe.pago_monto_cobrado, pe.pago_tasa_cambio, pe.reembolso_monto, pe.cargo_cancelacion,
     u.nombre AS cliente_nombre, u.correo AS cliente_correo`;
 
 /** Pedidos (filas) con sus líneas, en la forma que usa el frontend. */
@@ -132,7 +132,9 @@ function aPedido(f, lineas) {
             titular: f.pago_titular,
             referencia: f.pago_referencia,
             autorizacion: f.pago_autorizacion,
-            fechaPago: f.fecha_creacion
+            fechaPago: f.fecha_creacion,
+            montoReembolsado: f.reembolso_monto != null ? Number(f.reembolso_monto) : null,
+            cargoCancelacion: f.cargo_cancelacion != null ? Number(f.cargo_cancelacion) : null
         },
         cliente: f.cliente_nombre ? { nombre: f.cliente_nombre, correo: f.cliente_correo } : undefined,
         lineas: lineas.map((d) => ({
@@ -192,6 +194,16 @@ function aPedidoBloqueado(f) {
 }
 
 /** Cambia el estado; al cancelar, repone las existencias. */
+/** Guarda lo reembolsado y el cargo retenido al cancelar un pedido. */
+async function registrarReembolsoPedido(transaccion, id, reembolso) {
+    const consulta = await peticion(transaccion);
+    await consulta
+        .input('id', sql.Int, id)
+        .input('monto', sql.Decimal(12, 2), reembolso.monto)
+        .input('cargo', sql.Decimal(12, 2), reembolso.cargo)
+        .query('UPDATE dbo.pedidos SET reembolso_monto = @monto, cargo_cancelacion = @cargo WHERE id_pedido = @id');
+}
+
 async function cambiarEstadoPedido(transaccion, id, estado) {
     const consulta = await peticion(transaccion);
     await consulta
@@ -217,5 +229,5 @@ module.exports = {
     listarPedidosPorUsuario,
     listarPedidos,
     bloquearPedido,
-    cambiarEstadoPedido
+    cambiarEstadoPedido, registrarReembolsoPedido
 };

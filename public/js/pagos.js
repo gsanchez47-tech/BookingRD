@@ -97,6 +97,21 @@ function importeCobrado(pago) {
     return formatoMoneda.format((pago && pago.monto) || 0);
 }
 
+/** Porcentaje que se retiene al cancelar un pago con tarjeta (igual que en el servidor). */
+const CARGO_CANCELACION_PCT = 10;
+
+/**
+ * Lo que se devolvería al cancelar: { reembolso, cargo } ya formateados en la
+ * moneda del cobro (pesos o dólares).
+ */
+function textoReembolso(pago) {
+    const enDolares = pago.moneda === 'USD' && pago.montoCobrado;
+    const base = enDolares ? pago.montoCobrado : pago.monto;
+    const cargo = Math.round(base * CARGO_CANCELACION_PCT) / 100;
+    const formato = (v) => (enDolares ? formatearExacto(v, 'USD') : formatoMoneda.format(v));
+    return { reembolso: formato(base - cargo), cargo: formato(cargo) };
+}
+
 /** Tarjeta abreviada: "Visa •••• 4242". */
 const tarjetaAbreviada = (pago) => `${pago.marca === 'American Express' ? 'Amex' : pago.marca} •••• ${pago.ultimos4}`;
 
@@ -163,7 +178,9 @@ function abrirRecibo(datos) {
         ['Referencia', pago.referencia, false],
         esTarjeta ? ['Autorización', pago.autorizacion, false] : null,
         pago.fechaPago ? ['Fecha', formatoFechaHoraRecibo.format(new Date(pago.fechaPago)), true] : null,
-        pago.fechaReembolso ? ['Reembolso', formatoFechaHoraRecibo.format(new Date(pago.fechaReembolso)), true] : null
+        pago.fechaReembolso ? ['Reembolso', formatoFechaHoraRecibo.format(new Date(pago.fechaReembolso)), true] : null,
+        pago.estado === 'reembolsado' && pago.montoReembolsado != null ? ['Monto reembolsado', importeCobrado({ ...pago, monto: pago.montoReembolsado, montoCobrado: pago.montoReembolsadoCobrado || pago.montoCobrado * (1 - CARGO_CANCELACION_PCT / 100) }), false] : null,
+        pago.estado === 'reembolsado' && pago.cargoCancelacion != null ? [`Cargo por cancelación (${CARGO_CANCELACION_PCT} %)`, formatoMoneda.format(pago.cargoCancelacion), false] : null
     ].filter(Boolean);
 
     modal.innerHTML = `

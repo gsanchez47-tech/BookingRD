@@ -185,6 +185,21 @@ function cobrar(pagoValidado, monto) {
     });
 }
 
+/** Porcentaje que se retiene al cancelar un pago con tarjeta (el resto se reembolsa). */
+const CARGO_CANCELACION_PCT = 10;
+
+/**
+ * Reembolso de una cancelación: se devuelve el 90 % de lo cobrado y se retiene
+ * el 10 % como cargo. En dólares se aplica la misma proporción al monto cobrado.
+ * @returns {{porcentaje: number, cargo: number, monto: number, montoCobrado: number}}
+ */
+function calcularReembolso(monto, montoCobrado = monto) {
+    const centavos = (v) => Math.round(v * 100) / 100;
+    const cargo = centavos(monto * CARGO_CANCELACION_PCT / 100);
+    const cargoCobrado = centavos(montoCobrado * CARGO_CANCELACION_PCT / 100);
+    return { porcentaje: CARGO_CANCELACION_PCT, cargo, monto: centavos(monto - cargo), montoCobrado: centavos(montoCobrado - cargoCobrado) };
+}
+
 /** Estado del pago tras cancelar la reserva. */
 const estadoTrasCancelar = (metodo) => (metodo === 'tarjeta' ? 'reembolsado' : 'anulado');
 
@@ -205,11 +220,15 @@ function aPago(fila, prefijo = '') {
         referencia: c('referencia'),
         autorizacion: c('autorizacion') || null,
         fechaPago: c('fecha_pago') || null,
-        fechaReembolso: c('fecha_reembolso') || null
+        fechaReembolso: c('fecha_reembolso') || null,
+        montoReembolsado: c('monto_reembolsado') != null ? Number(c('monto_reembolsado')) : null,
+        cargoCancelacion: c('cargo_cancelacion') != null ? Number(c('cargo_cancelacion')) : null
     };
 }
 
 module.exports = {
+    CARGO_CANCELACION_PCT,
+    calcularReembolso,
     METODOS,
     MONEDAS_PAGO,
     TARJETAS_PRUEBA,

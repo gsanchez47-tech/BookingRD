@@ -211,8 +211,8 @@ function sincronizarControles() {
     document.getElementById('etiqueta-ciudad').textContent = esAuto ? 'Lugar de recogida' : 'Destino';
     document.getElementById('filtro-personas').max = esAuto ? 9 : 60;
     document.getElementById('texto-garantias').textContent = esAuto
-        ? 'Seguro básico y asistencia 24 horas incluidos. Cancelación gratuita hasta un día antes de la recogida.'
-        : 'Cancelación gratuita hasta un día antes y confirmación inmediata.';
+        ? 'Seguro básico y asistencia 24 horas incluidos. Cancela hasta un día antes de la recogida (reembolso del 90 %).'
+        : 'Cancela hasta un día antes (reembolso del 90 %) y confirmación inmediata.';
     document.getElementById('filtro-texto').value = estado.texto;
     document.getElementById('filtro-orden').value = estado.orden;
     marcarRadio('filtro-tipo', estado.tipo);

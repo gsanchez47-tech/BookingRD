@@ -137,7 +137,7 @@ async function cargarResumen() {
         ['Empresas', t.empresas, `${t.suspendidas} ${t.suspendidas === 1 ? 'cuenta suspendida' : 'cuentas suspendidas'}`, t.suspendidas ? 'es-alerta' : ''],
         ['Publicaciones', t.hoteles + t.actividades + (t.vehiculos || 0), `${t.hoteles} alojamientos, ${t.actividades} actividades, ${t.vehiculos || 0} autos`, ''],
         ['Ingresos confirmados', formatoMoneda.format(t.ingresos), `${t.confirmadas} reservas vigentes`, 'es-positivo'],
-        ['Cobrado en línea', formatoMoneda.format(t.cobradoEnLinea || 0), `${formatoMoneda.format(t.porCobrarEnDestino || 0)} por cobrar en destino, ${formatoMoneda.format(t.reembolsado || 0)} reembolsado`, ''],
+        ['Cobrado en línea', formatoMoneda.format(t.cobradoEnLinea || 0), `${formatoMoneda.format(t.porCobrarEnDestino || 0)} por cobrar en destino, ${formatoMoneda.format(t.reembolsado || 0)} reembolsado, ${formatoMoneda.format(t.cargosCancelacion || 0)} retenido por cancelaciones`, ''],
         ['Cancelaciones', `${totalReservas ? Math.round((t.canceladas / totalReservas) * 100) : 0}%`, `${t.canceladas} de ${totalReservas} reservas`, ''],
         ['Mensajes pendientes', t.mensajesPendientes, 'Formulario de contacto', t.mensajesPendientes ? 'es-alerta' : 'es-positivo'],
         ['Valoración media', t.puntuacionMedia ? formatoPuntuacion(t.puntuacionMedia) : 'Sin datos', `${textoResenas(t.resenas)}, ${t.resenasOcultas} ${t.resenasOcultas === 1 ? 'oculta' : 'ocultas'}`, t.puntuacionMedia >= 8 ? 'es-positivo' : '']

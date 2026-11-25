@@ -377,7 +377,7 @@ function prepararFormularioAuto() {
             <span class="extra-texto"><strong>${escaparHtml(extra.nombre)}</strong><small>${escaparHtml(extra.detalle)}</small></span>
             <span class="extra-precio">${formatearPrecio(extra.precio)}<small>${extra.porDia ? 'por día' : 'por alquiler'}</small></span>
         </label>`).join('');
-    document.getElementById('reserva-garantia').textContent = 'Cancelación gratuita hasta un día antes de la recogida. Paga con tarjeta o en el mostrador.';
+    document.getElementById('reserva-garantia').textContent = 'Cancela hasta un día antes de la recogida con reembolso del 90 %. Paga con tarjeta o en el mostrador.';
     document.getElementById('reserva-comentario').placeholder = 'Número de vuelo, hora estimada de llegada, silla para bebé...';
 }
 
@@ -582,12 +582,12 @@ async function enviarReserva(pago) {
 function pintarVentajas() {
     const ventajas = ES_AUTO
         ? [
-            ['Cancelación gratuita', 'Hasta un día antes de la recogida, desde Mis reservas.'],
+            ['Cancelación flexible', 'Hasta un día antes de la recogida, desde Mis reservas. Se reembolsa el 90 % de lo pagado con tarjeta; si pagas en el mostrador no hay cargo.'],
             [publicacion.kmPorDia ? `${publicacion.kmPorDia} km por día` : 'Kilometraje ilimitado', publicacion.kmPorDia ? 'Kilómetros adicionales según la tarifa de la empresa.' : 'Recorre la isla sin contar kilómetros.'],
             ['Seguro y asistencia', 'Seguro básico de colisión y asistencia en carretera 24 horas.']
         ]
         : [
-            ['Cancelación gratuita', 'Hasta un día antes de la fecha, desde Mis reservas.'],
+            ['Cancelación flexible', 'Hasta un día antes de la fecha, desde Mis reservas. Se reembolsa el 90 % de lo pagado con tarjeta; si pagas en el destino no hay cargo.'],
             ['Confirmación inmediata', 'El cupo se verifica y se descuenta al reservar.']
         ];
     if (publicacion.empresa.licenciaMitur) ventajas.push(['Empresa con licencia MITUR', publicacion.empresa.licenciaMitur]);

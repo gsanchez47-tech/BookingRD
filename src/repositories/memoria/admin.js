@@ -61,7 +61,8 @@ async function resumen(desde, hasta) {
             puntuacionMedia: A.media(visibles),
             cobradoEnLinea: suma(bd.pagos.filter((p) => p.metodo === 'tarjeta' && p.estado === 'pagado')),
             porCobrarEnDestino: suma(bd.pagos.filter((p) => p.estado === 'pendiente')),
-            reembolsado: suma(bd.pagos.filter((p) => p.estado === 'reembolsado'))
+            reembolsado: bd.pagos.filter((p) => p.estado === 'reembolsado').reduce((s, p) => s + Number(p.monto_reembolsado ?? p.monto), 0),
+            cargosCancelacion: bd.pagos.filter((p) => p.estado === 'reembolsado').reduce((s, p) => s + Number(p.cargo_cancelacion || 0), 0)
         },
         meses: [...meses.values()],
         categorias: [...categorias].map(([categoria, reservas]) => ({ categoria, reservas })),

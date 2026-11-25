@@ -36,6 +36,7 @@ function cargarMemoria() {
         contactoRepo: varios.contacto,
         combosRepo: require('./memoria/combos'),
         tiendaRepo: require('./memoria/tienda'),
+        notificacionesRepo: require('./memoria/notificaciones'),
         conTransaccion: conTransaccionEnMemoria
     };
 }
@@ -52,6 +53,7 @@ function cargarSql() {
         contactoRepo: require('./contacto.repo'),
         combosRepo: require('./combos.repo'),
         tiendaRepo: require('./tienda.repo'),
+        notificacionesRepo: require('./notificaciones.repo'),
         conTransaccion: require('../config/db').conTransaccion
     };
 }

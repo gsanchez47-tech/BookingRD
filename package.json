@@ -17,7 +17,8 @@
     "probar": "node --test pruebas/api.test.js",
     "iniciar": "node scripts/iniciar.js",
     "sqlserver": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sqlserver-windows.ps1",
-    "local:reiniciar": "node scripts/local-reiniciar.js"
+    "local:reiniciar": "node scripts/local-reiniciar.js",
+    "correo": "node scripts/configurar-correo.js"
   },
   "engines": {
     "node": ">=18"

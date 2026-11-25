@@ -325,8 +325,8 @@ function pedirCancelacion(id) {
     document.getElementById('cancelar-nombre').textContent = reservaPorCancelar.publicacion;
     const pago = reservaPorCancelar.pago;
     document.getElementById('cancelar-reembolso').textContent = pago && pago.metodo === 'tarjeta' && pago.estado === 'pagado'
-        ? `Te reembolsaremos ${importeCobrado(pago)} a tu ${pago.marca} terminada en ${pago.ultimos4}.`
-        : 'No se realizó ningún cobro por adelantado, así que no hay nada que reembolsar.';
+        ? (() => { const t = textoReembolso(pago); return `Te reembolsaremos ${t.reembolso} a tu ${pago.marca} terminada en ${pago.ultimos4}. Se retiene el ${CARGO_CANCELACION_PCT} % (${t.cargo}) como cargo por cancelación.`; })()
+        : 'No se realizó ningún cobro por adelantado, así que la cancelación no tiene cargo.';
     document.getElementById('cancelar-error').classList.remove('visible');
     abrirModal('modal-cancelar');
 }
@@ -345,10 +345,15 @@ async function confirmarCancelacion() {
             pago.estado = pago.metodo === 'tarjeta' ? 'reembolsado' : 'anulado';
             if (pago.metodo === 'tarjeta') pago.fechaReembolso = new Date().toISOString();
         }
-        cerrarModal('modal-cancelar');
         const r = resultado && resultado.reembolso;
+        if (pago && r) {
+            pago.montoReembolsado = r.monto;
+            pago.cargoCancelacion = r.cargo;
+            pago.montoReembolsadoCobrado = r.montoCobrado;
+        }
+        cerrarModal('modal-cancelar');
         mostrarAviso(r
-            ? `Reserva ${reservaPorCancelar.codigo} cancelada. Reembolso de ${importeCobrado(r)} a ${r.marca} •••• ${r.ultimos4}.`
+            ? `Reserva ${reservaPorCancelar.codigo} cancelada. Reembolso de ${importeCobrado(r)} a ${r.marca} •••• ${r.ultimos4} (se retuvo el ${r.porcentajeCargo} %).`
             : `Reserva ${reservaPorCancelar.codigo} cancelada.`, 'exito', 7000);
         pintarCifras();
         pintarConteos();
@@ -511,8 +516,9 @@ function pedirCancelacionPedido(id) {
     document.getElementById('cancelar-titulo').textContent = 'Cancelar pedido';
     document.getElementById('cancelar-intro').innerHTML = `Vas a cancelar el pedido <strong translate="no">${escaparHtml(pedidoPorCancelar.codigo)}</strong>. Los productos vuelven a la tienda.`;
     const pago = pedidoPorCancelar.pago;
+    const t = textoReembolso(pago);
     document.getElementById('cancelar-reembolso').textContent =
-        `Te reembolsaremos ${importeCobrado(pago)} a tu ${pago.marca} terminada en ${pago.ultimos4}.`;
+        `Te reembolsaremos ${t.reembolso} a tu ${pago.marca} terminada en ${pago.ultimos4}. Se retiene el ${CARGO_CANCELACION_PCT} % (${t.cargo}) como cargo por cancelación.`;
     document.getElementById('cancelar-error').classList.remove('visible');
     abrirModal('modal-cancelar');
 }
@@ -528,7 +534,10 @@ async function confirmarCancelacionPedido() {
         pedidoPorCancelar.pago.fechaReembolso = new Date().toISOString();
         cerrarModal('modal-cancelar');
         const r = resultado.reembolso;
-        mostrarAviso(`Pedido ${pedidoPorCancelar.codigo} cancelado. Reembolso de ${importeCobrado(r)} a ${r.marca} •••• ${r.ultimos4}.`, 'exito', 7000);
+        pedidoPorCancelar.pago.montoReembolsado = r.monto;
+        pedidoPorCancelar.pago.cargoCancelacion = r.cargo;
+        pedidoPorCancelar.pago.montoReembolsadoCobrado = r.montoCobrado;
+        mostrarAviso(`Pedido ${pedidoPorCancelar.codigo} cancelado. Reembolso de ${importeCobrado(r)} a ${r.marca} •••• ${r.ultimos4} (se retuvo el ${r.porcentajeCargo} %).`, 'exito', 7000);
         pedidoPorCancelar = null;
         pintarLista();
     } catch (error) {

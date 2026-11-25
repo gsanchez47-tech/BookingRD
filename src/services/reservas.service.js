@@ -382,7 +382,7 @@ async function crearReserva(usuario, datos) {
  */
 function notificarReserva(idUsuario, reserva, publicacion) {
     cuentasRepo.obtenerContacto(idUsuario)
-        .then((cliente) => { if (cliente) correoService.confirmacionReserva(cliente, reserva, publicacion); })
+        .then((cliente) => (cliente ? correoService.confirmacionReserva({ ...cliente, idUsuario }, reserva, publicacion) : null))
         .catch((error) => console.error(`No se pudo preparar el correo de la reserva ${reserva.codigo}: ${error.message}`));
 }
 
@@ -400,11 +400,16 @@ async function cancelarReserva(usuario, idReserva) {
         if (diferenciaDias(hoy(), reserva.fechaInicio) < 1) {
             throw conflicto('Solo se pueden cancelar reservas con al menos un día de anticipación.');
         }
-        await reservasRepo.cancelar(transaccion, id);
         const pago = reserva.pago;
+        const conTarjeta = pago && pago.metodo === 'tarjeta' && pago.estado === 'pagado';
+        const calculo = conTarjeta ? pagosService.calcularReembolso(pago.monto || reserva.total, pago.montoCobrado) : null;
+        await reservasRepo.cancelar(transaccion, id, calculo);
         return {
-            reembolso: pago && pago.metodo === 'tarjeta' && pago.estado === 'pagado'
-                ? { monto: reserva.total, moneda: pago.moneda, montoCobrado: pago.montoCobrado, marca: pago.marca, ultimos4: pago.ultimos4 }
+            reembolso: conTarjeta
+                ? {
+                    monto: calculo.monto, cargo: calculo.cargo, porcentajeCargo: calculo.porcentaje, total: reserva.total,
+                    moneda: pago.moneda, montoCobrado: calculo.montoCobrado, marca: pago.marca, ultimos4: pago.ultimos4
+                }
                 : null
         };
     });

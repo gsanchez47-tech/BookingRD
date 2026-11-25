@@ -363,6 +363,8 @@ BEGIN
         fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_reservas_creacion DEFAULT SYSUTCDATETIME(),
         fecha_cancelacion   DATETIME2(0)    NULL,
         id_combo            INT             NULL CONSTRAINT FK_reservas_combos REFERENCES dbo.combos(id_combo),
+        recordatorio_enviado BIT            NOT NULL CONSTRAINT DF_reservas_recordatorio DEFAULT 0,
+        resena_pedida       BIT             NOT NULL CONSTRAINT DF_reservas_resena_pedida DEFAULT 0,
         CONSTRAINT CK_reservas_publicacion CHECK (
             (CASE WHEN id_hotel IS NULL THEN 0 ELSE 1 END
              + CASE WHEN id_actividad IS NULL THEN 0 ELSE 1 END
@@ -382,6 +384,10 @@ GO
 -- Bases instaladas con una versión anterior: agrega la columna del combo.
 IF COL_LENGTH(N'dbo.reservas', N'id_combo') IS NULL
     ALTER TABLE dbo.reservas ADD id_combo INT NULL CONSTRAINT FK_reservas_combos REFERENCES dbo.combos(id_combo);
+IF COL_LENGTH(N'dbo.reservas', N'recordatorio_enviado') IS NULL
+    ALTER TABLE dbo.reservas ADD recordatorio_enviado BIT NOT NULL CONSTRAINT DF_reservas_recordatorio DEFAULT 0;
+IF COL_LENGTH(N'dbo.reservas', N'resena_pedida') IS NULL
+    ALTER TABLE dbo.reservas ADD resena_pedida BIT NOT NULL CONSTRAINT DF_reservas_resena_pedida DEFAULT 0;
 GO
 
 -- pagos: un registro por reserva (relación 1 a 1). Pasarela SIMULADA: solo se
@@ -414,6 +420,8 @@ BEGIN
         autorizacion        CHAR(6)         NULL,
         fecha_pago          DATETIME2(0)    NOT NULL CONSTRAINT DF_pagos_fecha DEFAULT SYSUTCDATETIME(),
         fecha_reembolso     DATETIME2(0)    NULL,
+        monto_reembolsado   DECIMAL(12,2)   NULL,
+        cargo_cancelacion   DECIMAL(12,2)   NULL,
         CONSTRAINT CK_pagos_metodo CHECK (metodo IN ('tarjeta', 'en_destino')),
         CONSTRAINT CK_pagos_estado CHECK (estado IN ('pagado', 'pendiente', 'reembolsado', 'anulado')),
         CONSTRAINT CK_pagos_monto CHECK (monto > 0),
@@ -429,6 +437,9 @@ GO
 -- Bases instaladas con una versión anterior: columnas del cobro en dólares.
 IF COL_LENGTH(N'dbo.pagos', N'monto_cobrado') IS NULL
     ALTER TABLE dbo.pagos ADD monto_cobrado DECIMAL(12,2) NULL, tasa_cambio DECIMAL(12,6) NULL;
+-- Reembolso parcial: se retiene el cargo por cancelación (10 %).
+IF COL_LENGTH(N'dbo.pagos', N'monto_reembolsado') IS NULL
+    ALTER TABLE dbo.pagos ADD monto_reembolsado DECIMAL(12,2) NULL, cargo_cancelacion DECIMAL(12,2) NULL;
 GO
 
 -- mensajes_contacto: mensajes enviados desde el formulario de contacto.
@@ -540,6 +551,8 @@ BEGIN
         pago_moneda         CHAR(3)         NOT NULL CONSTRAINT DF_pedidos_moneda DEFAULT 'DOP',
         pago_monto_cobrado  DECIMAL(12,2)   NULL,
         pago_tasa_cambio    DECIMAL(12,6)   NULL,
+        reembolso_monto     DECIMAL(12,2)   NULL,
+        cargo_cancelacion   DECIMAL(12,2)   NULL,
         fecha_creacion      DATETIME2(0)    NOT NULL CONSTRAINT DF_pedidos_creacion DEFAULT SYSUTCDATETIME(),
         CONSTRAINT CK_pedidos_entrega CHECK (entrega IN ('hotel', 'domicilio')),
         CONSTRAINT CK_pedidos_estado CHECK (estado IN ('pagado', 'enviado', 'entregado', 'cancelado')),
@@ -548,6 +561,9 @@ BEGIN
         CONSTRAINT CK_pedidos_cambio CHECK (pago_moneda = 'DOP' OR (pago_monto_cobrado > 0 AND pago_tasa_cambio > 0))
     );
 END
+GO
+IF COL_LENGTH(N'dbo.pedidos', N'reembolso_monto') IS NULL
+    ALTER TABLE dbo.pedidos ADD reembolso_monto DECIMAL(12,2) NULL, cargo_cancelacion DECIMAL(12,2) NULL;
 GO
 
 -- pedido_detalle: productos de cada pedido con el precio del momento de la compra.
@@ -586,10 +602,32 @@ BEGIN
         usado           BIT             NOT NULL CONSTRAINT DF_verificaciones_usado DEFAULT 0,
         expira          DATETIME2(0)    NOT NULL,
         fecha_creacion  DATETIME2(0)    NOT NULL CONSTRAINT DF_verificaciones_fecha DEFAULT SYSUTCDATETIME(),
-        CONSTRAINT CK_verificaciones_proposito CHECK (proposito IN ('registro', 'recuperar')),
+        CONSTRAINT CK_verificaciones_proposito CHECK (proposito IN ('registro', 'recuperar', 'acceso', 'correo')),
         CONSTRAINT CK_verificaciones_intentos CHECK (intentos BETWEEN 0 AND 10)
     );
 END
+GO
+
+-- notificaciones: avisos que el usuario ve en la campana del encabezado
+-- (reserva confirmada, reserva recibida, recordatorio, respuesta a su reseña...).
+-- Cada aviso también se envía por correo.
+IF OBJECT_ID(N'dbo.notificaciones', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.notificaciones (
+        id_notificacion INT IDENTITY(1,1) PRIMARY KEY,
+        id_usuario      INT             NOT NULL CONSTRAINT FK_notificaciones_usuarios REFERENCES dbo.usuarios(id_usuario),
+        tipo            VARCHAR(30)     NOT NULL,
+        titulo          NVARCHAR(150)   NOT NULL,
+        mensaje         NVARCHAR(400)   NOT NULL,
+        enlace          NVARCHAR(300)   NULL,
+        leida           BIT             NOT NULL CONSTRAINT DF_notificaciones_leida DEFAULT 0,
+        fecha           DATETIME2(0)    NOT NULL CONSTRAINT DF_notificaciones_fecha DEFAULT SYSUTCDATETIME()
+    );
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_notificaciones_usuario')
+    CREATE INDEX IX_notificaciones_usuario ON dbo.notificaciones (id_usuario, leida, fecha DESC);
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_hoteles_empresa')

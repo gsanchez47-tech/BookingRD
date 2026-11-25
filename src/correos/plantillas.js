@@ -107,14 +107,14 @@ function bienvenidaViajero({ nombre, correo, urlSitio }) {
     const titulo = `Te damos la bienvenida, ${nombrePila(nombre)}`;
     const cuerpo = parrafo('Tu cuenta de viajero en BookingRD ya está lista. Desde ahora puedes reservar hoteles, excursiones y autos de alquiler de empresas dominicanas identificadas, con disponibilidad real y confirmación inmediata.')
         + lista([
-            ['Reserva sin pagar por adelantado', 'Pagas directamente a la empresa según sus condiciones.'],
-            ['Cancela gratis', 'Hasta un día antes de la fecha, desde Mis reservas.'],
+            ['Paga como prefieras', 'Con tarjeta al reservar o en el destino al llegar.'],
+            ['Cancelación flexible', 'Hasta un día antes desde Mis reservas: se reembolsa el 90 % de lo pagado con tarjeta.'],
             ['Guarda tus favoritos', 'Toca el corazón en cualquier publicación para tenerla a mano.'],
             ['Comparte tu experiencia', 'Al terminar tu estancia, actividad o alquiler podrás dejar una reseña verificada.']
         ])
         + boton('Explorar destinos', `${urlSitio}/explorar.html`)
         + `<p style="margin:18px 0 0;font-family:${TEXTO};font-size:13px;line-height:20px;color:${COLOR.gris};">Tu cuenta está asociada a ${e(correo)}. Si no la creaste tú, escríbenos desde ${e(urlSitio)}/contacto.html.</p>`;
-    const texto = `${titulo}\n\nTu cuenta de viajero en BookingRD ya está lista. Reserva hoteles, excursiones y autos de empresas dominicanas, sin pagar por adelantado y con cancelación gratuita hasta un día antes.\n\nExplorar destinos: ${urlSitio}/explorar.html\n\nSi no creaste esta cuenta, escríbenos: ${urlSitio}/contacto.html`;
+    const texto = `${titulo}\n\nTu cuenta de viajero en BookingRD ya está lista. Reserva hoteles, excursiones y autos de empresas dominicanas, con pago con tarjeta o en el destino y cancelación hasta un día antes (reembolso del 90 %).\n\nExplorar destinos: ${urlSitio}/explorar.html\n\nSi no creaste esta cuenta, escríbenos: ${urlSitio}/contacto.html`;
     return { asunto: 'Bienvenido a BookingRD', html: marco({ preencabezado: 'Tu cuenta está lista: reserva hoteles, tours y autos en la isla.', titulo, cuerpo, urlSitio }), texto };
 }
 
@@ -138,9 +138,10 @@ function bienvenidaEmpresa({ nombre, nombreComercial, tipoServicio, urlSitio }) 
  * Confirmación de una reserva.
  * @param {{nombre, codigo, publicacion, tipo, fechas, detalle: [string, string][], total, urlSitio, avisos?: string[]}} datosReserva
  */
-function confirmacionReserva({ nombre, codigo, publicacion, fechas, detalle = [], total, urlSitio, avisos = [] }) {
+function confirmacionReserva({ nombre, codigo, publicacion, fechas, detalle = [], total, urlSitio, avisos = [], foto = false, pagado = false }) {
     const titulo = 'Tu reserva está confirmada';
-    const cuerpo = parrafo(`Hola, ${e(nombrePila(nombre))}. La empresa ya recibió tu reserva de <strong>${e(publicacion)}</strong>.`)
+    const cuerpo = fotoCorreo(foto, publicacion)
+        + parrafo(`Hola, ${e(nombrePila(nombre))}. La empresa ya recibió tu reserva de <strong>${e(publicacion)}</strong>.`)
         + `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:18px 0 0;"><tr>
             <td bgcolor="${COLOR.arena}" style="padding:16px 18px;border-radius:12px;font-family:${TEXTO};">
                 <span style="display:block;font-size:12px;font-weight:800;letter-spacing:1px;color:#8A4B12;">CÓDIGO DE RESERVA</span>
@@ -148,10 +149,55 @@ function confirmacionReserva({ nombre, codigo, publicacion, fechas, detalle = []
             </td></tr></table>`
         + datos([['Fechas', fechas], ...detalle, ['Total', moneda.format(total)]])
         + avisos.map((a) => `<p style="margin:14px 0 0;font-family:${TEXTO};font-size:13px;line-height:20px;color:${COLOR.gris};">${e(a)}</p>`).join('')
-        + `<p style="margin:14px 0 0;font-family:${TEXTO};font-size:13px;line-height:20px;color:${COLOR.gris};">Cancelación gratuita hasta un día antes desde Mis reservas. BookingRD no cobra por adelantado: la empresa te indicará cómo pagar.</p>`
+        + `<p style="margin:14px 0 0;font-family:${TEXTO};font-size:13px;line-height:20px;color:${COLOR.gris};">Puedes cancelar hasta un día antes desde Mis reservas${pagado ? ': se reembolsa el 90 % a tu tarjeta' : ', sin cargo'}. Un día antes te enviaremos un recordatorio con el clima del destino.</p>`
         + boton('Ver mis reservas', `${urlSitio}/mis-reservas.html`);
     const texto = `${titulo}\n\nCódigo: ${codigo}\n${publicacion}\nFechas: ${fechas}\n${detalle.map(([a, b]) => `${a}: ${b}`).join('\n')}\nTotal: ${moneda.format(total)}\n${avisos.join('\n')}\n\nMis reservas: ${urlSitio}/mis-reservas.html`;
     return { asunto: `Reserva confirmada ${codigo}: ${publicacion}`, html: marco({ preencabezado: `Código ${codigo}. Guárdalo para cualquier consulta con la empresa.`, titulo, cuerpo, urlSitio }), texto };
+}
+
+/** Fotografía de la publicación incrustada en el correo (adjunto con cid:foto). */
+function fotoCorreo(foto, alt) {
+    if (!foto) return '';
+    return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 20px;"><tr><td>
+        <img src="cid:foto" alt="${e(alt)}" width="536" style="display:block;width:100%;max-width:536px;height:auto;border-radius:12px;border:0;">
+    </td></tr></table>`;
+}
+
+/** Aviso a la empresa: llegó una reserva nueva. */
+function reservaRecibida({ nombreEmpresa, cliente, codigo, publicacion, fechas, detalle = [], total, pago, urlSitio, foto = false }) {
+    const titulo = 'Tienes una reserva nueva';
+    const cuerpo = fotoCorreo(foto, publicacion)
+        + parrafo(`${e(nombreEmpresa)}: <strong>${e(cliente)}</strong> reservó <strong>${e(publicacion)}</strong>.`)
+        + datos([['Código', codigo], ['Fechas', fechas], ...detalle, ['Pago', pago], ['Total', moneda.format(total)]])
+        + parrafo('<br>Los datos de contacto del cliente están en tu panel, en Reservas recibidas.')
+        + boton('Abrir mi panel', `${urlSitio}/panel-empresa.html`, COLOR.azul);
+    const texto = `${titulo}\n\n${cliente} reservó ${publicacion}.\nCódigo: ${codigo}\nFechas: ${fechas}\n${detalle.map(([a, b]) => `${a}: ${b}`).join('\n')}\nPago: ${pago}\nTotal: ${moneda.format(total)}\n\nPanel: ${urlSitio}/panel-empresa.html`;
+    return { asunto: `Reserva nueva ${codigo}: ${publicacion}`, html: marco({ preencabezado: `${cliente} reservó ${publicacion}.`, titulo, cuerpo, urlSitio }), texto };
+}
+
+/** Recordatorio un día antes, con el pronóstico si está disponible. */
+function recordatorioReserva({ nombre, codigo, publicacion, ciudad, fechas, lugar, clima, urlSitio, foto = false }) {
+    const titulo = `Mañana empieza tu viaje a ${ciudad}`;
+    const filas = [['Reserva', publicacion], ['Código', codigo], ['Fechas', fechas]];
+    if (lugar) filas.push(['Dónde', lugar]);
+    if (clima) filas.push(['Pronóstico para mañana', clima]);
+    const cuerpo = fotoCorreo(foto, publicacion)
+        + parrafo(`Hola, ${e(nombrePila(nombre))}. Todo está listo para mañana. Lleva tu código de reserva y un documento de identidad.`)
+        + datos(filas)
+        + boton('Ver mi reserva', `${urlSitio}/mis-reservas.html`);
+    const texto = `${titulo}\n\n${filas.map(([a, b]) => `${a}: ${b}`).join('\n')}\n\nMis reservas: ${urlSitio}/mis-reservas.html`;
+    return { asunto: `Mañana: ${publicacion} (${codigo})`, html: marco({ preencabezado: `Tu reserva ${codigo} empieza mañana.`, titulo, cuerpo, urlSitio }), texto };
+}
+
+/** Pide la reseña al terminar el viaje. */
+function pedirResena({ nombre, publicacion, urlSitio, foto = false }) {
+    const titulo = '¿Qué tal te fue?';
+    const cuerpo = fotoCorreo(foto, publicacion)
+        + parrafo(`Hola, ${e(nombrePila(nombre))}. Esperamos que hayas disfrutado <strong>${e(publicacion)}</strong>.`)
+        + parrafo('Tu opinión ayuda a otros viajeros a decidir y a la empresa a mejorar. Toma un minuto: puntúa del 1 al 10 y cuenta lo que más te gustó.')
+        + boton('Escribir mi reseña', `${urlSitio}/mis-reservas.html#resenas`);
+    const texto = `${titulo}\n\nCuéntanos cómo te fue en ${publicacion}: ${urlSitio}/mis-reservas.html#resenas`;
+    return { asunto: `¿Qué tal ${publicacion}? Deja tu reseña`, html: marco({ preencabezado: 'Tu opinión ayuda a otros viajeros.', titulo, cuerpo, urlSitio }), texto };
 }
 
 /** Código de 6 dígitos destacado, separado en dos grupos para leerlo mejor. */
@@ -182,4 +228,4 @@ function restablecerPassword({ nombre, enlace, minutos, urlSitio }) {
     return { asunto: 'Restablece tu contraseña de BookingRD', html: marco({ preencabezado: 'Enlace para crear una contraseña nueva.', titulo, cuerpo, urlSitio }), texto };
 }
 
-module.exports = { bienvenidaViajero, bienvenidaEmpresa, confirmacionReserva, codigoVerificacion, restablecerPassword };
+module.exports = { bienvenidaViajero, bienvenidaEmpresa, confirmacionReserva, reservaRecibida, recordatorioReserva, pedirResena, codigoVerificacion, restablecerPassword };

@@ -195,6 +195,7 @@ async function registrarPago(transaccion, idReserva, pago) {
 const COLUMNAS_PAGO = `
     pg.metodo AS pago_metodo, pg.estado AS pago_estado, pg.monto AS pago_monto, pg.moneda AS pago_moneda,
     pg.monto_cobrado AS pago_monto_cobrado, pg.tasa_cambio AS pago_tasa_cambio,
+    pg.monto_reembolsado AS pago_monto_reembolsado, pg.cargo_cancelacion AS pago_cargo_cancelacion,
     pg.marca AS pago_marca, pg.ultimos4 AS pago_ultimos4, pg.titular AS pago_titular,
     pg.referencia AS pago_referencia, pg.autorizacion AS pago_autorizacion,
     pg.fecha_pago AS pago_fecha_pago, pg.fecha_reembolso AS pago_fecha_reembolso`;
@@ -329,15 +330,19 @@ async function bloquearReserva(transaccion, idReserva) {
  * Cancela la reserva y actualiza su pago en la misma transacción: la tarjeta
  * se reembolsa y el pago en destino se anula.
  */
-async function cancelar(transaccion, idReserva) {
+async function cancelar(transaccion, idReserva, reembolso = null) {
     const consulta = await peticion(transaccion);
     await consulta
         .input('id', sql.Int, idReserva)
+        .input('reembolsado', sql.Decimal(12, 2), reembolso ? reembolso.monto : null)
+        .input('cargo', sql.Decimal(12, 2), reembolso ? reembolso.cargo : null)
         .query(`UPDATE dbo.reservas SET estado = 'cancelada', fecha_cancelacion = SYSUTCDATETIME()
                 WHERE id_reserva = @id;
                 UPDATE dbo.pagos
                 SET estado = CASE WHEN metodo = 'tarjeta' THEN 'reembolsado' ELSE 'anulado' END,
-                    fecha_reembolso = CASE WHEN metodo = 'tarjeta' THEN SYSUTCDATETIME() END
+                    fecha_reembolso = CASE WHEN metodo = 'tarjeta' THEN SYSUTCDATETIME() END,
+                    monto_reembolsado = CASE WHEN metodo = 'tarjeta' THEN @reembolsado END,
+                    cargo_cancelacion = CASE WHEN metodo = 'tarjeta' THEN @cargo END
                 WHERE id_reserva = @id AND estado IN ('pagado', 'pendiente');`);
 }
 

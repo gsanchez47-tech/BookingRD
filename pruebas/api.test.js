@@ -377,7 +377,10 @@ test('mis reservas y cancelación con reembolso', async () => {
     const cancelar = await api(`/reservas/${creadas.reservaHotel.id}/cancelar`, { metodo: 'PATCH', token: tokens.nueva });
     assert.equal(cancelar.status, 200);
     assert.equal(cancelar.datos.reembolso.ultimos4, '4242');
-    assert.equal(cancelar.datos.reembolso.monto, creadas.reservaHotel.total);
+    // Se reembolsa el 90 % y se retiene el 10 % como cargo por cancelación.
+    assert.equal(cancelar.datos.reembolso.monto, Math.round(creadas.reservaHotel.total * 90) / 100);
+    assert.equal(cancelar.datos.reembolso.cargo, Math.round(creadas.reservaHotel.total * 10) / 100);
+    assert.equal(cancelar.datos.reembolso.porcentajeCargo, 10);
     const despues = await api('/reservas', { token: tokens.nueva });
     assert.equal(despues.datos.reservas.find((r) => r.id === creadas.reservaHotel.id).pago.estado, 'reembolsado');
     const otra = await api(`/reservas/${creadas.reservaHotel.id}/cancelar`, { metodo: 'PATCH', token: tokens.cliente });
@@ -408,7 +411,7 @@ test('pago en dólares: tasa del día, importe cobrado, recibo y reembolso en US
     const cancelada = await api(`/reservas/${usd.datos.id}/cancelar`, { metodo: 'PATCH', token: tokens.nueva });
     assert.equal(cancelada.status, 200);
     assert.equal(cancelada.datos.reembolso.moneda, 'USD');
-    assert.equal(cancelada.datos.reembolso.montoCobrado, pago.montoCobrado);
+    assert.equal(cancelada.datos.reembolso.montoCobrado, Math.round((pago.montoCobrado - Math.round(pago.montoCobrado * 10) / 100) * 100) / 100);
 
     // En el destino se registra en pesos aunque se pida dólares.
     const destino = await api('/reservas', { metodo: 'POST', token: tokens.nueva, cuerpo: cuerpo({ metodo: 'en_destino', moneda: 'USD' }) });
@@ -572,6 +575,8 @@ test('tienda: compra con entrega, existencias, cancelación y seguimiento', asyn
     const cancelado = await api(`/tienda/pedidos/${pedido.datos.id}/cancelar`, { metodo: 'PATCH', token: tokens.cliente });
     assert.equal(cancelado.status, 200);
     assert.equal(cancelado.datos.reembolso.ultimos4, '4242');
+    assert.equal(cancelado.datos.reembolso.cargo, Math.round(pedido.datos.total * 10) / 100);
+    assert.equal(cancelado.datos.reembolso.monto, pedido.datos.total - cancelado.datos.reembolso.cargo);
     assert.equal((await api('/tienda/productos')).datos.productos.find((p) => p.id === producto.id).existencias, producto.existencias);
 
     const otro = await api('/tienda/pedidos', {

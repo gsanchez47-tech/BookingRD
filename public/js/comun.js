@@ -733,7 +733,7 @@ function crearTarjetaPublicacion(publicacion) {
                 <h3 class="tarjeta-titulo" translate="no"><a class="tarjeta-enlace" href="${enlaceDetalle(publicacion)}">${escaparHtml(publicacion.nombre)}</a></h3>
                 ${valoracionCompacta(publicacion)}
                 ${esVehiculo ? especificaciones : `<p class="tarjeta-descripcion" translate="no">${escaparHtml(publicacion.descripcion)}</p>`}
-                <p class="tarjeta-politica">${esVehiculo ? 'Cancelación gratuita hasta un día antes de la recogida' : 'Cancelación gratuita hasta un día antes'}</p>
+                <p class="tarjeta-politica">${esVehiculo ? 'Cancela hasta un día antes de la recogida' : 'Cancela hasta un día antes'}</p>
                 <div class="tarjeta-pie">
                     <span class="tarjeta-precio"><small class="tarjeta-desde">Desde</small>${formatearPrecio(publicacion.precio)}<small>${unidadPrecio(publicacion.tipo, publicacion.categoria)}</small></span>
                     <span class="tarjeta-proveedor" translate="no">${escaparHtml(publicacion.proveedor || '')}</span>

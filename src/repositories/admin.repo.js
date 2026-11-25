@@ -42,7 +42,8 @@ async function resumen(desde, hasta) {
                 (SELECT CAST(AVG(CAST(puntuacion AS DECIMAL(5, 2))) AS DECIMAL(4, 2)) FROM dbo.resenas WHERE visible = 1) AS puntuacionMedia,
                 (SELECT COALESCE(SUM(monto), 0) FROM dbo.pagos WHERE metodo = 'tarjeta' AND estado = 'pagado') AS cobradoEnLinea,
                 (SELECT COALESCE(SUM(monto), 0) FROM dbo.pagos WHERE estado = 'pendiente') AS porCobrarEnDestino,
-                (SELECT COALESCE(SUM(monto), 0) FROM dbo.pagos WHERE estado = 'reembolsado') AS reembolsado;
+                (SELECT COALESCE(SUM(COALESCE(monto_reembolsado, monto)), 0) FROM dbo.pagos WHERE estado = 'reembolsado') AS reembolsado,
+                (SELECT COALESCE(SUM(cargo_cancelacion), 0) FROM dbo.pagos WHERE estado = 'reembolsado') AS cargosCancelacion;
 
             SELECT YEAR(fecha_inicio) AS anio, MONTH(fecha_inicio) AS mes, COUNT(*) AS reservas,
                    COALESCE(SUM(total), 0) AS ingresos
@@ -94,7 +95,8 @@ async function resumen(desde, hasta) {
             puntuacionMedia: t.puntuacionMedia === null ? null : Number(t.puntuacionMedia),
             cobradoEnLinea: Number(t.cobradoEnLinea),
             porCobrarEnDestino: Number(t.porCobrarEnDestino),
-            reembolsado: Number(t.reembolsado)
+            reembolsado: Number(t.reembolsado),
+            cargosCancelacion: Number(t.cargosCancelacion)
         },
         meses: meses.map((m) => ({ anio: m.anio, mes: m.mes, reservas: m.reservas, ingresos: Number(m.ingresos) })),
         categorias: categorias.map((c) => ({ categoria: c.categoria, reservas: c.reservas })),

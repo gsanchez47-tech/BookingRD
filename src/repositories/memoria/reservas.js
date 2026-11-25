@@ -165,7 +165,7 @@ async function bloquearReserva(transaccion, idReserva) {
     };
 }
 
-async function cancelar(transaccion, idReserva) {
+async function cancelar(transaccion, idReserva, reembolso = null) {
     const r = A.bd.reservas.find((fila) => fila.id_reserva === idReserva);
     if (!r) return;
     r.estado = 'cancelada';
@@ -174,6 +174,8 @@ async function cancelar(transaccion, idReserva) {
     if (pago && ['pagado', 'pendiente'].includes(pago.estado)) {
         pago.estado = pago.metodo === 'tarjeta' ? 'reembolsado' : 'anulado';
         pago.fecha_reembolso = pago.metodo === 'tarjeta' ? r.fecha_cancelacion : null;
+        pago.monto_reembolsado = pago.metodo === 'tarjeta' && reembolso ? reembolso.monto : null;
+        pago.cargo_cancelacion = pago.metodo === 'tarjeta' && reembolso ? reembolso.cargo : null;
     }
 }
 

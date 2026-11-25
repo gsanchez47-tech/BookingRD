@@ -118,6 +118,7 @@ app.use('/api/combos', require('./routes/combos.routes'));
 app.use('/api/tienda', require('./routes/tienda.routes'));
 app.use('/api/empresa', rutasEmpresa);
 app.use('/api/admin', rutasAdmin);
+app.use('/api/notificaciones', require('./routes/notificaciones.routes'));
 app.use('/api', rutasCatalogo);
 app.use('/api', rutasContacto);
 app.use('/api', rutasViajero);
@@ -179,6 +180,8 @@ const servidor = app.listen(PUERTO, () => {
     console.log('  Para apagar el servidor, pulsa Ctrl + C.');
     console.log('');
     if (process.env.ABRIR_NAVEGADOR === '1') abrirNavegador(direccion);
+    // Recordatorios un día antes y solicitudes de reseña por correo.
+    require('./services/avisos.service').iniciar();
 });
 
 servidor.on('error', (error) => {
