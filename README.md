@@ -27,7 +27,7 @@ cd BookingRD
 
 ### 1.2 Instalación completa en un equipo nuevo (recomendado)
 
-Haz doble clic en **`INSTALAR-BookingRD.bat`** y pulsa **Sí** cuando Windows pida permiso de administrador. Hace todo con comandos, sin preguntas (`scripts/instalar-windows.ps1`):
+En el paquete de entrega (carpeta `BookingRD-Instalador`), haz doble clic en **ACTUALIZAR BookingRD.exe**; dentro del repositorio, en **`INSTALAR-BookingRD.bat`**. Pulsa **Sí** cuando Windows pida permiso de administrador. Hace todo con comandos, sin preguntas (`scripts/instalar-windows.ps1`):
 
 1. Instala **Node.js LTS** con `winget` si falta.
 2. Usa el **SQL Server** que ya tenga el equipo o instala **SQL Server 2022 Express** sin ventanas.

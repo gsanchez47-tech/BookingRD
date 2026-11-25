@@ -71,7 +71,7 @@ if (-not $identidad.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
         $proceso = Start-Process -FilePath 'powershell.exe' -ArgumentList $argumentos -Verb RunAs -Wait -PassThru
         exit $proceso.ExitCode
     } catch {
-        Escribir 'Se canceló el permiso de administrador. Vuelve a abrir INSTALAR-BookingRD.bat y pulsa "Sí".' Yellow
+        Escribir 'Se canceló el permiso de administrador. Vuelve a abrir el instalador (ACTUALIZAR BookingRD) y pulsa "Sí".' Yellow
         Read-Host 'Pulsa Enter para cerrar' | Out-Null
         exit 2
     }
@@ -115,7 +115,7 @@ $lugares = @(
     (Join-Path $perfil 'OneDrive\Documents'),
     (Join-Path $perfil 'OneDrive\Documentos')
 ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
-$patrones = @('BookingRD*', 'rd-turismo*', 'rd_turismo*', 'ABRIR BookingRD*', 'INSTALAR BookingRD*', 'INSTALAR-BookingRD*', 'REPARAR BookingRD*', 'Iniciar BookingRD*', 'Instalar BookingRD*')
+$patrones = @('BookingRD*', 'ACTUALIZAR BookingRD*', 'rd-turismo*', 'rd_turismo*', 'ABRIR BookingRD*', 'INSTALAR BookingRD*', 'INSTALAR-BookingRD*', 'REPARAR BookingRD*', 'Iniciar BookingRD*', 'Instalar BookingRD*')
 $borrados = 0
 foreach ($lugar in $lugares) {
     $candidatos = Get-ChildItem -LiteralPath $lugar -Force -Depth 1 -ErrorAction SilentlyContinue |
