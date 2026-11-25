@@ -14,6 +14,7 @@
 'use strict';
 
 const { test, before, after } = require('node:test');
+const { precioEstancia } = require('../src/utils/temporadas');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
@@ -138,7 +139,9 @@ test('detalle, reseñas y disponibilidad de un alojamiento', async () => {
     assert.ok(resenas.datos.resumen.total >= 2);
     const disponible = await api(`/publicaciones/hotel/${hotel.id}/disponibilidad?entrada=${fecha(20)}&salida=${fecha(23)}&habitaciones=1&personas=2`);
     assert.equal(disponible.status, 200);
-    assert.equal(disponible.datos.total, hotel.precio * 3);
+    // El precio de cada noche depende de la temporada (src/utils/temporadas.js).
+    assert.equal(disponible.datos.total, precioEstancia(hotel.precio, fecha(20), 3).total);
+    assert.ok(Array.isArray(disponible.datos.desglose) && disponible.datos.desglose.length >= 1);
 });
 
 test('publicación inexistente responde 404', async () => {
@@ -278,7 +281,7 @@ test('reserva de alojamiento, actividad y auto con desglose', async () => {
     });
     assert.equal(hotel.status, 201, JSON.stringify(hotel.datos));
     assert.match(hotel.datos.codigo, /^BRD[A-Z0-9]{7}$/);
-    assert.equal(hotel.datos.total, creadas.hotel.precio * 2);
+    assert.equal(hotel.datos.total, precioEstancia(creadas.hotel.precio, fecha(30), 2).total);
     assert.equal(hotel.datos.pago.estado, 'pagado');
     assert.equal(hotel.datos.pago.marca, 'Visa');
     assert.equal(hotel.datos.pago.ultimos4, '4242');
@@ -669,4 +672,23 @@ test('cuenta: entrar con código, cambiar contraseña y correo, y avisos de la c
     await api('/notificaciones/leidas', { metodo: 'POST', token });
     assert.equal((await api('/notificaciones', { token })).datos.sinLeer, 0);
     assert.equal((await api('/notificaciones')).status, 401);
+});
+
+test('precios por temporada: fiestas, Semana Santa, baja y fin de semana', async () => {
+    const { temporadaDe, precioNoche, domingoPascua } = require('../src/utils/temporadas');
+    assert.equal(domingoPascua(2027), '2027-03-28');
+    assert.equal(temporadaDe('2026-12-24'), 'fiestas');
+    assert.equal(temporadaDe('2027-03-25'), 'semana-santa');
+    assert.equal(temporadaDe('2027-02-10'), 'alta');
+    assert.equal(temporadaDe('2027-07-20'), 'verano');
+    assert.equal(temporadaDe('2027-10-05'), 'baja');
+    assert.equal(precioNoche(10000, '2027-05-05'), 10000);   // miércoles de temporada media
+    assert.equal(precioNoche(10000, '2027-05-07'), 10800);   // viernes: +8 %
+    assert.equal(precioNoche(10000, '2026-12-25'), 13500);   // Navidad: +35 %
+    // El calendario de un mes trae un precio por día.
+    const lista = await api('/publicaciones?tipo=hotel&q=Palmar');
+    const cal = await api(`/publicaciones/hotel/${lista.datos.publicaciones[0].id}/calendario?mes=2027-07`);
+    assert.equal(cal.status, 200);
+    assert.equal(cal.datos.dias.length, 31);
+    assert.ok(cal.datos.dias.every((d) => d.precio > 0 && d.temporada));
 });

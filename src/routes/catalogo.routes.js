@@ -26,6 +26,7 @@ router.get('/publicaciones', asyncHandler(catalogoController.listarPublicaciones
 router.get('/publicaciones/precios', asyncHandler(catalogoController.obtenerPrecios));
 router.get('/publicaciones/:tipo/:id', asyncHandler(catalogoController.obtenerPublicacion));
 router.get('/publicaciones/:tipo/:id/disponibilidad', asyncHandler(catalogoController.consultarDisponibilidad));
+router.get('/publicaciones/:tipo/:id/calendario', asyncHandler(catalogoController.calendarioPrecios));
 router.get('/publicaciones/:tipo/:id/resenas', asyncHandler(catalogoController.listarResenas));
 router.get('/resenas/destacadas', asyncHandler(catalogoController.listarResenasDestacadas));
 router.get('/imagenes/:id', asyncHandler(catalogoController.obtenerImagen));

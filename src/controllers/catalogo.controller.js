@@ -161,6 +161,13 @@ async function consultarDisponibilidad(req, res) {
     res.json(await reservasService.consultarDisponibilidad(req.params.tipo, id, req.query));
 }
 
+/** GET /api/publicaciones/hotel/:id/calendario?mes=AAAA-MM  Precio de cada noche del mes y habitaciones libres. */
+async function calendarioPrecios(req, res) {
+    const id = aEnteroPositivo(req.params.id);
+    if (!id || req.params.tipo !== 'hotel') throw noEncontrado();
+    res.json(await reservasService.calendarioPrecios(id, req.query.mes));
+}
+
 /**
  * GET /api/imagenes/:id
  * Las imágenes no cambian (una foto nueva genera otro id), por lo que se
@@ -179,6 +186,7 @@ async function obtenerImagen(req, res) {
 }
 
 module.exports = {
+    calendarioPrecios,
     obtenerEstadisticas,
     obtenerCatalogos,
     listarPublicaciones,

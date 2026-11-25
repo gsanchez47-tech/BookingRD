@@ -14,6 +14,25 @@
  */
 
 const CATALOGO_EN = {
+    /* Calendario de precios */
+    'Ver el calendario de precios': 'See the price calendar',
+    'Ocultar el calendario': 'Hide the calendar',
+    'Toca el día de llegada y luego el de salida.': 'Tap your arrival day, then your departure day.',
+    'Ahora toca el día de salida.': 'Now tap your departure day.',
+    'Listo. Puedes tocar otro día de llegada para cambiar las fechas.': 'Done. Tap another arrival day to change the dates.',
+    'Temporada media': 'Mid season',
+    'Temporada alta': 'High season',
+    'Temporada baja': 'Low season',
+    'Verano': 'Summer',
+    'Semana Santa': 'Holy Week',
+    'Navidad y Año Nuevo': 'Christmas and New Year',
+    'Precio más bajo del mes': 'Lowest price of the month',
+    'Viernes y sábado: +8 %': 'Friday and Saturday: +8%',
+    'Precio por temporada': 'Seasonal pricing',
+    'por noche en temporada media; cambia según la fecha': 'per night in mid season; varies by date',
+    'Mes anterior': 'Previous month',
+    'Mes siguiente': 'Next month',
+    'Lleno': 'Full',
     /* Huéspedes, campana, cuenta, entrar con código y asistente */
     'Huéspedes': 'Guests',
     'Adultos': 'Adults',

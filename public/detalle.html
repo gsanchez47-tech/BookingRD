@@ -240,6 +240,21 @@
                 <p class="reserva-garantia" id="reserva-garantia">Cancela hasta un día antes con reembolso del 90 %. Paga con tarjeta o en el destino.</p>
 
                 <form id="form-reserva" novalidate>
+                    <button type="button" class="boton-calendario" id="boton-calendario" data-solo-tipo="hotel" aria-expanded="false" aria-controls="calendario-precios">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                        <span>Ver el calendario de precios</span>
+                    </button>
+                    <div class="calendario-precios" id="calendario-precios" hidden>
+                        <div class="calendario-cabecera">
+                            <button type="button" class="calendario-mover" id="calendario-anterior" aria-label="Mes anterior">&lsaquo;</button>
+                            <strong id="calendario-mes" aria-live="polite"></strong>
+                            <button type="button" class="calendario-mover" id="calendario-siguiente" aria-label="Mes siguiente">&rsaquo;</button>
+                        </div>
+                        <p class="calendario-ayuda" id="calendario-ayuda">Toca el día de llegada y luego el de salida.</p>
+                        <div class="calendario-semana" aria-hidden="true"><span>Lu</span><span>Ma</span><span>Mi</span><span>Ju</span><span>Vi</span><span>Sá</span><span>Do</span></div>
+                        <div class="calendario-dias" id="calendario-dias" role="grid" aria-label="Precio por noche de cada día"></div>
+                        <ul class="calendario-leyenda" id="calendario-leyenda"></ul>
+                    </div>
                     <div class="fila-campos dos" data-solo-tipo="hotel">
                         <div class="campo">
                             <label for="reserva-entrada">Entrada</label>

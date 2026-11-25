@@ -8,7 +8,7 @@
  *   - Disponibilidad: habitaciones de la publicación menos la mayor
  *     ocupación de cualquiera de las noches del rango.
  *   - Personas: hasta capacidad por habitación x habitaciones reservadas.
- *   - Total: precio por noche x noches x habitaciones.
+ *   - Total: suma del precio de cada noche (según la temporada, utils/temporadas.js) x habitaciones.
  * Actividad:
  *   - Fecha desde hoy y hasta 365 días en el futuro.
  *   - Disponibilidad: cupo diario menos las personas ya reservadas ese día.
@@ -43,6 +43,7 @@
 const crypto = require('crypto');
 
 const correoService = require('./correo.service');
+const { precioEstancia, TEMPORADAS } = require('../utils/temporadas');
 const pagosService = require('./pagos.service');
 const { conTransaccion, reservasRepo, cuentasRepo } = require('../repositories');
 const { solicitudInvalida, noEncontrado, conflicto, prohibido } = require('../utils/errores');
@@ -229,9 +230,31 @@ async function calcularLibres(transaccion, tipo, publicacion, solicitud) {
 /** Total de la reserva. */
 function calcularTotal(tipo, publicacion, solicitud) {
     const total = tipo === 'hotel'
-        ? publicacion.precio * solicitud.noches * solicitud.habitaciones
+        ? precioEstancia(publicacion.precio, solicitud.fechaInicio, solicitud.noches).total * solicitud.habitaciones
         : publicacion.precio * solicitud.personas;
     return Math.round(total * 100) / 100;
+}
+
+/**
+ * Desglose de una estancia agrupado por temporada:
+ * [{ concepto: "2 noches, Temporada alta (RD$11,500 promedio)", importe }].
+ */
+function desgloseEstancia(publicacion, solicitud) {
+    const { noches } = precioEstancia(publicacion.precio, solicitud.fechaInicio, solicitud.noches);
+    const grupos = new Map();
+    for (const n of noches) {
+        const g = grupos.get(n.temporada) || { noches: 0, importe: 0 };
+        g.noches += 1;
+        g.importe += n.precio;
+        grupos.set(n.temporada, g);
+    }
+    const moneda = new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP', maximumFractionDigits: 0 });
+    return [...grupos].map(([clave, g]) => ({
+        temporada: clave,
+        noches: g.noches,
+        concepto: `${g.noches} ${plural(g.noches, 'noche', 'noches')}, ${/^(Temporada|Verano)/.test(TEMPORADAS[clave].nombre) ? TEMPORADAS[clave].nombre.toLowerCase() : TEMPORADAS[clave].nombre} (${moneda.format(Math.round(g.importe / g.noches))} por noche)`,
+        importe: g.importe * solicitud.habitaciones
+    }));
 }
 
 /**
@@ -260,7 +283,8 @@ async function consultarDisponibilidad(tipo, id, datos) {
     return Object.assign(evaluar(tipo, publicacion, solicitud, libres), {
         libres,
         noches: solicitud.noches,
-        total: calcularTotal(tipo, publicacion, solicitud)
+        total: calcularTotal(tipo, publicacion, solicitud),
+        desglose: tipo === 'hotel' ? desgloseEstancia(publicacion, solicitud) : undefined
     });
 }
 
@@ -328,7 +352,8 @@ async function crearReserva(usuario, datos) {
                     fechaFin: solicitud.fechaFin,
                     personas: solicitud.personas,
                     habitaciones: solicitud.habitaciones,
-                    precioUnitario: publicacion.precio,
+                    // Hoteles: promedio por noche y habitación (el precio cambia según la temporada).
+                    precioUnitario: tipo === 'hotel' ? Math.round((total / (solicitud.noches * solicitud.habitaciones)) * 100) / 100 : publicacion.precio,
                     total,
                     comentario,
                     horaInicio: solicitud.horaInicio || null,
@@ -480,6 +505,14 @@ function desgloseCombo(combo, solicitud) {
         precio: a.precio
     })));
     for (const linea of lineas) {
+        if (linea.tipo === 'hotel') {
+            // La estancia se cobra noche por noche según la temporada.
+            linea.normal = precioEstancia(linea.precio, solicitud.entrada, solicitud.noches).total * solicitud.habitaciones;
+            linea.total = Math.round(linea.normal * (100 - combo.descuento)) / 100;
+            linea.precio = Math.round((linea.normal / linea.cantidad) * 100) / 100;
+            linea.precioCombo = Math.round((linea.total / linea.cantidad) * 100) / 100;
+            continue;
+        }
         linea.precioCombo = conDescuento(linea.precio, combo.descuento);
         linea.normal = Math.round(linea.precio * linea.cantidad * 100) / 100;
         linea.total = Math.round(linea.precioCombo * linea.cantidad * 100) / 100;
@@ -600,7 +633,44 @@ async function reservarCombo(usuario, combo, datos) {
     }
 }
 
+/**
+ * Calendario de precios de un alojamiento: precio de cada noche del mes
+ * (según la temporada) y habitaciones libres. Solo hoteles.
+ * @param {string} mes "AAAA-MM"
+ */
+async function calendarioPrecios(id, mes) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(mes || ''))) throw solicitudInvalida('El mes debe tener el formato AAAA-MM.');
+    const publicacion = await reservasRepo.bloquearPublicacion(null, 'hotel', id);
+    if (!publicacion || !publicacion.activo) throw noEncontrado('La publicación no existe o no está disponible.');
+    const primero = `${mes}-01`;
+    const [anio, numeroMes] = mes.split('-').map(Number);
+    const diasDelMes = new Date(Date.UTC(anio, numeroMes, 0)).getUTCDate();
+    const siguiente = sumarDias(primero, diasDelMes);
+    const reservas = await reservasRepo.reservasHotelEnRango(null, publicacion.id, primero, siguiente);
+    const hoyIso = hoy();
+    const dias = [];
+    for (let i = 0; i < diasDelMes; i++) {
+        const fecha = sumarDias(primero, i);
+        const ocupadas = reservas.filter((r) => r.entrada <= fecha && fecha < r.salida).reduce((s, r) => s + r.habitaciones, 0);
+        const { noches } = precioEstancia(publicacion.precio, fecha, 1);
+        dias.push({
+            fecha,
+            precio: noches[0].precio,
+            temporada: noches[0].temporada,
+            libres: Math.max(publicacion.unidades - ocupadas, 0),
+            pasado: fecha < hoyIso
+        });
+    }
+    return {
+        mes,
+        base: publicacion.precio,
+        dias,
+        temporadas: Object.fromEntries(Object.entries(TEMPORADAS).map(([clave, t]) => [clave, t.nombre]))
+    };
+}
+
 module.exports = {
+    calendarioPrecios,
     consultarDisponibilidad,
     crearReserva,
     cancelarReserva,

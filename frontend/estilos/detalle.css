@@ -895,3 +895,147 @@
         padding-bottom: var(--e-5);
     }
 }
+
+/* ----------------------------------------------------------------------------
+   Calendario de precios (alojamiento)
+   ------------------------------------------------------------------------- */
+
+.boton-calendario {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: var(--e-3);
+    padding: 10px 14px;
+    border: 1.5px dashed var(--caribe-deep);
+    border-radius: var(--r-s);
+    background: #EEF9FC;
+    color: var(--azul);
+    font: 800 var(--t-s) var(--f-texto);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.boton-calendario:hover { background: #DDF3F9; }
+.boton-calendario svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.boton-calendario[hidden], .calendario-precios[hidden] { display: none; }
+
+.calendario-precios {
+    margin-bottom: var(--e-4);
+    padding: 12px;
+    border: 1px solid var(--linea);
+    border-top: 4px solid var(--caribe);
+    border-radius: var(--r-m);
+    background: #fff;
+    animation: desplegar 0.2s ease-out;
+}
+
+.calendario-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.calendario-cabecera strong {
+    font-family: var(--f-display);
+    font-size: 1.05rem;
+}
+
+.calendario-mover {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--linea);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--azul);
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.calendario-mover:hover:not(:disabled) { background: var(--azul); color: #fff; }
+.calendario-mover:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.calendario-ayuda {
+    margin: 6px 0 8px;
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 700;
+    text-align: center;
+}
+
+.calendario-semana,
+.calendario-dias {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 3px;
+}
+
+.calendario-semana span {
+    color: var(--tinta-3);
+    font-size: 11px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.calendario-dias { margin-top: 4px; transition: opacity 0.15s ease; }
+.calendario-dias.cargando { opacity: 0.4; }
+
+.calendario-dia {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 1px;
+    min-width: 0;
+    min-height: 46px;
+    padding: 3px 1px;
+    border: 1.5px solid transparent;
+    border-radius: 8px;
+    background: var(--azul-tenue);
+    color: var(--tinta);
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.calendario-dia:hover:not(:disabled) { border-color: var(--azul); transform: translateY(-1px); }
+.calendario-dia:disabled { background: transparent; color: var(--tinta-3); cursor: default; opacity: 0.5; }
+
+.dia-numero { font-size: 12px; font-weight: 800; }
+.dia-precio { font-size: 9.5px; font-weight: 700; line-height: 1.1; white-space: nowrap; overflow: hidden; max-width: 100%; }
+
+/* Colores de temporada (fondo claro, texto oscuro: contraste AA). */
+.calendario-dia.t-baja, .calendario-leyenda i.t-baja { background: #DFF5E8; }
+.calendario-dia.t-media, .calendario-leyenda i.t-media { background: #EEF2F8; }
+.calendario-dia.t-verano, .calendario-leyenda i.t-verano { background: #FFF1CC; }
+.calendario-dia.t-alta, .calendario-leyenda i.t-alta { background: #FFE2CC; }
+.calendario-dia.t-semana-santa, .calendario-leyenda i.t-semana-santa { background: #F3DDF7; }
+.calendario-dia.t-fiestas, .calendario-leyenda i.t-fiestas { background: #FFD6DB; }
+
+.calendario-dia.mas-barato .dia-precio { color: #0E7A4E; }
+.calendario-dia.mas-barato::after { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #0E7A4E; }
+
+.calendario-dia.en-rango { border-color: var(--caribe); }
+.calendario-dia.es-entrada,
+.calendario-dia.es-salida { background: var(--azul) !important; color: #fff; border-color: var(--azul); }
+.calendario-dia.es-entrada .dia-precio,
+.calendario-dia.es-salida .dia-precio { color: #fff; }
+
+.calendario-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--tinta-2);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.calendario-leyenda li { display: inline-flex; align-items: center; gap: 5px; }
+.calendario-leyenda i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.08); }
+.calendario-leyenda i.mas-barato { background: #0E7A4E; border-radius: 50%; width: 8px; height: 8px; }
+.calendario-leyenda .leyenda-nota { color: var(--tinta-3); }
+.calendario-error { grid-column: 1 / -1; color: var(--rojo); font-size: var(--t-xs); font-weight: 700; }

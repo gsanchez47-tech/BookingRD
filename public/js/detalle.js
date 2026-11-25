@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     prepararFormulario();
+    iniciarCalendarioPrecios();
     cargarPublicacion();
     document.getElementById('boton-ver-recibo').addEventListener('click', () => {
         if (ultimoRecibo) abrirRecibo(ultimoRecibo);
@@ -185,7 +186,9 @@ function pintarInformacion() {
     document.getElementById('empresa-datos').innerHTML = html;
 
     document.getElementById('reserva-precio').textContent = formatearPrecio(publicacion.precio);
-    document.getElementById('reserva-unidad').textContent = unidadPrecio(TIPO, publicacion.categoria);
+    document.getElementById('reserva-unidad').textContent = TIPO === 'hotel'
+        ? 'por noche en temporada media; cambia según la fecha'
+        : unidadPrecio(TIPO, publicacion.categoria);
     // Equipo y fotógrafos: se reserva por unidades en lugar de por personas.
     const unidad = TIPO === 'actividad' && CATALOGOS.unidadActividad[publicacion.categoria];
     if (unidad) {
@@ -433,11 +436,12 @@ async function actualizarResumen() {
             resumen.innerHTML = resumenAlquiler(evaluacion);
             return;
         }
-        const detalle = TIPO === 'hotel'
-            ? `${formatearPrecio(publicacion.precio)} x ${evaluacion.noches} ${evaluacion.noches === 1 ? 'noche' : 'noches'} x ${solicitud.habitaciones} ${solicitud.habitaciones === 1 ? 'habitación' : 'habitaciones'}`
-            : `${formatearPrecio(publicacion.precio)} x ${textoCantidad(solicitud.personas, publicacion.categoria)}`;
+        // Hoteles: una línea por temporada (el precio de cada noche cambia según la fecha).
+        const lineas = TIPO === 'hotel' && Array.isArray(evaluacion.desglose)
+            ? evaluacion.desglose.map((l) => `<div class="resumen-linea"><span>${escaparHtml(textoLineaTemporada(l, solicitud.habitaciones))}</span><span>${formatearPrecio(l.importe)}</span></div>`).join('')
+            : `<div class="resumen-linea"><span>${formatearPrecio(publicacion.precio)} x ${textoCantidad(solicitud.personas, publicacion.categoria)}</span><span>${formatearPrecio(evaluacion.total)}</span></div>`;
         resumen.innerHTML = `
-            <div class="resumen-linea"><span>${detalle}</span><span>${formatearPrecio(evaluacion.total)}</span></div>
+            ${lineas}
             <div class="resumen-total"><span>Total</span><strong>${formatearPrecio(evaluacion.total)}</strong></div>
             ${notaMonedaPago(evaluacion.total)}
             <p class="resumen-estado ${evaluacion.disponible ? (evaluacion.libres <= 3 ? 'es-ultimas' : 'es-disponible') : 'es-agotado'}">
@@ -447,6 +451,141 @@ async function actualizarResumen() {
         if (numero !== consultaDisponibilidad) return;
         resumen.innerHTML = `<p class="resumen-estado es-agotado">${escaparHtml(error.message)}</p>`;
     }
+}
+
+/** "3 noches, temporada alta (RD$11,500 por noche) x 2 habitaciones" en la moneda elegida. */
+function textoLineaTemporada(linea, habitaciones) {
+    const promedio = linea.importe / habitaciones / linea.noches;
+    const completo = CALENDARIO.temporadas[linea.temporada] || linea.temporada;
+    // "temporada alta" en minúscula; los nombres propios (Navidad, Semana Santa) se conservan.
+    const nombre = /^Temporada|^Verano/.test(completo) ? completo.toLowerCase() : completo;
+    const veces = habitaciones > 1 ? ` x ${habitaciones} habitaciones` : '';
+    return `${linea.noches} ${linea.noches === 1 ? 'noche' : 'noches'}, ${nombre} (${formatearPrecio(promedio)} por noche)${veces}`;
+}
+
+/* ----------------------------------------------------------------------------
+   Calendario de precios (solo alojamiento): GET /publicaciones/hotel/:id/calendario
+   ------------------------------------------------------------------------- */
+
+const CALENDARIO = {
+    mes: null,
+    cache: new Map(),
+    seleccion: null,
+    temporadas: {
+        fiestas: 'Navidad y Año Nuevo', 'semana-santa': 'Semana Santa', alta: 'Temporada alta',
+        verano: 'Verano', baja: 'Temporada baja', media: 'Temporada media'
+    }
+};
+
+const mesIso = (iso) => iso.slice(0, 7);
+function sumarMes(mes, n) {
+    const [a, m] = mes.split('-').map(Number);
+    const fecha = new Date(Date.UTC(a, m - 1 + n, 1));
+    return fecha.toISOString().slice(0, 7);
+}
+
+function iniciarCalendarioPrecios() {
+    if (TIPO !== 'hotel') return;
+    const boton = document.getElementById('boton-calendario');
+    const panel = document.getElementById('calendario-precios');
+    boton.addEventListener('click', () => {
+        const abrir = panel.hidden;
+        panel.hidden = !abrir;
+        boton.setAttribute('aria-expanded', String(abrir));
+        boton.querySelector('span').textContent = abrir ? 'Ocultar el calendario' : 'Ver el calendario de precios';
+        if (abrir) {
+            const entrada = document.getElementById('reserva-entrada').value;
+            pintarCalendario(CALENDARIO.mes || mesIso(entrada || hoyIso()));
+        }
+    });
+    document.getElementById('calendario-anterior').addEventListener('click', () => pintarCalendario(sumarMes(CALENDARIO.mes, -1)));
+    document.getElementById('calendario-siguiente').addEventListener('click', () => pintarCalendario(sumarMes(CALENDARIO.mes, 1)));
+    document.getElementById('calendario-dias').addEventListener('click', (evento) => {
+        const dia = evento.target.closest('[data-fecha]');
+        if (!dia || dia.disabled) return;
+        elegirDia(dia.dataset.fecha);
+    });
+    // Si las fechas se escriben a mano, el calendario abierto las refleja.
+    ['reserva-entrada', 'reserva-salida'].forEach((id) => document.getElementById(id).addEventListener('change', () => {
+        if (panel.hidden || CALENDARIO.pintando) return;
+        const entrada = document.getElementById('reserva-entrada').value;
+        pintarCalendario(entrada ? mesIso(entrada) : CALENDARIO.mes);
+    }));
+}
+
+async function datosMes(mes) {
+    if (!CALENDARIO.cache.has(mes)) CALENDARIO.cache.set(mes, apiFetch(`/publicaciones/hotel/${ID}/calendario?mes=${mes}`));
+    return CALENDARIO.cache.get(mes);
+}
+
+async function pintarCalendario(mes) {
+    CALENDARIO.mes = mes;
+    const contenedor = document.getElementById('calendario-dias');
+    const [a, m] = mes.split('-').map(Number);
+    document.getElementById('calendario-mes').textContent = new Intl.DateTimeFormat(PREFERENCIAS.idioma === 'en' ? 'en-US' : 'es-DO', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+        .format(new Date(Date.UTC(a, m - 1, 1))).replace(/^./, (c) => c.toUpperCase());
+    document.getElementById('calendario-anterior').disabled = mes <= mesIso(hoyIso());
+    contenedor.classList.add('cargando');
+    let datos;
+    try {
+        datos = await datosMes(mes);
+    } catch (error) {
+        contenedor.innerHTML = `<p class="calendario-error">${escaparHtml(error.message)}</p>`;
+        return;
+    } finally {
+        contenedor.classList.remove('cargando');
+    }
+    if (CALENDARIO.mes !== mes) return;
+    CALENDARIO.temporadas = datos.temporadas || CALENDARIO.temporadas;
+    const precios = datos.dias.filter((d) => !d.pasado).map((d) => d.precio);
+    const minimo = Math.min(...precios);
+    const desfase = (new Date(Date.UTC(a, m - 1, 1)).getUTCDay() + 6) % 7;   // lunes primero
+    const entrada = document.getElementById('reserva-entrada').value;
+    const salida = document.getElementById('reserva-salida').value;
+    const celdas = Array.from({ length: desfase }, () => '<span class="calendario-vacio"></span>');
+    for (const d of datos.dias) {
+        const sinCupo = d.libres < 1;
+        const clases = [`t-${d.temporada}`];
+        if (d.precio === minimo && !d.pasado) clases.push('mas-barato');
+        if (entrada && d.fecha === entrada) clases.push('es-entrada');
+        if (salida && d.fecha === salida) clases.push('es-salida');
+        if (entrada && salida && d.fecha > entrada && d.fecha < salida) clases.push('en-rango');
+        const precio = formatearPrecio(d.precio).replace(/\.00$/, '');
+        const corto = PREFERENCIAS.moneda === 'DOP' ? `${String(Math.round(d.precio / 100) / 10).replace('.', ',')}k` : precio.replace(/\.\d+$/, '');
+        celdas.push(`<button type="button" class="calendario-dia ${clases.join(' ')}" data-fecha="${d.fecha}" ${d.pasado ? 'disabled' : ''}
+            aria-label="${escaparHtml(formatearFecha(d.fecha))}: ${escaparHtml(precio)} por noche${sinCupo ? ', sin habitaciones' : ''}">
+            <span class="dia-numero">${Number(d.fecha.slice(8))}</span>
+            <span class="dia-precio">${d.pasado ? '' : sinCupo ? 'Lleno' : escaparHtml(corto)}</span>
+        </button>`);
+    }
+    contenedor.innerHTML = celdas.join('');
+    const presentes = [...new Set(datos.dias.filter((d) => !d.pasado).map((d) => d.temporada))];
+    document.getElementById('calendario-leyenda').innerHTML = presentes
+        .map((t) => `<li><i class="t-${t}"></i>${escaparHtml(CALENDARIO.temporadas[t] || t)}</li>`).join('')
+        + '<li><i class="mas-barato"></i>Precio más bajo del mes</li><li class="leyenda-nota">Viernes y sábado: +8 %</li>' + (PREFERENCIAS.moneda === 'DOP' ? '<li class="leyenda-nota">Precio por noche en miles de pesos (21,5k = RD$21,500)</li>' : '');
+}
+
+/** Primer toque: llegada; segundo toque (posterior): salida. */
+function elegirDia(fecha) {
+    const entrada = document.getElementById('reserva-entrada');
+    const salida = document.getElementById('reserva-salida');
+    const ayuda = document.getElementById('calendario-ayuda');
+    if (!CALENDARIO.seleccion || fecha <= CALENDARIO.seleccion) {
+        CALENDARIO.seleccion = fecha;
+        entrada.value = fecha;
+        salida.min = sumarDiasIso(fecha, 1);
+        if (!salida.value || salida.value <= fecha) salida.value = sumarDiasIso(fecha, 1);
+        ayuda.textContent = 'Ahora toca el día de salida.';
+    } else {
+        salida.value = fecha;
+        CALENDARIO.seleccion = null;
+        ayuda.textContent = 'Listo. Puedes tocar otro día de llegada para cambiar las fechas.';
+    }
+    CALENDARIO.pintando = true;
+    entrada.dispatchEvent(new Event('change', { bubbles: true }));
+    salida.dispatchEvent(new Event('change', { bubbles: true }));
+    CALENDARIO.pintando = false;
+    pintarCalendario(CALENDARIO.mes);
 }
 
 /** Desglose del alquiler tal como lo calcula el servidor, con el depósito aparte. */
@@ -624,6 +763,7 @@ function pintarPoliticas() {
         : TIPO === 'hotel'
         ? [
             ['Cancelación', 'Gratuita hasta un día antes de la entrada, desde Mis reservas. Después de esa fecha, consulta con la empresa.'],
+            ['Precio por temporada', 'El precio publicado es el de temporada media entre semana. Navidad y Año Nuevo +35 %, Semana Santa +30 %, temporada alta (15 dic a 15 abr) +15 %, verano +10 %, temporada baja (1 sep a 15 nov) -15 %; viernes y sábado +8 %. El calendario de precios muestra cada noche.'],
             ['Pago', 'Con tarjeta al reservar o en el hotel al llegar. Si cancelas a tiempo, el pago con tarjeta se reembolsa completo.'],
             ['Entrada y salida', 'Coordina la hora de llegada con la empresa; puedes indicarla en el comentario de la reserva.'],
             ['Capacidad', `Hasta ${publicacion.capacidadPersonas} personas por habitación o unidad.`],
