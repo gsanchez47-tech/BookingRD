@@ -97,11 +97,11 @@
     grid-column: 2;
 }
 
-/* Botón flotante del carrito: encima del botón del asistente (abajo a la derecha). */
+/* Botón flotante del carrito: abajo a la derecha (el asistente va a la izquierda). */
 .boton-carrito {
     position: fixed;
-    right: 22px;
-    bottom: 94px;
+    right: 18px;
+    bottom: 18px;
     z-index: 1400;
     display: inline-flex;
     align-items: center;
@@ -119,8 +119,8 @@
 
 @media (max-width: 720px) {
     .boton-carrito {
-        right: 14px;
-        bottom: 148px;
+        right: 12px;
+        bottom: 12px;
     }
 }
 
