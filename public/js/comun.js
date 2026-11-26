@@ -544,7 +544,7 @@ function urlRecurso(ruta) {
  * se usan tal cual. Si falta la miniatura, se carga la foto original.
  */
 function urlMiniatura(ruta) {
-    if (/^img\/(destinos|publicaciones|servicios|productos)\/[\w-]+\.jpg$/.test(ruta || '')) return ruta.replace(/^img\//, 'img/mini/');
+    if (/^img\/(destinos|publicaciones|servicios|productos|galeria)\/[\w-]+\.jpg$/.test(ruta || '')) return ruta.replace(/^img\//, 'img/mini/');
     return urlRecurso(ruta);
 }
 

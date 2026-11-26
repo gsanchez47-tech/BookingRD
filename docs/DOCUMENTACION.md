@@ -92,7 +92,7 @@ Respuestas JSON. Error: `{ "error": "mensaje", "campo": "id-del-campo" }` (`camp
 | `GET /api/publicaciones/precios` | `tipo`, `categoria`, `ciudad`. `{ tipo, minimo, maximo, total, tramos[24] }`: rango de precios de las publicaciones visibles y cuántas caen en cada uno de 24 tramos iguales (histograma del filtro de precio) |
 | `GET /api/publicaciones/:tipo/:id/resenas` | `orden` (recientes, mejor-valoradas, peor-valoradas), `pagina` (5 por página). `{ resumen { promedio, total, distribucion { excelente, muyBueno, aceptable, regular, malo } }, resenas[] }`. El autor se muestra como nombre e inicial del apellido |
 | `GET /api/resenas/destacadas` | Seis reseñas visibles con puntuación de 9 o más (página de inicio) |
-| `GET /api/publicaciones/:tipo/:id` | Detalle con `empresa { nombre, telefono, sitioWeb, ciudad, descripcion, licenciaMitur }` |
+| `GET /api/publicaciones/:tipo/:id` | Detalle con `empresa { nombre, telefono, sitioWeb, ciudad, descripcion, licenciaMitur }` y `galeria[]`: la foto principal y las adicionales (`src/utils/galerias.js` asocia `img/galeria/<nombre>-<n>.jpg` con `img/publicaciones/<nombre>.jpg`; las publicaciones creadas por una empresa muestran su fotografía) |
 | `GET /api/publicaciones/:tipo/:id/disponibilidad` | Hotel: `entrada`, `salida`, `habitaciones`, `personas`. Actividad: `fecha`, `personas`. Respuesta `{ disponible, libres, noches, total, mensaje }`. Auto: `recogida`, `horaRecogida`, `devolucion`, `horaDevolucion` (HH:MM), `edadConductor`, `ciudadDevolucion`?, `extras` (códigos separados por coma). Respuesta `{ disponible, libres, dias, total, desglose[{ concepto, importe }], deposito, mensaje }` |
 | `GET /api/publicaciones/hotel/:id/calendario?mes=AAAA-MM` | Calendario de precios: `{ mes, base, dias[{ fecha, precio, temporada, libres, pasado }], temporadas[] }`. Solo alojamientos (404 en otros tipos) |
 | `GET /api/asistente/estado` | `{ ia }`: si hay una clave de IA configurada |
@@ -369,6 +369,7 @@ Todas cargan `comun.js` (cliente de la API, sesión, encabezado, catálogos, tar
 | `img/paginas/` | Portada y banda de empresas del inicio, autos, combos, tienda, ruta, registro e inicio de sesión |
 | `img/productos/` | Una fotografía por producto de la tienda de artesanía |
 | `img/ruta/` | Antojo típico de cada carretera en *En ruta* |
+| `img/galeria/` | Fotos adicionales de los 16 alojamientos de demostración (habitación, baño, piscina o exterior y lobby): de 2 a 7 por alojamiento, 52 en total |
 | `img/mini/` | Copias de 640 px de ancho de `publicaciones/`, `destinos/`, `servicios/` y `productos/` para tarjetas, listas y fichas |
 
 Ninguna fotografía se repite: cada archivo se usa en un solo lugar (comprobado con un inventario automático de referencias más revisión visual). En las fotografías de autos se difuminaron las placas y se retiraron marcas de agua. El panel de empresa reduce las fotografías subidas a 1600 px (JPEG) antes de enviarlas.

@@ -95,14 +95,7 @@ function mostrarError(mensaje) {
 
 function pintarPortada() {
     const categoria = CATALOGOS.categorias[publicacion.categoria];
-    const foto = document.getElementById('portada-foto');
-    if (publicacion.imagen) {
-        foto.src = urlRecurso(publicacion.imagen);
-        foto.alt = publicacion.nombre;
-        foto.onerror = () => document.getElementById('portada-media').classList.add('sin-foto');
-    } else {
-        document.getElementById('portada-media').classList.add('sin-foto');
-    }
+    pintarGaleria();
     document.getElementById('portada-sin-foto').textContent = categoria.nombre;
     document.getElementById('portada-categoria').textContent = categoria.nombre;
     document.getElementById('portada-titulo').textContent = publicacion.nombre;
@@ -186,6 +179,8 @@ function pintarInformacion() {
     document.getElementById('empresa-datos').innerHTML = html;
 
     document.getElementById('reserva-precio').textContent = formatearPrecio(publicacion.precio);
+    document.getElementById('portada-precio').textContent = formatearPrecio(publicacion.precio);
+    document.getElementById('portada-unidad').textContent = unidadPrecio(TIPO, publicacion.categoria);
     document.getElementById('reserva-unidad').textContent = TIPO === 'hotel'
         ? 'por noche en temporada media; cambia según la fecha'
         : unidadPrecio(TIPO, publicacion.categoria);
@@ -239,6 +234,113 @@ function pintarFichaVehiculo() {
         'Una hora de cortesía en la devolución.'
     ].filter(Boolean).join(' ');
     document.getElementById('reserva-edad').min = 18;
+}
+
+/* ----------------------------------------------------------------------------
+   Galería y visor de fotos
+   ------------------------------------------------------------------------- */
+
+let fotosGaleria = [];
+let fotoActual = 0;
+
+/**
+ * Rejilla de fotos: en pantallas anchas la principal y cuatro más (la última
+ * con "+N"); en el móvil, todas en una tira que se desliza con el dedo.
+ */
+function pintarGaleria() {
+    const media = document.getElementById('portada-media');
+    fotosGaleria = (publicacion.galeria && publicacion.galeria.length ? publicacion.galeria : [publicacion.imagen]).filter(Boolean);
+    if (!fotosGaleria.length) {
+        media.classList.add('sin-foto');
+        return;
+    }
+    const total = fotosGaleria.length;
+    media.dataset.fotos = String(Math.min(total, 5));
+    const rejilla = document.getElementById('galeria-rejilla');
+    rejilla.innerHTML = fotosGaleria.map((url, i) => {
+        const resto = i === 4 && total > 5 ? `<span class="galeria-mas">+${total - 5}</span>` : '';
+        return `<button type="button" class="galeria-foto" data-indice="${i}" aria-label="Ver la foto ${i + 1} de ${total}">
+            <img src="${escaparHtml(i === 0 ? urlRecurso(url) : urlMiniatura(url))}" alt="${i === 0 ? escaparHtml(publicacion.nombre) : ''}" ${i === 0 ? 'fetchpriority="high"' : 'loading="lazy"'}>${resto}</button>`;
+    }).join('');
+    const principal = rejilla.querySelector('img');
+    principal.addEventListener('error', () => media.classList.add('sin-foto'), { once: true });
+    rejilla.addEventListener('click', (e) => {
+        const boton = e.target.closest('.galeria-foto');
+        if (boton) abrirVisor(Number(boton.dataset.indice));
+    });
+
+    const verTodas = document.getElementById('galeria-ver-todas');
+    const contador = document.getElementById('galeria-contador');
+    if (total > 1) {
+        document.getElementById('galeria-ver-texto').textContent = `Ver las ${total} fotos`;
+        verTodas.hidden = false;
+        verTodas.addEventListener('click', () => abrirVisor(0));
+        contador.hidden = false;
+        contador.textContent = `1 / ${total}`;
+        // Móvil: contador de la tira deslizable.
+        rejilla.addEventListener('scroll', () => {
+            const i = Math.round(rejilla.scrollLeft / Math.max(rejilla.clientWidth, 1));
+            contador.textContent = `${Math.min(i + 1, total)} / ${total}`;
+        }, { passive: true });
+    }
+    prepararVisor();
+}
+
+function prepararVisor() {
+    const visor = document.getElementById('visor');
+    if (visor.dataset.listo) return;
+    visor.dataset.listo = '1';
+    document.getElementById('visor-nombre').textContent = publicacion.nombre;
+    document.getElementById('visor-miniaturas').innerHTML = fotosGaleria.map((url, i) =>
+        `<button type="button" data-indice="${i}" aria-label="Foto ${i + 1}"><img src="${escaparHtml(urlMiniatura(url))}" alt="" loading="lazy"></button>`).join('');
+    document.getElementById('visor-miniaturas').addEventListener('click', (e) => {
+        const boton = e.target.closest('button');
+        if (boton) mostrarFoto(Number(boton.dataset.indice));
+    });
+    document.getElementById('visor-anterior').addEventListener('click', () => mostrarFoto(fotoActual - 1));
+    document.getElementById('visor-siguiente').addEventListener('click', () => mostrarFoto(fotoActual + 1));
+    document.getElementById('visor-cerrar').addEventListener('click', () => visor.close());
+    visor.addEventListener('click', (e) => { if (e.target === visor || e.target.classList.contains('visor-escena')) visor.close(); });
+    visor.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') mostrarFoto(fotoActual - 1);
+        if (e.key === 'ArrowRight') mostrarFoto(fotoActual + 1);
+    });
+    // Deslizar con el dedo.
+    let inicioX = null;
+    const escena = visor.querySelector('.visor-escena');
+    escena.addEventListener('pointerdown', (e) => { inicioX = e.clientX; });
+    escena.addEventListener('pointerup', (e) => {
+        if (inicioX === null) return;
+        const dx = e.clientX - inicioX;
+        inicioX = null;
+        if (Math.abs(dx) > 50) mostrarFoto(fotoActual + (dx < 0 ? 1 : -1));
+    });
+    visor.addEventListener('close', () => document.body.classList.remove('visor-abierto'));
+}
+
+function abrirVisor(indice) {
+    const visor = document.getElementById('visor');
+    const unaSola = fotosGaleria.length < 2;
+    visor.classList.toggle('una-foto', unaSola);
+    mostrarFoto(indice);
+    document.body.classList.add('visor-abierto');
+    if (typeof visor.showModal === 'function') visor.showModal();
+    else visor.setAttribute('open', '');
+}
+
+function mostrarFoto(indice) {
+    const total = fotosGaleria.length;
+    fotoActual = (indice + total) % total;
+    const foto = document.getElementById('visor-foto');
+    foto.src = urlRecurso(fotosGaleria[fotoActual]);
+    foto.alt = `${publicacion.nombre}, foto ${fotoActual + 1} de ${total}`;
+    document.getElementById('visor-posicion').textContent = `${fotoActual + 1} / ${total}`;
+    document.querySelectorAll('#visor-miniaturas button').forEach((b, i) => {
+        b.classList.toggle('activa', i === fotoActual);
+        if (i === fotoActual) b.scrollIntoView({ block: 'nearest', inline: 'center' });
+    });
+    // Precarga de la siguiente.
+    if (total > 1) new Image().src = urlRecurso(fotosGaleria[(fotoActual + 1) % total]);
 }
 
 /** Barra inferior en móvil: se oculta cuando la tarjeta de reserva es visible. */

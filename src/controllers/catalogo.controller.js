@@ -7,6 +7,7 @@
 const { publicacionesRepo, imagenesRepo, resenasRepo } = require('../repositories');
 const reservasService = require('../services/reservas.service');
 const catalogos = require('../utils/catalogos');
+const { galeriaDe } = require('../utils/galerias');
 const { solicitudInvalida, noEncontrado } = require('../utils/errores');
 const { aEnteroPositivo, textoLimpio } = require('../utils/validacion');
 
@@ -117,12 +118,12 @@ async function obtenerPrecios(req, res) {
     res.json({ tipo, minimo, maximo, total: lista.length, tramos });
 }
 
-/** GET /api/publicaciones/:tipo/:id */
+/** GET /api/publicaciones/:tipo/:id  Detalle con `galeria`: la foto principal y las adicionales. */
 async function obtenerPublicacion(req, res) {
     const id = aEnteroPositivo(req.params.id);
     const publicacion = id ? await publicacionesRepo.obtener(req.params.tipo, id) : null;
     if (!publicacion) throw noEncontrado('La publicación no existe o ya no está disponible.');
-    res.json(publicacion);
+    res.json(Object.assign({}, publicacion, { galeria: galeriaDe(publicacion.imagen) }));
 }
 
 const RESENAS_POR_PAGINA = 5;

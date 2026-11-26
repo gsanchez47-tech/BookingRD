@@ -739,3 +739,14 @@ test('asistente con IA: respuesta, acción validada y respaldo si la IA falla', 
     iaFalla = false;
     assert.equal(caida.status, 503);
 });
+
+test('galería de fotos en el detalle de un alojamiento', async () => {
+    const hotel = await fetch(`${base}/publicaciones/hotel/1`).then((r) => r.json());
+    assert.ok(Array.isArray(hotel.galeria) && hotel.galeria.length > 1);
+    assert.equal(hotel.galeria[0], hotel.imagen);
+    assert.ok(hotel.galeria.slice(1).every((u) => /^img\/galeria\/[\w-]+\.jpg$/.test(u)));
+    const foto = await fetch(base.replace('/api', '/') + hotel.galeria[1]);
+    assert.equal(foto.status, 200);
+    const actividad = await fetch(`${base}/publicaciones/actividad/1`).then((r) => r.json());
+    assert.deepEqual(actividad.galeria, [actividad.imagen]);
+});
