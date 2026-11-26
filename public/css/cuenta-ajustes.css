@@ -294,6 +294,13 @@ button {
     box-shadow: 0 8px 24px -8px rgba(206, 17, 38, 0.7);
 }
 
+/* Sobre una cabecera con fotografía la píldora necesita fondo propio para leerse. */
+.cabecera-foto .etiqueta-caribe:not(.roja) {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(0, 48, 135, 0.85);
+    color: #fff;
+}
+
 /* Mini bandera dentro de la píldora roja (sin imágenes ni emojis). */
 .bandera-mini {
     display: inline-grid;
