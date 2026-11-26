@@ -1238,3 +1238,16 @@
     border-radius: 12px;
     background: rgba(0, 48, 135, 0.86);
 }
+
+/* Preguntas frecuentes */
+.preguntas-inicio {
+    display: grid;
+    gap: var(--e-5);
+}
+
+@media (min-width: 960px) {
+    .preguntas-inicio {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        align-items: start;
+    }
+}

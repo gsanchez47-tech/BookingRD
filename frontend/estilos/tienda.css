@@ -97,12 +97,12 @@
     grid-column: 2;
 }
 
-/* Botón flotante del carrito */
+/* Botón flotante del carrito: encima del botón del asistente (abajo a la derecha). */
 .boton-carrito {
     position: fixed;
-    right: var(--e-4);
-    bottom: var(--e-4);
-    z-index: 30;
+    right: 22px;
+    bottom: 94px;
+    z-index: 1400;
     display: inline-flex;
     align-items: center;
     gap: var(--e-2);
@@ -110,11 +110,18 @@
     padding: 0 var(--e-5);
     border: 0;
     border-radius: 999px;
-    background: var(--rojo);
-    box-shadow: 0 16px 34px -14px rgba(206, 17, 38, 0.7);
+    background: var(--azul);
+    box-shadow: 0 16px 34px -14px rgba(0, 48, 135, 0.7);
     color: #fff;
     font-weight: 800;
     cursor: pointer;
+}
+
+@media (max-width: 720px) {
+    .boton-carrito {
+        right: 14px;
+        bottom: 148px;
+    }
 }
 
 .boton-carrito svg {
@@ -135,7 +142,7 @@
     padding: 0 6px;
     border-radius: 999px;
     background: #fff;
-    color: var(--rojo);
+    color: var(--azul);
     font-size: var(--t-xs);
 }
 

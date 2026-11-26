@@ -869,6 +869,174 @@ select.control {
     border-radius: 0;
 }
 
+/* Menús desplegables del encabezado */
+.nav-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.nav-item > a {
+    padding-right: 4px;
+}
+
+.nav-flecha {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-s);
+    background: none;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+}
+
+.nav-flecha svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.2s ease;
+}
+
+.nav-item.abierto .nav-flecha svg {
+    transform: rotate(180deg);
+}
+
+.nav-item.abierto > a,
+.nav-flecha:hover {
+    color: #fff;
+}
+
+.nav-panel {
+    position: absolute;
+    top: calc(100% + 12px);
+    left: -12px;
+    z-index: 1200;
+    width: max-content;
+    max-width: 560px;
+    padding: var(--e-4);
+    border: 1px solid var(--linea);
+    border-radius: var(--r-l);
+    background: #fff;
+    color: var(--tinta);
+    box-shadow: 0 24px 50px -20px rgba(5, 19, 43, 0.45);
+    animation: desplegar 0.18s ease-out;
+}
+
+/* Puente invisible para no perder el hover al bajar el ratón. */
+.nav-panel::before {
+    content: '';
+    position: absolute;
+    inset: -14px 0 auto;
+    height: 14px;
+}
+
+.nav-panel[hidden] {
+    display: none;
+}
+
+.nav-panel-columnas {
+    display: grid;
+    grid-template-columns: minmax(220px, auto) minmax(180px, auto);
+    gap: var(--e-5);
+}
+
+.nav-panel-columnas.una {
+    grid-template-columns: repeat(2, minmax(150px, auto));
+}
+
+.nav-panel-columnas.una > div {
+    grid-column: 1 / -1;
+}
+
+.nav-panel-columnas.una .nav-panel-lista {
+    grid-template-columns: repeat(2, minmax(150px, auto));
+}
+
+.nav-panel-titulo {
+    margin: 0 0 var(--e-2);
+    color: var(--tinta-3);
+    font-size: var(--t-xs);
+    font-weight: 800;
+}
+
+.nav-panel-lista {
+    display: grid;
+    gap: 2px;
+}
+
+.nav-panel .nav-panel-lista a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--r-s);
+    color: var(--tinta);
+    font-size: var(--t-s);
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.nav-panel .nav-panel-lista a:hover {
+    background: var(--azul-tenue);
+    color: var(--azul);
+    transform: translateX(3px);
+}
+
+.nav-panel-lista i {
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+}
+
+.nav-panel-destinos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.nav-panel .nav-panel-destinos a {
+    padding: 6px 12px;
+    border: 1px solid var(--linea);
+    border-radius: 999px;
+    color: var(--tinta-2);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.nav-panel .nav-panel-destinos a:hover {
+    border-color: var(--caribe);
+    background: rgba(0, 180, 216, 0.1);
+    color: var(--caribe-deep);
+}
+
+.nav-panel .nav-panel-pie {
+    display: block;
+    margin-top: var(--e-3);
+    padding-top: var(--e-3);
+    border-top: 1px solid var(--linea);
+    border-radius: 0;
+    color: var(--azul);
+    font-size: var(--t-s);
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.nav-panel .nav-panel-pie:hover {
+    background: none;
+    text-decoration: underline;
+}
+
 .header-acciones {
     display: flex;
     align-items: center;
@@ -3064,6 +3232,71 @@ button.usuario-chip:focus-visible { outline: none; box-shadow: var(--enfoque); }
     .header-acciones { gap: 4px; }
 }
 
+/* ----------------------------------------------------------------------------
+   Acordeón (details/summary): políticas, preguntas frecuentes
+   ------------------------------------------------------------------------- */
+
+.acordeones {
+    display: grid;
+    gap: 8px;
+}
+
+.acordeon {
+    border: 1px solid var(--linea);
+    border-radius: var(--r-m);
+    background: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.acordeon[open] {
+    border-color: rgba(0, 180, 216, 0.55);
+    box-shadow: 0 10px 24px -18px rgba(0, 48, 135, 0.45);
+}
+
+.acordeon summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+    padding: 12px 16px;
+    color: var(--tinta);
+    font-weight: 800;
+    list-style: none;
+    cursor: pointer;
+}
+
+.acordeon summary::-webkit-details-marker {
+    display: none;
+}
+
+.acordeon summary::after {
+    content: '';
+    flex: 0 0 auto;
+    width: 9px;
+    height: 9px;
+    border-right: 2.5px solid var(--caribe-deep);
+    border-bottom: 2.5px solid var(--caribe-deep);
+    transform: rotate(45deg) translateY(-3px);
+    transition: transform 0.2s ease;
+}
+
+.acordeon[open] summary::after {
+    transform: rotate(225deg) translateY(-3px);
+}
+
+.acordeon summary:hover {
+    color: var(--azul);
+}
+
+.acordeon > p,
+.acordeon > div {
+    margin: 0;
+    padding: 0 16px 14px;
+    color: var(--tinta-2);
+    line-height: 1.55;
+    animation: desplegar 0.2s ease-out;
+}
+
 /* ==========================================================================
    Estilos propios de la página (frontend/estilos/index.css)
    ======================================================================== */
@@ -4858,4 +5091,17 @@ button.usuario-chip:focus-visible { outline: none; box-shadow: var(--enfoque); }
     padding: 10px 14px;
     border-radius: 12px;
     background: rgba(0, 48, 135, 0.86);
+}
+
+/* Preguntas frecuentes */
+.preguntas-inicio {
+    display: grid;
+    gap: var(--e-5);
+}
+
+@media (min-width: 960px) {
+    .preguntas-inicio {
+        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+        align-items: start;
+    }
 }

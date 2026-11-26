@@ -664,7 +664,7 @@ async function pintarCalendario(mes) {
     const presentes = [...new Set(datos.dias.filter((d) => !d.pasado).map((d) => d.temporada))];
     document.getElementById('calendario-leyenda').innerHTML = presentes
         .map((t) => `<li><i class="t-${t}"></i>${escaparHtml(CALENDARIO.temporadas[t] || t)}</li>`).join('')
-        + '<li><i class="mas-barato"></i>Precio más bajo del mes</li><li class="leyenda-nota">Viernes y sábado: +8 %</li>' + (PREFERENCIAS.moneda === 'DOP' ? '<li class="leyenda-nota">Precio por noche en miles de pesos (21,5k = RD$21,500)</li>' : '');
+        + '<li><i class="mas-barato"></i>Precio más bajo del mes</li><li class="leyenda-nota">Viernes y sábado: +8 %</li>' + (PREFERENCIAS.moneda === 'DOP' ? '<li class="leyenda-nota">Precio por noche en miles de pesos (11,8k = RD$11,800)</li>' : '');
 }
 
 /** Primer toque: llegada; segundo toque (posterior): salida. */
@@ -853,7 +853,7 @@ function pintarVentajas() {
 function pintarPoliticas() {
     const politicas = ES_AUTO
         ? [
-            ['Cancelación', 'Gratuita hasta un día antes de la recogida, desde Mis reservas.'],
+            ['Cancelación', 'Hasta un día antes de la recogida, desde Mis reservas. Se reembolsa el 90 % del pago con tarjeta; en el mostrador no hay cargo.'],
             ['Pago', 'Con tarjeta al reservar o en el mostrador al recoger el auto. Si cancelas a tiempo, se reembolsa el 90 % del pago con tarjeta.'],
             ['Depósito', `${formatoMoneda.format(publicacion.deposito)} retenidos en la tarjeta de crédito del conductor y liberados al devolver el auto sin daños.`],
             ['Combustible', 'Lleno a lleno: se entrega con el tanque lleno y se devuelve igual. Si falta combustible, se cobra el faltante.'],
@@ -864,7 +864,7 @@ function pintarPoliticas() {
         ]
         : TIPO === 'hotel'
         ? [
-            ['Cancelación', 'Gratuita hasta un día antes de la entrada, desde Mis reservas. Después de esa fecha, consulta con la empresa.'],
+            ['Cancelación', 'Hasta un día antes de la entrada, desde Mis reservas. Se reembolsa el 90 % del pago con tarjeta; si pagas en el hotel no hay cargo.'],
             ['Precio por temporada', 'El precio publicado es el de temporada media entre semana. Navidad y Año Nuevo +35 %, Semana Santa +30 %, temporada alta (15 dic a 15 abr) +15 %, verano +10 %, temporada baja (1 sep a 15 nov) -15 %; viernes y sábado +8 %. El calendario de precios muestra cada noche.'],
             ['Pago', 'Con tarjeta al reservar o en el hotel al llegar. Si cancelas a tiempo, se reembolsa el 90 % del pago con tarjeta.'],
             ['Entrada y salida', 'Coordina la hora de llegada con la empresa; puedes indicarla en el comentario de la reserva.'],
@@ -872,14 +872,15 @@ function pintarPoliticas() {
             ['Documentos', 'Cédula de identidad o pasaporte vigente del titular de la reserva.']
         ]
         : [
-            ['Cancelación', 'Gratuita hasta un día antes de la actividad, desde Mis reservas.'],
+            ['Cancelación', 'Hasta un día antes de la actividad, desde Mis reservas. Se reembolsa el 90 % del pago con tarjeta; si pagas al operador no hay cargo.'],
             ['Pago', 'Con tarjeta al reservar o al operador el día de la actividad. Si cancelas a tiempo, se reembolsa el 90 % del pago con tarjeta.'],
             ['Punto de encuentro', publicacion.puntoEncuentro],
             ['Duración', `${formatearDuracion(publicacion.duracionHoras)} aproximadamente.`],
             ['Recomendaciones', 'Llega 15 minutos antes, con protector solar, agua y ropa cómoda.']
         ];
-    document.getElementById('detalle-politicas').innerHTML = politicas
-        .map(([titulo, texto]) => `<div><dt>${escaparHtml(titulo)}</dt><dd>${escaparHtml(texto)}</dd></div>`).join('');
+    // Acordeón: cada punto se despliega; los dos primeros abiertos.
+    document.getElementById('detalle-politicas').innerHTML = politicas.filter(([, texto]) => texto)
+        .map(([titulo, texto], i) => `<details class="acordeon"${i < 2 ? ' open' : ''}><summary>${escaparHtml(titulo)}</summary><p>${escaparHtml(texto)}</p></details>`).join('');
 }
 
 /** Mapa de la zona (centro del destino) y enlace a Google Maps con la dirección. */

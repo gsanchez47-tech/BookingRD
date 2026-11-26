@@ -1177,6 +1177,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mostrarAvisoProgramado();
     validarSesionRemota();
     iniciarMenuCuenta();
+    iniciarMenusNavegacion();
     iniciarCampana();
 
     // Corazones de favorito: delegación para las tarjetas que se agregan después.
@@ -1285,6 +1286,79 @@ function desplegable(boton, panel, alAbrir) {
         }
     });
     return abrir;
+}
+
+/* ----------------------------------------------------------------------------
+   Menús desplegables del encabezado (Alojamiento, Actividades y Autos)
+   ------------------------------------------------------------------------- */
+
+const DESTINOS_MENU = {
+    hotel: ['Punta Cana', 'Samaná', 'Puerto Plata', 'Santo Domingo', 'La Romana', 'Jarabacoa'],
+    actividad: ['Punta Cana', 'Samaná', 'Jarabacoa', 'Constanza', 'Santo Domingo', 'Pedernales']
+};
+
+const COLOR_GRUPO = {
+    Alojamiento: 'var(--caribe)', Tours: 'var(--jungle-light)', Aventura: 'var(--rojo)',
+    'Equipo y fotografía': 'var(--sand)', Autos: 'var(--azul)'
+};
+
+/** Abre al pasar el ratón o al pulsar la flecha; Esc o un clic fuera lo cierra. */
+function iniciarMenusNavegacion() {
+    const nav = document.querySelector('.nav-principal');
+    if (!nav) return;
+    const menus = [
+        { clave: 'alojamiento', tipo: 'hotel', titulo: 'Tipos de alojamiento' },
+        { clave: 'actividades', tipo: 'actividad', titulo: 'Qué hacer' },
+        { clave: 'autos', tipo: 'vehiculo', titulo: 'Tipos de auto' }
+    ];
+    for (const menu of menus) {
+        const enlace = nav.querySelector(`[data-nav="${menu.clave}"]`);
+        if (!enlace) continue;
+        const item = document.createElement('div');
+        item.className = 'nav-item';
+        enlace.replaceWith(item);
+        item.appendChild(enlace);
+        const flecha = document.createElement('button');
+        flecha.type = 'button';
+        flecha.className = 'nav-flecha';
+        flecha.setAttribute('aria-expanded', 'false');
+        flecha.setAttribute('aria-label', `Más opciones de ${enlace.textContent.trim()}`);
+        flecha.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+        item.appendChild(flecha);
+
+        const panel = document.createElement('div');
+        panel.className = 'nav-panel';
+        panel.hidden = true;
+        const categorias = Object.entries(CATALOGOS.categorias).filter(([, c]) => c.tipo === menu.tipo);
+        const enlacesCategorias = categorias.map(([codigo, c]) => `<a href="${menu.tipo === 'vehiculo' ? `explorar.html?tipo=vehiculo&categoria=${codigo}` : `explorar.html?categoria=${codigo}`}">
+            <i style="background:${COLOR_GRUPO[c.grupo] || 'var(--caribe)'}"></i><span>${escaparHtml(c.nombre)}</span></a>`).join('');
+        const destinos = DESTINOS_MENU[menu.tipo];
+        const columnaDestinos = destinos ? `<div><p class="nav-panel-titulo">Destinos populares</p>
+            <div class="nav-panel-destinos">${destinos.map((d) => `<a href="explorar.html?tipo=${menu.tipo}&ciudad=${encodeURIComponent(d)}">${escaparHtml(d)}</a>`).join('')}</div></div>` : '';
+        const extra = {
+            hotel: '<a class="nav-panel-pie" href="combos.html">Combos de hotel y tours con descuento</a>',
+            actividad: '<a class="nav-panel-pie" href="ruta.html">Ruta del Parador y asistencia vial</a>',
+            vehiculo: '<a class="nav-panel-pie" href="autos.html">Cómo alquilar, requisitos y preguntas frecuentes</a>'
+        }[menu.tipo];
+        panel.innerHTML = `<div class="nav-panel-columnas${destinos ? '' : ' una'}"><div><p class="nav-panel-titulo">${menu.titulo}</p><div class="nav-panel-lista">${enlacesCategorias}</div></div>${columnaDestinos}</div>${extra}`;
+        item.appendChild(panel);
+
+        let temporizador;
+        const abrir = (abierto) => {
+            clearTimeout(temporizador);
+            if (abierto) document.querySelectorAll('.nav-item .nav-panel').forEach((otro) => {
+                if (otro !== panel) { otro.hidden = true; otro.previousElementSibling.setAttribute('aria-expanded', 'false'); }
+            });
+            panel.hidden = !abierto;
+            flecha.setAttribute('aria-expanded', String(abierto));
+            item.classList.toggle('abierto', abierto);
+        };
+        item.addEventListener('mouseenter', () => { clearTimeout(temporizador); temporizador = setTimeout(() => abrir(true), 120); });
+        item.addEventListener('mouseleave', () => { clearTimeout(temporizador); temporizador = setTimeout(() => abrir(false), 220); });
+        flecha.addEventListener('click', (e) => { e.stopPropagation(); abrir(panel.hidden); });
+        document.addEventListener('click', (e) => { if (!item.contains(e.target)) abrir(false); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) { abrir(false); flecha.focus(); } });
+    }
 }
 
 function iniciarMenuCuenta() {
