@@ -119,7 +119,6 @@ app.use('/api/tienda', require('./routes/tienda.routes'));
 app.use('/api/empresa', rutasEmpresa);
 app.use('/api/admin', rutasAdmin);
 app.use('/api/notificaciones', require('./routes/notificaciones.routes'));
-app.use('/api/asistente', require('./routes/asistente.routes'));
 app.use('/api', rutasCatalogo);
 app.use('/api', rutasContacto);
 app.use('/api', rutasViajero);

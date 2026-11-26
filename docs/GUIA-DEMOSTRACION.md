@@ -104,9 +104,8 @@ Si algo se desordena durante los ensayos, vuelve a los datos de ejemplo: con SQL
 
 - Pulsa **¿Te ayudo?** (abajo a la derecha) y escribe: *hotel en Samaná para 2 este fin de semana*. Caribe responde con los mejor valorados y el enlace con las fechas ya puestas.
 - Pulsa **Ver todas las opciones > Recuperar mi contraseña** y escribe un correo: el enlace llega al correo.
-  - *Qué decir:* sin clave de IA el asistente no usa servicios externos; entiende opciones y palabras clave y llama a la misma API del sitio.
-- Si configuraste la IA (*Configurar BookingRD > 2*; el subtítulo dice *Asistente de BookingRD con IA*), escribe una pregunta libre: *¿qué hotel me recomiendas para una pareja en Samaná con buena playa?* Responde con datos del catálogo y abre la búsqueda.
-- Si configuraste Gmail (*menú Inicio > BookingRD > Configurar BookingRD > 1*), registra una cuenta con tu correo real: el código llega a tu bandeja. Haz una reserva y muestra el correo de confirmación con la foto y la campana del encabezado.
+  - *Qué decir:* el asistente no usa servicios externos; entiende opciones y palabras clave y llama a la misma API del sitio.
+- Si configuraste Gmail (*menú Inicio > BookingRD > Configurar el correo de BookingRD*), registra una cuenta con tu correo real: el código llega a tu bandeja. Haz una reserva y muestra el correo de confirmación con la foto y la campana del encabezado.
 
 ## 10. Cierre (30 segundos)
 

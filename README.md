@@ -73,8 +73,7 @@ npm run iniciar
 | `npm run iniciar` | Lo mismo que el doble clic: configura SQL Server la primera vez (Windows), prueba la conexión y abre el navegador |
 | `npm start` | Arranca el servidor con lo que diga `.env` (SQL Server o Azure; sin `DB_SERVER`, la base local en archivo) |
 | `npm run sqlserver` | Vuelve a configurar SQL Server local y a crear la base BookingRD (Windows) |
-| `npm run correo` | Configura el correo real con Gmail (en Windows: *Configurar BookingRD > 1*) |
-| `npm run ia` | Activa o quita la clave de IA del asistente Caribe (en Windows: *Configurar BookingRD > 2*) |
+| `npm run correo` | Configura el correo real con Gmail (en Windows: *Configurar el correo de BookingRD*) |
 | `npm run configurar` | Asistente para conectar con Azure SQL Database (sección 3.A) |
 | `npm run local:reiniciar` | Borra la base local en archivo; el próximo arranque carga de nuevo los datos de ejemplo |
 | `npm run demo` | Demostración en memoria con datos nuevos que no se guardan (no toca ninguna base) |
@@ -149,10 +148,10 @@ Para empezar la demostración con los datos originales: con SQL Server, `npm run
 | Administración | Indicadores globales (incluye cobrado en línea, por cobrar y reembolsado), empresas y usuarios (suspender y reactivar), moderación de publicaciones y reseñas, todas las reservas con su pago, pedidos de la tienda (enviar y entregar) y mensajes de contacto. |
 | Registro e inicio de sesión | Registro sencillo de viajero y por pasos de empresa, **con código de verificación de 6 dígitos enviado al correo**; *¿Olvidaste tu contraseña?* envía un enlace de un solo uso (30 minutos) para crear una nueva; *Recordarme*; cada rol llega a su espacio. Una cuenta de empresa publica alojamientos, actividades o autos desde su panel y aparecen al instante en el catálogo. |
 | Mi cuenta y avisos | Menú desplegable con el nombre (cuenta, reservas, guardados, panel, cerrar sesión); **campana de notificaciones** (reserva confirmada, reserva recibida, recordatorio, reseña, seguridad); *Mi cuenta y seguridad* para cambiar contraseña y correo; **entrar con un código** por correo. |
-| Asistente Caribe | Botón *¿Te ayudo?* en todas las páginas: recupera la contraseña, reenvía el código, muestra y cancela reservas, busca hoteles por mensaje ("hotel en Samaná para 2 este fin de semana"), guía a las empresas, envía un mensaje al equipo, emergencias en carretera y preguntas frecuentes. **Con IA (opcional):** con una clave de la API de Anthropic (*Configurar BookingRD > 2*) responde preguntas libres con los datos del catálogo ("¿qué hotel me recomiendas en Samaná para una pareja?") y abre la búsqueda; sin clave, o si la IA no responde, sigue con sus opciones. |
+| Asistente Caribe | Botón *¿Te ayudo?* en todas las páginas: recupera la contraseña, reenvía el código, muestra y cancela reservas, busca hoteles por mensaje ("hotel en Samaná para 2 este fin de semana"), guía a las empresas, envía un mensaje al equipo, emergencias en carretera y preguntas frecuentes. |
 | Precios por temporada | Cada noche de hotel tiene su precio: Navidad (20 dic-6 ene) +35 %, Semana Santa +30 %, temporada alta (15 dic-15 abr) +15 %, verano (jul-ago) +10 %, temporada baja (sep-15 nov) -15 % y viernes y sábado +8 %, redondeado a RD$50. En el detalle, *Ver calendario de precios* muestra el mes con el precio de cada noche por colores, la noche más barata y las habitaciones libres; al pulsar un día se elige la entrada. El total muestra el desglose por temporada. |
 | Mapa en vivo | En la vista de mapa de Explorar, al mover o acercar el mapa la lista muestra solo lo que está a la vista ("6 resultados en esta zona") con sus precios; *Buscar al mover el mapa* se puede apagar y *Ver todo* vuelve a encuadrar todos los resultados. |
-| Correos reales | Con Gmail configurado (*Configurar BookingRD > 1*) llegan de verdad: código de verificación, enlace de contraseña, confirmación de reserva con foto, aviso a la empresa, recordatorio un día antes con el pronóstico, solicitud de reseña y avisos de seguridad. |
+| Correos reales | Con Gmail configurado (*Configurar el correo de BookingRD*) llegan de verdad: código de verificación, enlace de contraseña, confirmación de reserva con foto, aviso a la empresa, recordatorio un día antes con el pronóstico, solicitud de reseña y avisos de seguridad. |
 | Cancelación | Hasta un día antes; con tarjeta se reembolsa el 90 % y se retiene el 10 %; en el destino no hay cargo. |
 
 **Idioma y moneda.** El sitio está en español, con traducción propia y revisada al inglés, y se puede ver en cualquier otro idioma (francés, portugués, alemán, italiano, criollo haitiano, chino, japonés, árabe y unos 45 más) con la traducción automática de Google, que se carga solo al elegirlo y necesita internet; si no carga, la página vuelve al español con un aviso. Los nombres propios y los textos de usuarios y empresas no se traducen. Los precios se muestran en pesos, dólares o euros con la tasa del día (si no hay conexión, con una tasa de referencia). **El pago se hace en pesos dominicanos o en dólares**: en la ventana de pago se elige la moneda; en dólares se cobra el total convertido con la tasa del día y el recibo muestra el importe cobrado, el equivalente en pesos y la tasa aplicada. El pago en el destino se registra en pesos.
@@ -259,7 +258,6 @@ La plantilla comentada está en `.env.example`. Variables principales:
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | Firma y duración de las sesiones |
 | `PORT` | Puerto del servidor (3000) |
 | `LIMITE_INTENTOS_AUTH` | Intentos de inicio de sesión por IP cada 10 minutos |
-| `ANTHROPIC_API_KEY`, `ASISTENTE_MODELO` | Opcional: el asistente Caribe responde con IA (`npm run ia`; modelo predeterminado `claude-haiku-4-5-20251001`). Sin clave usa sus opciones |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USUARIO`, `SMTP_CLAVE`, `CORREO_REMITENTE`, `URL_SITIO` | Envío de correos (Gmail: contraseña de aplicación en <https://myaccount.google.com/apppasswords>; Outlook: `smtp-mail.outlook.com`, puerto 587) |
 
 ## 5. Trabajo en equipo con GitHub

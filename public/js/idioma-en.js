@@ -80,7 +80,6 @@ const CATALOGO_EN = {
     'Entrar': 'Sign in',
     '¿Te ayudo?': 'Need help?',
     'Asistente de BookingRD': 'BookingRD assistant',
-    'Asistente de BookingRD con IA': 'BookingRD AI assistant',
     'Escribe tu pregunta...': 'Type your question...',
     'Mensaje para el asistente': 'Message for the assistant',
     'Enviar': 'Send',

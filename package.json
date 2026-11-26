@@ -18,8 +18,7 @@
     "iniciar": "node scripts/iniciar.js",
     "sqlserver": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sqlserver-windows.ps1",
     "local:reiniciar": "node scripts/local-reiniciar.js",
-    "correo": "node scripts/configurar-correo.js",
-    "ia": "node scripts/configurar-ia.js"
+    "correo": "node scripts/configurar-correo.js"
   },
   "engines": {
     "node": ">=18"

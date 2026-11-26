@@ -48,8 +48,6 @@
     let entrada;
     let esperando = null;     // función que recibe el próximo texto escrito
     let contexto = {};
-    let conIa = false;            // hay una clave de IA en el servidor
-    const historial = [];         // últimos turnos para la IA
 
     /* ------------------------------------------------------------------ */
 
@@ -179,33 +177,8 @@
         decir(`¡Hola${nombre}! Soy Caribe, el asistente de BookingRD. Puedo hacer trámites por ti o llevarte a donde necesitas. Elige una opción o escríbeme tu pregunta.`, OPCIONES_INICIO);
     }
 
-    /** Con IA configurada, las preguntas libres las responde la IA; si falla, se usan las reglas. */
-    async function interpretar(texto) {
-        if (conIa && !/^(hola|buenas|gracias|adios|chao)\b/.test(sinTildes(texto))) {
-            const escribiendo = burbuja('<span class="asistente-escribiendo"><i></i><i></i><i></i></span>', 'del-asistente');
-            try {
-                const r = await apiFetch('/asistente', { method: 'POST', body: { mensaje: texto, historial, idioma: PREFERENCIAS.idioma === 'en' ? 'en' : 'es' } });
-                escribiendo.remove();
-                historial.push({ rol: 'usuario', texto }, { rol: 'asistente', texto: r.respuesta });
-                if (historial.length > 8) historial.splice(0, historial.length - 8);
-                if (r.accion === 'buscar' && r.destino) {
-                    await decir(escaparHtml(r.respuesta));
-                    return buscarHoteles(`${r.destino}${r.personas ? ` ${r.personas} personas` : ''} ${texto}`);
-                }
-                if (r.accion) {
-                    const opcion = OPCIONES_INICIO.find(([clave]) => clave === r.accion);
-                    return decir(escaparHtml(r.respuesta), opcion ? [[opcion[0], opcion[1]], ['menu', 'Ver todas las opciones']] : []);
-                }
-                return decir(escaparHtml(r.respuesta), [['menu', 'Ver todas las opciones']]);
-            } catch {
-                escribiendo.remove();
-                // Sin respuesta de la IA: se sigue con las reglas.
-            }
-        }
-        return interpretarConReglas(texto);
-    }
-
-    function interpretarConReglas(texto) {
+    /** Entiende la pregunta por palabras clave y responde con la opción que corresponde. */
+    function interpretar(texto) {
         const limpio = sinTildes(texto);
         if (/^(hola|buenas|saludos|hey)\b/.test(limpio)) return saludar();
         if (/gracias|adios|chao|listo/.test(limpio)) return ejecutar('adios');
@@ -485,10 +458,6 @@
 
     function iniciar() {
         crear();
-        apiFetch('/asistente/estado').then((r) => {
-            conIa = Boolean(r && r.ia);
-            if (conIa) document.getElementById('asistente-subtitulo').textContent = 'Asistente de BookingRD con IA';
-        }).catch(() => {});
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
